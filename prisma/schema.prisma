@@ -16,5 +16,7 @@ model User {
     hash     String
     hashedRt String?
 
-    nickname String
+    nickname               String
+    isEmailConfirmed       Boolean @default(false)
+    emailConfirmationToken String  @default("")
 }
