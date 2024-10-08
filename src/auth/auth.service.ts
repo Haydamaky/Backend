@@ -1,4 +1,10 @@
-import { ForbiddenException, Injectable, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SignInDto, SignUpDto } from './dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
@@ -7,29 +13,45 @@ import { ConfigService } from '@nestjs/config';
 import { Tokens } from './types';
 import * as argon2 from 'argon2';
 import { JwtRtGuard } from './guard';
+import { MailService } from 'src/mail/mail.service';
+import { JwtPayload } from './types/jwtPayloadType.type';
 
 @Injectable({})
 export class AuthService {
   constructor(
     private prismaService: PrismaService,
     private jwtService: JwtService,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private emailService: MailService
   ) {}
 
-  async signup(dto: SignUpDto): Promise<Tokens> {
+  async signup(dto: SignUpDto) {
     try {
-      const hash = await this.hashData(dto.password);
-      const user = await this.prismaService.user.create({
+      const hashPasswordPromise = this.hashData(dto.password);
+      const emailConfirmationTokenPromise = this.jwtService.signAsync(
+        { email: dto.email },
+        {
+          expiresIn: '1h',
+          algorithm: 'HS256',
+          secret: this.configService.get('EMAIL_CONFIRM_SECRET'),
+        }
+      );
+      const [hash, emailConfirmationToken] = await Promise.all([
+        hashPasswordPromise,
+        emailConfirmationTokenPromise,
+      ]);
+      await this.prismaService.user.create({
         data: {
           email: dto.email,
           hash,
           nickname: dto.nickname,
+          emailConfirmationToken,
         },
       });
-
-      const tokens = await this.signTokens(user.id, user.email);
-      await this.updateRtHash(user.id, tokens.refresh_token);
-      return tokens;
+      this.emailService.sendVerificationEmail(
+        dto.email,
+        emailConfirmationToken
+      );
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -54,7 +76,6 @@ export class AuthService {
     }
     //check password
     const pwMatches = await argon2.verify(user.hash, dto.password);
-    if (!pwMatches) throw new ForbiddenException('Access Denied');
 
     if (!pwMatches) {
       throw new ForbiddenException('Password is incorrect');
@@ -121,6 +142,110 @@ export class AuthService {
       access_token: at_token,
       refresh_token: rt_token,
     };
+  }
+
+  async confirmEmail(token: string) {
+    const decodedToken = this.jwtService.verify(token, {
+      secret: this.configService.get('EMAIL_CONFIRM_SECRET'),
+    });
+
+    if (!decodedToken) {
+      throw new BadRequestException('Invalid token');
+    }
+
+    const user = await this.prismaService.user.findUnique({
+      where: { email: decodedToken.email },
+    });
+
+    const tokens = await this.signTokens(user.id, user.email);
+    await this.updateRtHash(user.id, tokens.refresh_token);
+    return tokens;
+  }
+
+  async changePassword(
+    userId: number,
+    oldPassword: string,
+    newPassword: string,
+    confirmNewPassword: string
+  ): Promise<void> {
+    const user = await this.prismaService.user.findFirst({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      throw new BadRequestException(
+        // prettier-ignore
+        'New password and confirmation don\'t match'
+      );
+    }
+
+    const isPasswordMatch = await argon2.verify(user.hash, oldPassword);
+    if (!isPasswordMatch) {
+      throw new BadRequestException('Incorrect current password');
+    }
+    const newHash = await this.hashData(newPassword);
+
+    await this.prismaService.user.update({
+      where: { id: userId },
+      data: { hash: newHash },
+    });
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.prismaService.user.findFirst({ where: { email } });
+    if (!user) throw new BadRequestException('User not found');
+    const forgotPasswordToken = await this.jwtService.signAsync(
+      { email: email, sub: user.id },
+      {
+        expiresIn: '1h',
+        algorithm: 'HS256',
+        secret: this.configService.get('RESET_PASSWORD_SECRET'),
+      }
+    );
+    this.emailService.sendForgotPasswordEmail(email, forgotPasswordToken);
+    return forgotPasswordToken;
+  }
+
+  async resetPassword(
+    token: string,
+    newPassword: string,
+    confirmNewPassword: string
+  ) {
+    if (newPassword !== confirmNewPassword) {
+      throw new BadRequestException(
+        // prettier-ignore
+        'New password and confirmation don\'t match'
+      );
+    }
+
+    const decodedToken = await this.verifyResetToken(token);
+
+    const newHash = await this.hashData(newPassword);
+
+    await this.prismaService.user.update({
+      where: { email: decodedToken.email },
+      data: { hash: newHash, hashedRt: null },
+    });
+  }
+
+  async verifyResetToken(token: string): Promise<JwtPayload> {
+    try {
+      const decodedToken = await this.jwtService.verify(token, {
+        secret: this.configService.get('RESET_PASSWORD_SECRET'),
+      });
+      return decodedToken;
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        throw new BadRequestException('Reset password token has expired.');
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new UnauthorizedException('Invalid reset password token.');
+      }
+      throw new BadRequestException('Error verifying reset password token.');
+    }
   }
 
   async updateRtHash(userId: number, rt: string) {
