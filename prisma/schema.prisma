@@ -19,4 +19,20 @@ model User {
     nickname               String
     isEmailConfirmed       Boolean @default(false)
     emailConfirmationToken String  @default("")
+
+    requestedBy Follow[] @relation("requestedBy")
+    requested   Follow[] @relation("requested")
+}
+
+model Follow {
+    requestedBy   User @relation("requestedBy", fields: [requestedById], references: [id])
+    requestedById Int
+    requested     User @relation("requested", fields: [requestedId], references: [id])
+    requestedId   Int
+
+    status    String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@id([requestedId, requestedById])
 }
