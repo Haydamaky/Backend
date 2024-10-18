@@ -8,7 +8,7 @@ datasource db {
 }
 
 model User {
-    id        Int      @id @default(autoincrement())
+    userId    Int      @id @default(autoincrement())
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
@@ -20,8 +20,11 @@ model User {
     isEmailConfirmed       Boolean @default(false)
     emailConfirmationToken String  @default("")
 
-    requestedBy Follow[] @relation("requestedBy")
-    requested   Follow[] @relation("requested")
+    requestedBy      Follow[]  @relation("requestedBy")
+    requested        Follow[]  @relation("requested")
+    sentMessages     Message[] @relation("sentMessages")
+    receivedMessages Message[] @relation("receivedMessages")
+    chats            Chat[]
 }
 
 enum FollowStatus {
@@ -31,9 +34,9 @@ enum FollowStatus {
 }
 
 model Follow {
-    requestedBy   User @relation("requestedBy", fields: [requestedById], references: [id])
+    requestedBy   User @relation("requestedBy", fields: [requestedById], references: [userId])
     requestedById Int
-    requested     User @relation("requested", fields: [requestedId], references: [id])
+    requested     User @relation("requested", fields: [requestedId], references: [userId])
     requestedId   Int
 
     status    FollowStatus @default(PENDING)
@@ -41,4 +44,30 @@ model Follow {
     updatedAt DateTime     @updatedAt
 
     @@id([requestedId, requestedById])
+}
+
+model Message {
+    messageId   Int      @id @default(autoincrement())
+    text        String
+    senderId    Int
+    sender      User     @relation(name: "sentMessages", fields: [senderId], references: [userId])
+    recipientId Int?
+    recipient   User?    @relation(name: "receivedMessages", fields: [recipientId], references: [userId])
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+    chat        Chat?    @relation(fields: [chatId], references: [chatId])
+    chatId      Int?
+}
+
+enum ChatType {
+    MUTUAL
+    PRIVATE
+    GAME
+}
+
+model Chat {
+    chatId       Int       @id @default(autoincrement())
+    type         ChatType
+    messages     Message[]
+    participants User[]
 }
