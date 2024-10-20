@@ -15,7 +15,6 @@ import * as argon2 from 'argon2';
 import { JwtRtGuard } from './guard';
 import { MailService } from 'src/mail/mail.service';
 import { JwtPayload } from './types/jwtPayloadType.type';
-import { WsException } from '@nestjs/websockets';
 
 @Injectable({})
 export class AuthService {
