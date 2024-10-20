@@ -6,10 +6,11 @@ import {
 } from '@nestjs/websockets';
 import { ChatService } from './chat.service';
 import { Server } from 'socket.io';
-import { OnModuleInit, UseGuards } from '@nestjs/common';
-import { GetCurrentUser } from 'src/auth/decorator';
-import { JwtGuard } from 'src/auth/guard';
-import { User } from '@prisma/client';
+import { OnModuleInit, UseFilters, UseGuards } from '@nestjs/common';
+import { Socket } from 'socket.io';
+import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
+import { WebsocketExceptionsFilter } from './filters/websocket-exceptions.filter';
+import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 
 @WebSocketGateway({
   cors: {
@@ -18,7 +19,8 @@ import { User } from '@prisma/client';
     credentials: true,
   },
 })
-@UseGuards(JwtGuard)
+@UseGuards(WsGuard)
+@UseFilters(new WebsocketExceptionsFilter())
 export class ChatGateway implements OnModuleInit {
   @WebSocketServer()
   server: Server;
@@ -28,14 +30,13 @@ export class ChatGateway implements OnModuleInit {
   onModuleInit() {
     this.server.on('connection', (socket) => {
       console.log(socket.id);
-      console.log('connecteds');
+      console.log('connected');
     });
   }
 
-  @UseGuards(JwtGuard)
   @SubscribeMessage('newMessage')
-  onNewMessage(@MessageBody() body: any, @GetCurrentUser() user: User) {
-    console.log(user);
-    this.server.emit('onMessage', body);
+  onNewMessage(socket: Socket & { jwtPayload: JwtPayload }, data: string) {
+    this.chatService.onNewMessage(socket.jwtPayload.sub, data);
+    this.server.emit('onMessage', data);
   }
 }
