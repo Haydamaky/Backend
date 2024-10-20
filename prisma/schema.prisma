@@ -52,8 +52,8 @@ model Message {
     sender    User     @relation(name: "sentMessages", fields: [senderId], references: [userId])
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
-    chat      Chat?    @relation(fields: [chatId], references: [chatId])
-    chatId    Int?
+    chat      Chat     @relation(fields: [chatId], references: [chatId])
+    chatId    Int
 }
 
 enum ChatType {
