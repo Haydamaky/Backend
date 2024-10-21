@@ -8,6 +8,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { JwtGuard } from './auth/guard/jwt.guard';
 import { APP_GUARD } from '@nestjs/core';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { APP_GUARD } from '@nestjs/core';
         },
       },
     }),
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [
