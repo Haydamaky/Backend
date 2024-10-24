@@ -80,15 +80,15 @@ export class AuthService {
     if (!pwMatches) {
       throw new ForbiddenException('Password is incorrect');
     }
-    const tokens = await this.signTokens(user.id, user.email);
-    await this.updateRtHash(user.id, tokens.refresh_token);
+    const tokens = await this.signTokens(user.userId, user.email);
+    await this.updateRtHash(user.userId, tokens.refresh_token);
     return tokens;
   }
 
   async logout(userId: number) {
     await this.prismaService.user.updateMany({
       where: {
-        id: userId,
+        userId,
         hashedRt: {
           not: null,
         },
@@ -102,7 +102,7 @@ export class AuthService {
   async refreshTokens(userId: number, rt: string) {
     const user = await this.prismaService.user.findUnique({
       where: {
-        id: userId,
+        userId,
       },
     });
 
@@ -112,8 +112,8 @@ export class AuthService {
     const rtMatches = await argon2.verify(user.hashedRt, rt);
     if (!rtMatches) throw new ForbiddenException('Access Denied');
 
-    const tokens = await this.signTokens(user.id, user.email);
-    await this.updateRtHash(user.id, tokens.refresh_token);
+    const tokens = await this.signTokens(user.userId, user.email);
+    await this.updateRtHash(user.userId, tokens.refresh_token);
     return tokens;
   }
 
@@ -157,8 +157,8 @@ export class AuthService {
       where: { email: decodedToken.email },
     });
 
-    const tokens = await this.signTokens(user.id, user.email);
-    await this.updateRtHash(user.id, tokens.refresh_token);
+    const tokens = await this.signTokens(user.userId, user.email);
+    await this.updateRtHash(user.userId, tokens.refresh_token);
     return tokens;
   }
 
@@ -169,7 +169,7 @@ export class AuthService {
     confirmNewPassword: string
   ): Promise<void> {
     const user = await this.prismaService.user.findFirst({
-      where: { id: userId },
+      where: { userId },
     });
 
     if (!user) {
@@ -190,7 +190,7 @@ export class AuthService {
     const newHash = await this.hashData(newPassword);
 
     await this.prismaService.user.update({
-      where: { id: userId },
+      where: { userId },
       data: { hash: newHash },
     });
   }
@@ -199,7 +199,7 @@ export class AuthService {
     const user = await this.prismaService.user.findFirst({ where: { email } });
     if (!user) throw new BadRequestException('User not found');
     const forgotPasswordToken = await this.jwtService.signAsync(
-      { email: email, sub: user.id },
+      { email: email, sub: user.userId },
       {
         expiresIn: '1h',
         algorithm: 'HS256',
@@ -253,7 +253,7 @@ export class AuthService {
 
     await this.prismaService.user.update({
       where: {
-        id: userId,
+        userId,
       },
       data: {
         hashedRt: hash,

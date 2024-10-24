@@ -20,11 +20,10 @@ model User {
     isEmailConfirmed       Boolean @default(false)
     emailConfirmationToken String  @default("")
 
-    requestedBy      Follow[]  @relation("requestedBy")
-    requested        Follow[]  @relation("requested")
-    sentMessages     Message[] @relation("sentMessages")
-    receivedMessages Message[] @relation("receivedMessages")
-    chats            Chat[]
+    requestedBy  Follow[]  @relation("requestedBy")
+    requested    Follow[]  @relation("requested")
+    sentMessages Message[] @relation("sentMessages")
+    chats        Chat[]
 }
 
 enum FollowStatus {
@@ -47,16 +46,14 @@ model Follow {
 }
 
 model Message {
-    messageId   Int      @id @default(autoincrement())
-    text        String
-    senderId    Int
-    sender      User     @relation(name: "sentMessages", fields: [senderId], references: [userId])
-    recipientId Int?
-    recipient   User?    @relation(name: "receivedMessages", fields: [recipientId], references: [userId])
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @updatedAt
-    chat        Chat?    @relation(fields: [chatId], references: [chatId])
-    chatId      Int?
+    messageId Int      @id @default(autoincrement())
+    text      String
+    senderId  Int
+    sender    User     @relation(name: "sentMessages", fields: [senderId], references: [userId])
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    chat      Chat     @relation(fields: [chatId], references: [chatId])
+    chatId    Int
 }
 
 enum ChatType {

@@ -1,0 +1,44 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { NewMessagePayload } from './dto';
+
+@Injectable()
+export class ChatService {
+  constructor(private prismaService: PrismaService) {}
+  async onNewMessage(userId: number, messageObj: NewMessagePayload) {
+    const res = await this.prismaService.message.create({
+      data: {
+        text: messageObj.text,
+        senderId: userId,
+        chatId: messageObj.chatId,
+      },
+      include: {
+        sender: {
+          select: {
+            userId: true,
+            nickname: true,
+          },
+        },
+      },
+    });
+    return res;
+  }
+
+  async onChatData(chatId: number) {
+    return await this.prismaService.chat.findFirst({
+      where: { chatId },
+      include: {
+        messages: {
+          include: {
+            sender: {
+              select: {
+                userId: true,
+                nickname: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+}

@@ -182,6 +182,5 @@ export class AuthController {
     return res
       .status(HttpStatus.OK)
       .send({ status: 'success', message: 'Password reset successfully' });
-    return res.redirect(`${process.env.FRONTEND_URL}/login`);
   }
 }
