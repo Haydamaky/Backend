@@ -87,7 +87,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'logout' })
-  async logout(@GetCurrentUserId() userId: number) {
+  async logout(@GetCurrentUserId() userId: string) {
     await this.authService.logout(userId);
     return { status: 'success', message: 'Logout successfully' };
   }
@@ -97,7 +97,7 @@ export class AuthController {
   @Post('refresh')
   @ApiOperation({ summary: 'refreshTokens' })
   async refreshTokens(
-    @GetCurrentUserId() userId: number,
+    @GetCurrentUserId() userId: string,
     @GetCurrentUser('refreshToken') refreshToken: string,
     @Res() res: Response
   ) {
@@ -142,7 +142,7 @@ export class AuthController {
   @Patch('change-password')
   @ApiOperation({ summary: 'change-password' })
   async changePassword(
-    @GetCurrentUserId() userId: number,
+    @GetCurrentUserId() userId: string,
     @Body() dto: ChangePasswordDto
   ) {
     await this.authService.changePassword(

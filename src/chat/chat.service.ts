@@ -5,7 +5,7 @@ import { NewMessagePayload } from './dto';
 @Injectable()
 export class ChatService {
   constructor(private prismaService: PrismaService) {}
-  async onNewMessage(userId: number, messageObj: NewMessagePayload) {
+  async onNewMessage(userId: string, messageObj: NewMessagePayload) {
     const res = await this.prismaService.message.create({
       data: {
         text: messageObj.text,
@@ -24,7 +24,7 @@ export class ChatService {
     return res;
   }
 
-  async onChatData(chatId: number) {
+  async onChatData(chatId: string) {
     return await this.prismaService.chat.findFirst({
       where: { chatId },
       include: {

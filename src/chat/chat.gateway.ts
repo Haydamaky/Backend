@@ -48,7 +48,7 @@ export class ChatGateway implements OnModuleInit {
   }
 
   @SubscribeMessage('chatData')
-  async onChatData(@MessageBody() data: { chatId: number }) {
+  async onChatData(@MessageBody() data: { chatId: string }) {
     const chatData = await this.chatService.onChatData(data.chatId);
     return chatData;
   }

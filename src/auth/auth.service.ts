@@ -85,7 +85,7 @@ export class AuthService {
     return tokens;
   }
 
-  async logout(userId: number) {
+  async logout(userId: string) {
     await this.prismaService.user.updateMany({
       where: {
         userId,
@@ -99,7 +99,7 @@ export class AuthService {
     });
   }
   @UseGuards(JwtRtGuard)
-  async refreshTokens(userId: number, rt: string) {
+  async refreshTokens(userId: string, rt: string) {
     const user = await this.prismaService.user.findUnique({
       where: {
         userId,
@@ -117,7 +117,7 @@ export class AuthService {
     return tokens;
   }
 
-  async signTokens(userId: number, email: string): Promise<Tokens> {
+  async signTokens(userId: string, email: string): Promise<Tokens> {
     const payLoad = {
       sub: userId,
       email,
@@ -163,7 +163,7 @@ export class AuthService {
   }
 
   async changePassword(
-    userId: number,
+    userId: string,
     oldPassword: string,
     newPassword: string,
     confirmNewPassword: string
@@ -248,7 +248,7 @@ export class AuthService {
     }
   }
 
-  async updateRtHash(userId: number, rt: string) {
+  async updateRtHash(userId: string, rt: string) {
     const hash = await argon2.hash(rt);
 
     await this.prismaService.user.update({
