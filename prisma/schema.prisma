@@ -1,70 +1,161 @@
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-    userId    Int      @id @default(autoincrement())
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  userId    Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    email    String  @unique
-    hash     String
-    hashedRt String?
+  email    String  @unique
+  hash     String
+  hashedRt String?
 
-    nickname               String
-    isEmailConfirmed       Boolean @default(false)
-    emailConfirmationToken String  @default("")
+  nickname               String
+  isEmailConfirmed       Boolean @default(false)
+  emailConfirmationToken String  @default("")
 
-    requestedBy  Follow[]  @relation("requestedBy")
-    requested    Follow[]  @relation("requested")
-    sentMessages Message[] @relation("sentMessages")
-    chats        Chat[]
+  requestedBy  Follow[]  @relation("requestedBy")
+  requested    Follow[]  @relation("requested")
+  sentMessages Message[] @relation("sentMessages")
+  chats        Chat[]
+  players      Player[]  @relation("UserPlayers")
 }
 
 enum FollowStatus {
-    PENDING
-    ACCEPTED
-    REJECTED
+  PENDING
+  ACCEPTED
+  REJECTED
 }
 
 model Follow {
-    requestedBy   User @relation("requestedBy", fields: [requestedById], references: [userId])
-    requestedById Int
-    requested     User @relation("requested", fields: [requestedId], references: [userId])
-    requestedId   Int
+  requestedBy   User @relation("requestedBy", fields: [requestedById], references: [userId])
+  requestedById Int
+  requested     User @relation("requested", fields: [requestedId], references: [userId])
+  requestedId   Int
 
-    status    FollowStatus @default(PENDING)
-    createdAt DateTime     @default(now())
-    updatedAt DateTime     @updatedAt
+  status    FollowStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
-    @@id([requestedId, requestedById])
+  @@id([requestedId, requestedById])
 }
 
 model Message {
-    messageId Int      @id @default(autoincrement())
-    text      String
-    senderId  Int
-    sender    User     @relation(name: "sentMessages", fields: [senderId], references: [userId])
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-    chat      Chat     @relation(fields: [chatId], references: [chatId])
-    chatId    Int
+  messageId Int      @id @default(autoincrement())
+  text      String
+  senderId  Int
+  sender    User     @relation(name: "sentMessages", fields: [senderId], references: [userId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  chat      Chat     @relation(fields: [chatId], references: [chatId])
+  chatId    Int
 }
 
 enum ChatType {
-    MUTUAL
-    PRIVATE
-    GAME
+  MUTUAL
+  PRIVATE
+  GAME
 }
 
 model Chat {
-    chatId       Int       @id @default(autoincrement())
-    type         ChatType
-    messages     Message[]
-    participants User[]
+  chatId       Int       @id @default(autoincrement())
+  type         ChatType
+  messages     Message[]
+  participants User[]
+}
+
+model Game {
+  gameId            String             @id @default(uuid())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  players           Player[]           @relation("GamePlayers")
+  gameFields        GameField[] // Existing relation to GameField
+  gameMoves         GameMoves[]        @relation("GameMovesGame")
+  fieldTransactions FieldTransaction[] @relation("FieldTransactionGame")
+  fields            Field[]            @relation("GameFieldRelation") // Renamed the relation to avoid conflict
+}
+
+model Player {
+  playerId          String             @id @default(uuid())
+  money             Float
+  userId            Int
+  gameId            String
+  user              User               @relation(name: "UserPlayers", fields: [userId], references: [userId])
+  game              Game               @relation(name: "GamePlayers", fields: [gameId], references: [gameId])
+  gameMoves         GameMoves[]
+  transactions      Transaction[]
+  gameFields        GameField[]
+  fieldTransactions FieldTransaction[] @relation("FieldTransactionPlayer") // Added opposite relation for FieldTransaction
+}
+
+model GameMoves {
+  gameMoveId String   @id @default(uuid())
+  gameId     String
+  playerId   String
+  action     String
+  player     Player   @relation(fields: [playerId], references: [playerId])
+  game       Game     @relation(name: "GameMovesGame", fields: [gameId], references: [gameId])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model GameField {
+  gameFieldId String   @id @default(uuid())
+  gameId      String
+  playerId    String
+  fieldId     String
+  cost        Float
+  player      Player   @relation(fields: [playerId], references: [playerId])
+  game        Game     @relation(fields: [gameId], references: [gameId])
+  field       Field    @relation(fields: [fieldId], references: [fieldId])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Transaction {
+  transactionId     String             @id @default(uuid())
+  amount            Float
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  playerId          String
+  player            Player             @relation(fields: [playerId], references: [playerId])
+  fieldTransactions FieldTransaction[]
+}
+
+model FieldTransaction {
+  fieldTransactionId String      @id @default(uuid())
+  gameId             String
+  transactionId      String
+  playerId           String
+  transaction        Transaction @relation(fields: [transactionId], references: [transactionId])
+  game               Game        @relation(name: "FieldTransactionGame", fields: [gameId], references: [gameId])
+  player             Player      @relation(name: "FieldTransactionPlayer", fields: [playerId], references: [playerId])
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+}
+
+model Field {
+  fieldId    String      @id @default(uuid())
+  name       String
+  price      Float
+  gameId     String
+  groupId    String
+  game       Game        @relation(name: "GameFieldRelation", fields: [gameId], references: [gameId]) // Use the new relation name
+  group      Group       @relation(fields: [groupId], references: [groupId])
+  gameFields GameField[]
+}
+
+model Group {
+  groupId   String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name      String
+  color     String
+  fields    Field[]
 }
