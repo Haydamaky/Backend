@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { NewMessagePayload } from './dto';
+import { NewMessagePayloadDto } from './dto';
 
 @Injectable()
 export class ChatService {
   constructor(private prismaService: PrismaService) {}
-  async onNewMessage(userId: string, messageObj: NewMessagePayload) {
+  async onNewMessage(userId: string, messageObj: NewMessagePayloadDto) {
     const res = await this.prismaService.message.create({
       data: {
         text: messageObj.text,
