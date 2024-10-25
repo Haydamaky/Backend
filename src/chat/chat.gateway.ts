@@ -1,5 +1,4 @@
 import {
-  ConnectedSocket,
   MessageBody,
   SubscribeMessage,
   WebSocketGateway,
@@ -29,11 +28,9 @@ export class ChatGateway implements OnModuleInit {
   constructor(private readonly chatService: ChatService) {}
 
   onModuleInit() {
-    this.server.on('connection', (socket) => {
-      console.log(socket.id);
-      console.log('connectedd');
-    });
+    this.server.on('connection', (socket) => {});
   }
+
   @UseGuards(WsGuard)
   @SubscribeMessage('newMessage')
   async onNewMessage(
@@ -48,8 +45,7 @@ export class ChatGateway implements OnModuleInit {
   }
 
   @SubscribeMessage('chatData')
-  async onChatData(@MessageBody() data: { chatId: string }) {
-    const chatData = await this.chatService.onChatData(data.chatId);
-    return chatData;
+  onChatData(@MessageBody() data: { chatId: string }) {
+    return this.chatService.onChatData(data.chatId);
   }
 }

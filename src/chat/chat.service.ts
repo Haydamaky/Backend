@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { NewMessagePayload } from './dto';
+import { ChatRepository } from './chat.repository';
+import { MessageRepository } from 'src/message/message.repository';
 
 @Injectable()
 export class ChatService {
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private readonly chatRepository: ChatRepository,
+    private readonly messageRepository: MessageRepository
+  ) {}
   async onNewMessage(userId: string, messageObj: NewMessagePayload) {
-    const res = await this.prismaService.message.create({
+    return this.messageRepository.create({
       data: {
         text: messageObj.text,
         senderId: userId,
@@ -21,11 +25,10 @@ export class ChatService {
         },
       },
     });
-    return res;
   }
 
   async onChatData(chatId: string) {
-    return await this.prismaService.chat.findFirst({
+    return await this.chatRepository.findUnique({
       where: { chatId },
       include: {
         messages: {
