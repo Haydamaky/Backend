@@ -1,49 +1,23 @@
 import { Prisma } from '@prisma/client';
+import { Delegate } from './type';
+import { PrismaService } from 'src/prisma/prisma.service';
 
-export abstract class BaseRepository<T> {
-  constructor(private readonly prismaModel: any) {}
+export abstract class BaseRepository<M extends Delegate, C, R, U, D> {
+  constructor(private readonly model: M) {}
 
-  async findAll(query?: {
-    select?: any;
-    include?: any;
-    where?: any;
-    orderBy?: any;
-    cursor?: any;
-    take?: number;
-    skip?: number;
-    distinct?: any;
-  }): Promise<T[]> {
-    return this.prismaModel.findMany(query);
+  async create(data: C) {
+    return this.model.create(data);
   }
-
-  async findOne(query: {
-    select?: any;
-    include?: any;
-    where: any;
-  }): Promise<T> {
-    return this.prismaModel.findUnique(query);
+  async findUnique(data?: R) {
+    return this.model.findUnique(data);
   }
-  async updateOne(query: {
-    select?: any;
-    include?: any;
-    data: any;
-    where: any;
-  }): Promise<T> {
-    return this.prismaModel.update(query);
+  async findMany(data?: R) {
+    return this.model.findMany(data);
   }
-  async deleteOne(query: {
-    select?: any;
-    include?: any;
-    where: any;
-  }): Promise<T> {
-    return this.prismaModel.delete(query);
+  async update(data: U) {
+    return this.model.update(data);
   }
-
-  async createOne(query: {
-    select?: any;
-    include?: any;
-    data: any;
-  }): Promise<T> {
-    return this.prismaModel.create(query);
+  async delete(data: D) {
+    return this.model.delete(data);
   }
 }

@@ -1,23 +1,26 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { UserRepository } from './user.repository';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly userRepository: UserRepository) {}
 
   findAll() {
-    return this.prisma.user.findMany();
+    return this.userRepository.findMany();
   }
 
   findOne(email: string) {
-    return this.prisma.user.findFirst({ where: { email } });
+    return this.userRepository.findUnique({ where: { email } });
   }
 
-  update(id: number) {
-    return `This action updates a #${id} user`;
+  update(id: string, updateUserDto) {
+    return this.userRepository.update({
+      where: { userId: id },
+      data: updateUserDto,
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  remove(id: string) {
+    return this.userRepository.delete({ where: { userId: id } });
   }
 }
