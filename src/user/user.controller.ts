@@ -10,7 +10,7 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
   @UseGuards(JwtGuard)
   @Get('')
-  findAll(@Query() user) {
+  async findAll(@Query() user) {
     return this.userService.findAll();
   }
 }

@@ -41,6 +41,7 @@ export class ChatGateway implements OnModuleInit {
       socket.jwtPayload.sub,
       data
     );
+
     this.server.emit('onMessage', { ...data, ...message.sender });
   }
 
