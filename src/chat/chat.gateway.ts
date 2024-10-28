@@ -6,12 +6,13 @@ import {
 } from '@nestjs/websockets';
 import { ChatService } from './chat.service';
 import { Server } from 'socket.io';
-import { OnModuleInit, UseFilters, UseGuards } from '@nestjs/common';
+import { OnModuleInit, UseFilters, UseGuards, UsePipes } from '@nestjs/common';
 import { Socket } from 'socket.io';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 import { WebsocketExceptionsFilter } from './filters/websocket-exceptions.filter';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
-import { NewMessagePayload } from './dto';
+import { ChatDataDto, NewMessagePayloadDto } from './dto';
+import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 
 @WebSocketGateway({
   cors: {
@@ -20,7 +21,8 @@ import { NewMessagePayload } from './dto';
     credentials: true,
   },
 })
-@UseFilters(new WebsocketExceptionsFilter())
+@UseFilters(WebsocketExceptionsFilter)
+@UsePipes(new WsValidationPipe())
 export class ChatGateway implements OnModuleInit {
   @WebSocketServer()
   server: Server;
@@ -35,7 +37,7 @@ export class ChatGateway implements OnModuleInit {
   @SubscribeMessage('newMessage')
   async onNewMessage(
     socket: Socket & { jwtPayload: JwtPayload },
-    data: NewMessagePayload
+    data: NewMessagePayloadDto
   ) {
     const message = await this.chatService.onNewMessage(
       socket.jwtPayload.sub,
@@ -46,6 +48,7 @@ export class ChatGateway implements OnModuleInit {
   }
 
   @SubscribeMessage('chatData')
+
   onChatData(@MessageBody() data: { chatId: string }) {
     return this.chatService.onChatData(data.chatId);
   }
