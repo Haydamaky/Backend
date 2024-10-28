@@ -5,7 +5,6 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { SignInDto, SignUpDto } from './dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { JwtService } from '@nestjs/jwt';
@@ -15,11 +14,12 @@ import * as argon2 from 'argon2';
 import { JwtRtGuard } from './guard';
 import { MailService } from 'src/mail/mail.service';
 import { JwtPayload } from './types/jwtPayloadType.type';
+import { UserRepository } from 'src/user/user.repository';
 
 @Injectable({})
 export class AuthService {
   constructor(
-    private prismaService: PrismaService,
+    private userRepository: UserRepository,
     private jwtService: JwtService,
     private configService: ConfigService,
     private emailService: MailService
@@ -40,7 +40,7 @@ export class AuthService {
         hashPasswordPromise,
         emailConfirmationTokenPromise,
       ]);
-      await this.prismaService.user.create({
+      await this.userRepository.create({
         data: {
           email: dto.email,
           hash,
@@ -65,7 +65,7 @@ export class AuthService {
 
   async signin(dto: SignInDto) {
     //check user
-    const user = await this.prismaService.user.findUnique({
+    const user = await this.userRepository.findUnique({
       where: {
         email: dto.email as string,
       },
@@ -86,7 +86,7 @@ export class AuthService {
   }
 
   async logout(userId: string) {
-    await this.prismaService.user.updateMany({
+    await this.userRepository.updateMany({
       where: {
         userId,
         hashedRt: {
@@ -100,7 +100,7 @@ export class AuthService {
   }
   @UseGuards(JwtRtGuard)
   async refreshTokens(userId: string, rt: string) {
-    const user = await this.prismaService.user.findUnique({
+    const user = await this.userRepository.findUnique({
       where: {
         userId,
       },
@@ -153,7 +153,7 @@ export class AuthService {
       throw new BadRequestException('Invalid token');
     }
 
-    const user = await this.prismaService.user.findUnique({
+    const user = await this.userRepository.findUnique({
       where: { email: decodedToken.email },
     });
 
@@ -168,9 +168,7 @@ export class AuthService {
     newPassword: string,
     confirmNewPassword: string
   ): Promise<void> {
-    const user = await this.prismaService.user.findFirst({
-      where: { userId },
-    });
+    const user = await this.userRepository.findById(userId);
 
     if (!user) {
       throw new BadRequestException('User not found');
@@ -189,14 +187,14 @@ export class AuthService {
     }
     const newHash = await this.hashData(newPassword);
 
-    await this.prismaService.user.update({
+    await this.userRepository.update({
       where: { userId },
       data: { hash: newHash },
     });
   }
 
   async forgotPassword(email: string) {
-    const user = await this.prismaService.user.findFirst({ where: { email } });
+    const user = await this.userRepository.findByEmail(email);
     if (!user) throw new BadRequestException('User not found');
     const forgotPasswordToken = await this.jwtService.signAsync(
       { email: email, sub: user.userId },
@@ -226,7 +224,7 @@ export class AuthService {
 
     const newHash = await this.hashData(newPassword);
 
-    await this.prismaService.user.update({
+    await this.userRepository.update({
       where: { email: decodedToken.email },
       data: { hash: newHash, hashedRt: null },
     });
@@ -251,7 +249,7 @@ export class AuthService {
   async updateRtHash(userId: string, rt: string) {
     const hash = await argon2.hash(rt);
 
-    await this.prismaService.user.update({
+    await this.userRepository.update({
       where: {
         userId,
       },

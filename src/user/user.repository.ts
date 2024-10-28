@@ -21,6 +21,6 @@ export class UserRepository extends BaseRepository<
   }
 
   findByEmail(email: string) {
-    return this.findUnique({ where: { email } });
+    return this.findFirst({ where: { email } });
   }
 }
