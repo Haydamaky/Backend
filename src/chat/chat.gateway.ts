@@ -30,11 +30,9 @@ export class ChatGateway implements OnModuleInit {
   constructor(private readonly chatService: ChatService) {}
 
   onModuleInit() {
-    this.server.on('connection', (socket) => {
-      console.log(socket.id);
-      console.log('connectedd');
-    });
+    this.server.on('connection', (socket) => {});
   }
+
   @UseGuards(WsGuard)
   @SubscribeMessage('newMessage')
   async onNewMessage(
@@ -45,12 +43,13 @@ export class ChatGateway implements OnModuleInit {
       socket.jwtPayload.sub,
       data
     );
+
     this.server.emit('onMessage', { ...data, ...message.sender });
   }
 
   @SubscribeMessage('chatData')
-  async onChatData(@MessageBody() data: ChatDataDto) {
-    const chatData = await this.chatService.onChatData(data.chatId);
-    return chatData;
+
+  onChatData(@MessageBody() data: { chatId: string }) {
+    return this.chatService.onChatData(data.chatId);
   }
 }
