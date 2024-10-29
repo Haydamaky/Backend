@@ -16,7 +16,7 @@ import { MailService } from 'src/mail/mail.service';
 import { JwtPayload } from './types/jwtPayloadType.type';
 import { UserRepository } from 'src/user/user.repository';
 
-@Injectable({})
+@Injectable()
 export class AuthService {
   constructor(
     private userRepository: UserRepository,

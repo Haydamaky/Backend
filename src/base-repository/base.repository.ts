@@ -7,22 +7,22 @@ export abstract class BaseRepository<M extends Delegate<P>, C, R, U, D, P> {
     return this.model.create(data);
   }
   findById(id: string) {
-    return this.findFirst({ where: { id } });
+    return this.model.findFirst({ where: { id } });
   }
 
-  updateById(id: string, data: U['data' & 1]) {
-    return this.update({ where: { id }, data });
+  updateById(id: string, data: unknown) {
+    return this.model.update({ where: { id }, data });
   }
 
   deleteById(id: string) {
-    return this.delete({ where: { id } });
+    return this.model.delete({ where: { id } });
   }
 
-  findFirst(data?: R | { where: R['where' & 0] | { id: string } }) {
+  findFirst(data?: R) {
     return this.model.findFirst(data);
   }
 
-  findUnique(data?: R | { where: R['where' & 0] | { id: string } }) {
+  findUnique(data?: R) {
     return this.model.findUnique(data);
   }
 
@@ -30,13 +30,11 @@ export abstract class BaseRepository<M extends Delegate<P>, C, R, U, D, P> {
     return this.model.findMany(data);
   }
 
-  update(
-    data: U | { where: Partial<P> | { id: string }; data: U['data' & 1] }
-  ) {
+  update(data: U) {
     return this.model.update(data);
   }
 
-  delete(data: D | { where: { id: string } }) {
+  delete(data: D) {
     return this.model.delete(data);
   }
 

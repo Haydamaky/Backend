@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { NewMessagePayload } from './dto';
+import { NewMessagePayloadDto } from './dto';
 import { ChatRepository } from './chat.repository';
 import { MessageRepository } from 'src/message/message.repository';
 
@@ -9,7 +9,7 @@ export class ChatService {
     private readonly chatRepository: ChatRepository,
     private readonly messageRepository: MessageRepository
   ) {}
-  async onNewMessage(userId: string, messageObj: NewMessagePayload) {
+  async onNewMessage(userId: string, messageObj: NewMessagePayloadDto) {
     return this.messageRepository.create({
       data: {
         text: messageObj.text,
