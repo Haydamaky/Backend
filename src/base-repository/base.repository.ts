@@ -1,6 +1,17 @@
 import { Delegate } from './type';
 
-export abstract class BaseRepository<M extends Delegate<P>, C, R, U, D, P> {
+interface UpdateData {
+  data: unknown;
+}
+
+export abstract class BaseRepository<
+  M extends Delegate<P>,
+  C,
+  R,
+  U extends UpdateData,
+  D,
+  P,
+> {
   constructor(private readonly model: M) {}
 
   create(data: C) {
@@ -10,7 +21,7 @@ export abstract class BaseRepository<M extends Delegate<P>, C, R, U, D, P> {
     return this.model.findFirst({ where: { id } });
   }
 
-  updateById(id: string, data: unknown) {
+  updateById(id: string, data: U['data']) {
     return this.model.update({ where: { id }, data });
   }
 
