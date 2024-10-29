@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { UserRepository } from './user.repository';
+import { CreateUserDto } from './dtos/create-user.dto';
+import * as argon2 from 'argon2';
+import { UpdateUserDto } from './dtos/update-user.dto';
 
 @Injectable()
 export class UserService {
@@ -9,18 +12,36 @@ export class UserService {
     return this.userRepository.findMany();
   }
 
-  findOne(email: string) {
-    return this.userRepository.findUnique({ where: { email } });
+  findOne(id: string) {
+    return this.userRepository.findById(id);
   }
 
-  update(id: string, updateUserDto) {
+  async update(id: string, body: UpdateUserDto) {
+    const updateBody = { ...body };
+
+    if (body.password) {
+      delete updateBody['password'];
+      updateBody['hash'] = await this.hash(body.password);
+    }
+
     return this.userRepository.update({
       where: { userId: id },
-      data: updateUserDto,
+      data: { ...updateBody },
     });
+  }
+
+  async create(body: CreateUserDto) {
+    const hash = await this.hash(body.password);
+
+    body.password = undefined;
+    return this.userRepository.create({ data: { ...body, hash } });
   }
 
   remove(id: string) {
     return this.userRepository.delete({ where: { userId: id } });
+  }
+
+  hash(data: string) {
+    return argon2.hash(data);
   }
 }
