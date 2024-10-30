@@ -4,7 +4,7 @@ import { DefaultArgs } from '@prisma/client/runtime/library';
 import { BaseRepository } from 'src/base-repository/base.repository';
 import { PrismaService } from 'src/prisma/prisma.service';
 
-type UserPayload = Prisma.$UserPayload['objects'] &
+export type UserPayload = Prisma.$UserPayload['objects'] &
   Prisma.$UserPayload['scalars'];
 
 @Injectable()

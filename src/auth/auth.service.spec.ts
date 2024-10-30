@@ -1,16 +1,18 @@
+import { DefaultArgs } from '@prisma/client/runtime/library';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
-import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { MailService } from '../mail/mail.service';
-import { mockPrismaService } from 'src/test-utils';
+import { UserPayload, UserRepository } from 'src/user/user.repository';
+import { Prisma } from '@prisma/client';
 
 describe('AuthService', () => {
   let service: AuthService;
   let mockJwtService: Partial<JwtService>;
   let mockConfigService: Partial<ConfigService>;
   let mockMailService: Partial<MailService>;
+  let mockUserRepo: Partial<UserRepository>;
 
   beforeEach(async () => {
     mockJwtService = {
@@ -26,12 +28,17 @@ describe('AuthService', () => {
     mockMailService = {
       sendVerificationEmail: jest.fn(),
     };
+    mockUserRepo = {
+      create: (data: Prisma.UserCreateArgs<DefaultArgs>) => {
+        return Promise.resolve(data as unknown as UserPayload);
+      },
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         {
-          provide: PrismaService,
-          useValue: mockPrismaService,
+          provide: UserRepository,
+          useValue: mockUserRepo,
         },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
