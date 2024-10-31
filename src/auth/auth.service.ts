@@ -65,11 +65,7 @@ export class AuthService {
 
   async signin(dto: SignInDto) {
     //check user
-    const user = await this.userRepository.findUnique({
-      where: {
-        email: dto.email as string,
-      },
-    });
+    const user = await this.userRepository.findByEmail(dto.email);
 
     if (!user) {
       throw new ForbiddenException('Credentials are incorrect');
@@ -100,11 +96,7 @@ export class AuthService {
   }
   @UseGuards(JwtRtGuard)
   async refreshTokens(userId: string, rt: string) {
-    const user = await this.userRepository.findUnique({
-      where: {
-        userId,
-      },
-    });
+    const user = await this.userRepository.findById(userId);
 
     if (!user) throw new ForbiddenException('Access Denied');
     if (!user.hashedRt) throw new ForbiddenException('Access Denied');
@@ -145,7 +137,7 @@ export class AuthService {
   }
 
   async confirmEmail(token: string) {
-    const decodedToken = this.jwtService.verify(token, {
+    const decodedToken = await this.jwtService.verify(token, {
       secret: this.configService.get('EMAIL_CONFIRM_SECRET'),
     });
 
@@ -153,9 +145,7 @@ export class AuthService {
       throw new BadRequestException('Invalid token');
     }
 
-    const user = await this.userRepository.findUnique({
-      where: { email: decodedToken.email },
-    });
+    const user = await this.userRepository.findByEmail(decodedToken.email);
 
     const tokens = await this.signTokens(user.userId, user.email);
     await this.updateRtHash(user.userId, tokens.refresh_token);
