@@ -11,7 +11,7 @@ import { Socket } from 'socket.io';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 import { WebsocketExceptionsFilter } from './filters/websocket-exceptions.filter';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
-import { ChatDataDto, NewMessagePayloadDto } from './dto';
+import { NewMessagePayloadDto } from './dto';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 
 @WebSocketGateway({
@@ -30,7 +30,9 @@ export class ChatGateway implements OnModuleInit {
   constructor(private readonly chatService: ChatService) {}
 
   onModuleInit() {
-    this.server.on('connection', (socket) => {});
+    this.server.on('connection', (socket) => {
+      console.log('connected: ', socket.id);
+    });
   }
 
   @UseGuards(WsGuard)
@@ -48,7 +50,6 @@ export class ChatGateway implements OnModuleInit {
   }
 
   @SubscribeMessage('chatData')
-
   onChatData(@MessageBody() data: { chatId: string }) {
     return this.chatService.onChatData(data.chatId);
   }
