@@ -3,13 +3,13 @@ generator client {
 }
 
 datasource db {
-    provider = "postgresql"
-     url      = env("DATABASE_URL")
-     directUrl = env("DIRECT_URL")
+    provider  = "postgresql"
+    url       = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")
 }
 
 model User {
-    userId    String   @id @default(uuid())
+    id        String   @id @default(uuid())
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
@@ -36,9 +36,9 @@ enum FollowStatus {
 
 model Follow {
     followId      String @id @default(uuid())
-    requestedBy   User   @relation("requestedBy", fields: [requestedById], references: [userId])
+    requestedBy   User   @relation("requestedBy", fields: [requestedById], references: [id])
     requestedById String
-    requested     User   @relation("requested", fields: [requestedId], references: [userId])
+    requested     User   @relation("requested", fields: [requestedId], references: [id])
     requestedId   String
 
     status    FollowStatus @default(PENDING)
@@ -47,13 +47,13 @@ model Follow {
 }
 
 model Message {
-    messageId String   @id @default(uuid())
+    id        String   @id @default(uuid())
     text      String
     senderId  String
-    sender    User     @relation(name: "sentMessages", fields: [senderId], references: [userId])
+    sender    User     @relation(name: "sentMessages", fields: [senderId], references: [id])
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
-    chat      Chat     @relation(fields: [chatId], references: [chatId])
+    chat      Chat     @relation(fields: [chatId], references: [id])
     chatId    String
 }
 
@@ -64,23 +64,23 @@ enum ChatType {
 }
 
 model Chat {
-    chatId       String     @id @default(uuid())
+    id           String     @id @default(uuid())
     type         ChatType
     messages     Message[]
     participants ChatUser[]
 }
 
 model ChatUser {
-    chatUserId String   @id @default(uuid())
-    chatId     String
-    joinedAt   DateTime @default(now())
-    Chat       Chat     @relation(fields: [chatId], references: [chatId])
-    userId     String
-    user       User     @relation(fields: [userId], references: [userId])
+    id       String   @id @default(uuid())
+    joinedAt DateTime @default(now())
+    chatId   String
+    Chat     Chat     @relation(fields: [chatId], references: [id])
+    userId   String
+    user     User     @relation(fields: [userId], references: [id])
 }
 
 model Game {
-    gameId            String             @id @default(uuid())
+    id                String             @id @default(uuid())
     createdAt         DateTime           @default(now())
     updatedAt         DateTime           @updatedAt
     players           Player[]           @relation("GamePlayers")
@@ -91,12 +91,12 @@ model Game {
 }
 
 model Player {
-    playerId          String             @id @default(uuid())
-    money             Float
+    id                String             @id @default(uuid())
+    money             Float              @default(0)
     userId            String
+    user              User               @relation(name: "UserPlayers", fields: [userId], references: [id])
     gameId            String
-    user              User               @relation(name: "UserPlayers", fields: [userId], references: [userId])
-    game              Game               @relation(name: "GamePlayers", fields: [gameId], references: [gameId])
+    game              Game               @relation(name: "GamePlayers", fields: [gameId], references: [id])
     gameMoves         GameMoves[]
     transactions      Transaction[]
     gameFields        GameField[]
@@ -106,10 +106,10 @@ model Player {
 model GameMoves {
     gameMoveId String   @id @default(uuid())
     gameId     String
-    playerId   String
+    id         String
     action     String
-    player     Player   @relation(fields: [playerId], references: [playerId])
-    game       Game     @relation(name: "GameMovesGame", fields: [gameId], references: [gameId])
+    player     Player   @relation(fields: [id], references: [id])
+    game       Game     @relation(name: "GameMovesGame", fields: [gameId], references: [id])
     createdAt  DateTime @default(now())
     updatedAt  DateTime @updatedAt
 }
@@ -120,8 +120,8 @@ model GameField {
     playerId    String
     fieldId     String
     cost        Float
-    player      Player   @relation(fields: [playerId], references: [playerId])
-    game        Game     @relation(fields: [gameId], references: [gameId])
+    player      Player   @relation(fields: [playerId], references: [id])
+    game        Game     @relation(fields: [gameId], references: [id])
     field       Field    @relation(fields: [fieldId], references: [fieldId])
     createdAt   DateTime @default(now())
     updatedAt   DateTime @updatedAt
@@ -132,19 +132,19 @@ model Transaction {
     amount            Float
     createdAt         DateTime           @default(now())
     updatedAt         DateTime           @updatedAt
-    playerId          String
-    player            Player             @relation(fields: [playerId], references: [playerId])
+    id                String
+    player            Player             @relation(fields: [id], references: [id])
     fieldTransactions FieldTransaction[]
 }
 
 model FieldTransaction {
     fieldTransactionId String      @id @default(uuid())
-    gameId             String
-    transactionId      String
     playerId           String
+    transactionId      String
+    gameId             String
     transaction        Transaction @relation(fields: [transactionId], references: [transactionId])
-    game               Game        @relation(name: "FieldTransactionGame", fields: [gameId], references: [gameId])
-    player             Player      @relation(name: "FieldTransactionPlayer", fields: [playerId], references: [playerId])
+    game               Game        @relation(name: "FieldTransactionGame", fields: [gameId], references: [id])
+    player             Player      @relation(name: "FieldTransactionPlayer", fields: [playerId], references: [id])
     createdAt          DateTime    @default(now())
     updatedAt          DateTime    @updatedAt
 }
@@ -153,9 +153,9 @@ model Field {
     fieldId    String      @id @default(uuid())
     name       String
     price      Float
-    gameId     String
+    id         String
     groupId    String
-    game       Game        @relation(name: "GameFieldRelation", fields: [gameId], references: [gameId])
+    game       Game        @relation(name: "GameFieldRelation", fields: [id], references: [id])
     group      Group       @relation(fields: [groupId], references: [groupId])
     gameFields GameField[]
 }

@@ -25,7 +25,7 @@ export class UserService {
     }
 
     return this.userRepository.update({
-      where: { userId: id },
+      where: { id },
       data: { ...updateBody },
     });
   }
@@ -38,7 +38,7 @@ export class UserService {
   }
 
   remove(id: string) {
-    return this.userRepository.delete({ where: { userId: id } });
+    return this.userRepository.delete({ where: { id } });
   }
 
   hash(data: string) {
