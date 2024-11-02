@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-    provider  = "postgresql"
-    url       = env("DATABASE_URL")
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
     directUrl = env("DIRECT_URL")
 }
 
@@ -26,6 +26,7 @@ model User {
     sentMessages Message[]  @relation("sentMessages")
     chats        ChatUser[]
     players      Player[]   @relation("UserPlayers")
+    role ROLE @default(USER)
 }
 
 enum FollowStatus {
@@ -35,7 +36,7 @@ enum FollowStatus {
 }
 
 model Follow {
-    followId      String @id @default(uuid())
+    id      String @id @default(uuid())
     requestedBy   User   @relation("requestedBy", fields: [requestedById], references: [id])
     requestedById String
     requested     User   @relation("requested", fields: [requestedId], references: [id])
@@ -104,45 +105,45 @@ model Player {
 }
 
 model GameMoves {
-    gameMoveId String   @id @default(uuid())
+    id String   @id @default(uuid())
     gameId     String
-    id         String
     action     String
-    player     Player   @relation(fields: [id], references: [id])
+    playerId   String
+    player     Player   @relation(fields: [playerId], references: [id])
     game       Game     @relation(name: "GameMovesGame", fields: [gameId], references: [id])
     createdAt  DateTime @default(now())
     updatedAt  DateTime @updatedAt
 }
 
 model GameField {
-    gameFieldId String   @id @default(uuid())
+    id String   @id @default(uuid())
     gameId      String
     playerId    String
     fieldId     String
     cost        Float
     player      Player   @relation(fields: [playerId], references: [id])
     game        Game     @relation(fields: [gameId], references: [id])
-    field       Field    @relation(fields: [fieldId], references: [fieldId])
+    field       Field    @relation(fields: [fieldId], references: [id])
     createdAt   DateTime @default(now())
     updatedAt   DateTime @updatedAt
 }
 
 model Transaction {
-    transactionId     String             @id @default(uuid())
+    id     String             @id @default(uuid())
     amount            Float
     createdAt         DateTime           @default(now())
     updatedAt         DateTime           @updatedAt
-    id                String
-    player            Player             @relation(fields: [id], references: [id])
+    playerId          String
+    player            Player             @relation(fields: [playerId], references: [id])
     fieldTransactions FieldTransaction[]
 }
 
 model FieldTransaction {
-    fieldTransactionId String      @id @default(uuid())
-    playerId           String
-    transactionId      String
+    id String      @id @default(uuid())
     gameId             String
-    transaction        Transaction @relation(fields: [transactionId], references: [transactionId])
+    transactionId      String
+    playerId           String
+    transaction        Transaction @relation(fields: [transactionId], references: [id])
     game               Game        @relation(name: "FieldTransactionGame", fields: [gameId], references: [id])
     player             Player      @relation(name: "FieldTransactionPlayer", fields: [playerId], references: [id])
     createdAt          DateTime    @default(now())
@@ -150,21 +151,27 @@ model FieldTransaction {
 }
 
 model Field {
-    fieldId    String      @id @default(uuid())
+    id    String      @id @default(uuid())
     name       String
     price      Float
-    id         String
     groupId    String
-    game       Game        @relation(name: "GameFieldRelation", fields: [id], references: [id])
-    group      Group       @relation(fields: [groupId], references: [groupId])
+    gameId     String
+    game       Game        @relation(name: "GameFieldRelation", fields: [gameId], references: [id])
+    group      Group       @relation(fields: [groupId], references: [id])
     gameFields GameField[]
 }
 
 model Group {
-    groupId   String   @id @default(uuid())
+    id   String   @id @default(uuid())
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
     name      String
     color     String
     fields    Field[]
+}
+
+
+enum ROLE {
+    USER
+    ADMIN
 }

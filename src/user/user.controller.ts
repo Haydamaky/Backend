@@ -7,15 +7,15 @@ import {
   Param,
   Patch,
   Post,
-  SetMetadata,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { Public } from 'src/auth/decorator';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
+import { $Enums } from '@prisma/client';
+import { RoleGuard } from 'src/auth/guard';
+import { RestrictToRole } from './decorators';
 
-@Public()
-@SetMetadata('ROLE', 'ADMIN')
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -30,16 +30,19 @@ export class UserController {
     return this.userService.findOne(id);
   }
 
+  @RestrictToRole($Enums.ROLE.ADMIN)
   @Post('')
   create(@Body() body: CreateUserDto) {
     return this.userService.create(body);
   }
 
+  @RestrictToRole($Enums.ROLE.ADMIN)
   @Patch(':id')
   update(@Param('id') id: string, @Body() body: UpdateUserDto) {
     return this.userService.update(id, body);
   }
 
+  @RestrictToRole($Enums.ROLE.ADMIN)
   @HttpCode(204)
   @Delete(':id')
   delete(@Param('id') id: string) {
