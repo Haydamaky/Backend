@@ -76,15 +76,15 @@ export class AuthService {
     if (!pwMatches) {
       throw new ForbiddenException('Password is incorrect');
     }
-    const tokens = await this.signTokens(user.userId, user.email);
-    await this.updateRtHash(user.userId, tokens.refresh_token);
+    const tokens = await this.signTokens(user.id, user.email);
+    await this.updateRtHash(user.id, tokens.refresh_token);
     return tokens;
   }
 
-  async logout(userId: string) {
+  async logout(id: string) {
     await this.userRepository.updateMany({
       where: {
-        userId,
+        id,
         hashedRt: {
           not: null,
         },
@@ -95,8 +95,8 @@ export class AuthService {
     });
   }
   @UseGuards(JwtRtGuard)
-  async refreshTokens(userId: string, rt: string) {
-    const user = await this.userRepository.findById(userId);
+  async refreshTokens(id: string, rt: string) {
+    const user = await this.userRepository.findById(id);
 
     if (!user) throw new ForbiddenException('Access Denied');
     if (!user.hashedRt) throw new ForbiddenException('Access Denied');
@@ -104,14 +104,14 @@ export class AuthService {
     const rtMatches = await argon2.verify(user.hashedRt, rt);
     if (!rtMatches) throw new ForbiddenException('Access Denied');
 
-    const tokens = await this.signTokens(user.userId, user.email);
-    await this.updateRtHash(user.userId, tokens.refresh_token);
+    const tokens = await this.signTokens(user.id, user.email);
+    await this.updateRtHash(user.id, tokens.refresh_token);
     return tokens;
   }
 
-  async signTokens(userId: string, email: string): Promise<Tokens> {
+  async signTokens(id: string, email: string): Promise<Tokens> {
     const payLoad = {
-      sub: userId,
+      sub: id,
       email,
     };
     const atPrivKey = this.configService.get<string>('ACCESS_TOKEN_PRIV_KEY');
@@ -147,18 +147,18 @@ export class AuthService {
 
     const user = await this.userRepository.findByEmail(decodedToken.email);
 
-    const tokens = await this.signTokens(user.userId, user.email);
-    await this.updateRtHash(user.userId, tokens.refresh_token);
+    const tokens = await this.signTokens(user.id, user.email);
+    await this.updateRtHash(user.id, tokens.refresh_token);
     return tokens;
   }
 
   async changePassword(
-    userId: string,
+    id: string,
     oldPassword: string,
     newPassword: string,
     confirmNewPassword: string
   ): Promise<void> {
-    const user = await this.userRepository.findById(userId);
+    const user = await this.userRepository.findById(id);
 
     if (!user) {
       throw new BadRequestException('User not found');
@@ -178,7 +178,7 @@ export class AuthService {
     const newHash = await this.hashData(newPassword);
 
     await this.userRepository.update({
-      where: { userId },
+      where: { id },
       data: { hash: newHash },
     });
   }
@@ -187,7 +187,7 @@ export class AuthService {
     const user = await this.userRepository.findByEmail(email);
     if (!user) throw new BadRequestException('User not found');
     const forgotPasswordToken = await this.jwtService.signAsync(
-      { email: email, sub: user.userId },
+      { email: email, sub: user.id },
       {
         expiresIn: '1h',
         algorithm: 'HS256',
@@ -236,12 +236,12 @@ export class AuthService {
     }
   }
 
-  async updateRtHash(userId: string, rt: string) {
+  async updateRtHash(id: string, rt: string) {
     const hash = await argon2.hash(rt);
 
     await this.userRepository.update({
       where: {
-        userId,
+        id,
       },
       data: {
         hashedRt: hash,

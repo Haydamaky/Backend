@@ -19,7 +19,7 @@ export class ChatService {
       include: {
         sender: {
           select: {
-            userId: true,
+            id: true,
             nickname: true,
           },
         },
@@ -27,15 +27,15 @@ export class ChatService {
     });
   }
 
-  async onChatData(chatId: string) {
+  async onChatData(id: string) {
     return await this.chatRepository.findUnique({
-      where: { chatId },
+      where: { id },
       include: {
         messages: {
           include: {
             sender: {
               select: {
-                userId: true,
+                id: true,
                 nickname: true,
               },
             },
