@@ -2,6 +2,8 @@ import { Delegate } from './type';
 
 interface UpdateData {
   data: unknown;
+  include?: unknown;
+  select?: unknown;
 }
 
 export abstract class BaseRepository<
@@ -21,8 +23,11 @@ export abstract class BaseRepository<
     return this.model.findFirst({ where: { id } });
   }
 
-  updateById(id: string, data: U['data']) {
-    return this.model.update({ where: { id }, data });
+  updateById(
+    id: string,
+    data: { data: U['data']; include?: U['include']; select?: U['select'] }
+  ) {
+    return this.model.update({ where: { id }, ...data });
   }
 
   deleteById(id: string) {

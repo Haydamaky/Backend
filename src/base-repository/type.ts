@@ -11,3 +11,11 @@ export interface Delegate<T> {
   updateMany(data: unknown): Promise<{ count: number }>;
   upsert(data: unknown): Promise<Partial<T>>;
 }
+
+export type IncludeAllRelations<T> = {
+  [P in keyof T]: T[P] extends Array<infer U extends { objects: any }>
+    ? { include: IncludeAllRelations<U['objects']> }
+    : T[P] extends { objects: any }
+      ? { include: IncludeAllRelations<T[P]['objects']> }
+      : true;
+};
