@@ -6,7 +6,7 @@ import {
 import { GameService } from './game.service';
 import { Server, Socket } from 'socket.io';
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { WebsocketExceptionsFilter } from 'src/chat/filters/websocket-exceptions.filter';
+import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';

@@ -6,7 +6,7 @@ import {
 import { PlayerService } from './player.service';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { UseFilters, UsePipes } from '@nestjs/common';
-import { WebsocketExceptionsFilter } from 'src/chat/filters/websocket-exceptions.filter';
+import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 
 @WebSocketGateway({
