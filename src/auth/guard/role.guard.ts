@@ -16,11 +16,11 @@ export class RoleGuard implements CanActivate {
     const role = this.reflector.getAllAndOverride('ROLE', [
       context.getHandler(),
       context.getClass(),
-    ]) as $Enums.ROLE;
+    ]) as $Enums.ROLE[];
 
     const user = await this.userService.findOne(userJWT.sub);
 
-    if (user.role === role) return true;
+    if (role.includes(user.role)) return true;
 
     return false;
   }

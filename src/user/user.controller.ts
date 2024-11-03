@@ -7,13 +7,11 @@ import {
   Param,
   Patch,
   Post,
-  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { $Enums } from '@prisma/client';
-import { RoleGuard } from 'src/auth/guard';
 import { RestrictToRole } from './decorators';
 
 @Controller('user')
@@ -30,7 +28,7 @@ export class UserController {
     return this.userService.findOne(id);
   }
 
-  @RestrictToRole($Enums.ROLE.ADMIN)
+  @RestrictToRole($Enums.ROLE.ADMIN, $Enums.ROLE.USER)
   @Post('')
   create(@Body() body: CreateUserDto) {
     return this.userService.create(body);
