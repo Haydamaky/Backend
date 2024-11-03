@@ -9,7 +9,7 @@ import { Server } from 'socket.io';
 import { OnModuleInit, UseFilters, UseGuards, UsePipes } from '@nestjs/common';
 import { Socket } from 'socket.io';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
-import { WebsocketExceptionsFilter } from './filters/websocket-exceptions.filter';
+import { WebsocketExceptionsFilter } from '../utils/exceptions/websocket-exceptions.filter';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 import { NewMessagePayloadDto } from './dto';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
