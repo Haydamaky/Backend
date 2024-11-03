@@ -84,6 +84,7 @@ model Game {
     id                String             @id @default(uuid())
     createdAt         DateTime           @default(now())
     updatedAt         DateTime           @updatedAt
+    playersCapacity   Int                @default(4)
     players           Player[]           @relation("GamePlayers")
     gameFields        GameField[]
     gameMoves         GameMoves[]        @relation("GameMovesGame")
