@@ -80,11 +80,18 @@ model ChatUser {
     user     User     @relation(fields: [userId], references: [id])
 }
 
+enum GameStatus {
+    LOBBY
+    ACTIVE
+    FINISHED
+}
+
 model Game {
     id                String             @id @default(uuid())
     createdAt         DateTime           @default(now())
     updatedAt         DateTime           @updatedAt
     playersCapacity   Int                @default(4)
+    status            GameStatus         @default(LOBBY)
     players           Player[]           @relation("GamePlayers")
     gameFields        GameField[]
     gameMoves         GameMoves[]        @relation("GameMovesGame")

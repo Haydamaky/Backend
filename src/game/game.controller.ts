@@ -1,5 +1,6 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Req } from '@nestjs/common';
 import { GameService } from './game.service';
+import { Request } from 'express';
 
 @Controller('games')
 export class GameController {
@@ -7,6 +8,12 @@ export class GameController {
 
   @Get()
   getAllGames() {
-    return this.gameService.getAllGames();
+    return this.gameService.getAllVisibleGames();
+  }
+
+  @Get('currentGame')
+  getCurrentGame(@Req() req: Request) {
+    const gameId = req.cookies['gameId'];
+    return this.gameService.getCurrentGame(gameId);
   }
 }

@@ -42,7 +42,7 @@ export class GameGateway {
     socket: Socket & { jwtPayload: JwtPayload },
     data: { id: string }
   ) {
-    const game = await this.gameService.joinGame(
+    const { game, shouldStart } = await this.gameService.joinGame(
       data.id,
       socket.jwtPayload.sub
     );
@@ -53,6 +53,13 @@ export class GameGateway {
         id: game.id,
         players: game.players,
       });
+      if (shouldStart) {
+        // We can setTimeout here for some countdown on frontend
+        this.server.to(game.id).emit('startGame', { gameId: game.id });
+        this.server.emit('clearStartedGame', {
+          gameId: game.id,
+        });
+      }
     }
   }
 

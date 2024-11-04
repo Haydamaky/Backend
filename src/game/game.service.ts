@@ -9,13 +9,25 @@ export class GameService {
     private playerService: PlayerService
   ) {}
 
-  async getAllGames() {
+  async getAllVisibleGames() {
     const games = await this.gameRepository.findMany({
+      where: { status: 'LOBBY' },
+      include: {
+        players: {
+          include: { user: { select: { nickname: true } } },
+        },
+      },
+    });
+    return games;
+  }
+
+  async getCurrentGame(gameId: string) {
+    return this.gameRepository.findFirst({
+      where: { id: gameId },
       include: {
         players: { include: { user: { select: { nickname: true } } } },
       },
     });
-    return games;
   }
 
   async joinGame(gameId: string, userId: string) {
@@ -27,10 +39,17 @@ export class GameService {
     const filteredPlayers = game.players.filter(
       (player) => player.userId === userId
     );
-    if (filteredPlayers.length) return null;
+    if (filteredPlayers.length || game.status === 'ACTIVE') return null;
 
     const player = await this.playerService.create({ userId, gameId });
-    return player.game;
+    const { game: updatedGame } = player;
+    if (updatedGame.playersCapacity === updatedGame.players.length) {
+      await this.gameRepository.updateById(gameId, {
+        data: { status: 'ACTIVE' },
+      });
+      return { game: updatedGame, shouldStart: true };
+    }
+    return { game: updatedGame, shouldStart: false };
   }
 
   async leaveGame(gameId: string, userId: string) {
