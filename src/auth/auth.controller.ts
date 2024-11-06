@@ -93,15 +93,14 @@ export class AuthController {
 
   @Public()
   @Post('/local/signin')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'signin' })
   async signin(@Body() dto: SignInDto, @Res() res: Response) {
     const { access_token: accessToken, refresh_token: refreshToken } =
       await this.authService.signin(dto);
 
     this.setTokens(res, accessToken, refreshToken);
-    return res
-      .status(HttpStatus.OK)
-      .send({ status: 'success', message: 'Logged in successfully' });
+    return { status: 'success', message: 'Logged in successfully' };
   }
 
   @Post('logout')
