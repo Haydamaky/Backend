@@ -102,7 +102,7 @@ model Game {
 model Player {
     id                String             @id @default(uuid())
     money             Float              @default(0)
-    userId            String
+    userId            String             @unique
     user              User               @relation(name: "UserPlayers", fields: [userId], references: [id])
     gameId            String
     game              Game               @relation(name: "GamePlayers", fields: [gameId], references: [id])

@@ -39,7 +39,8 @@ export class GameService {
     const filteredPlayers = game.players.filter(
       (player) => player.userId === userId
     );
-    if (filteredPlayers.length || game.status === 'ACTIVE') return null;
+    if (filteredPlayers.length || game.status === 'ACTIVE')
+      return { game: null, shouldStart: false };
 
     const player = await this.playerService.create({ userId, gameId });
     const { game: updatedGame } = player;
@@ -76,5 +77,11 @@ export class GameService {
 
   findById(gameId: string) {
     return this.gameRepository.findById(gameId);
+  }
+
+  async rollDice() {
+    const firstDice = Math.ceil(Math.random() * 6);
+    const secondDice = Math.ceil(Math.random() * 6);
+    return { firstDice, secondDice };
   }
 }

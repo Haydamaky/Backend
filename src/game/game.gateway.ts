@@ -1,7 +1,9 @@
+import { GetGameId } from './decorators/getGameCookieWs';
 import {
   WebSocketGateway,
   SubscribeMessage,
   WebSocketServer,
+  MessageBody,
 } from '@nestjs/websockets';
 import { GameService } from './game.service';
 import { Server, Socket } from 'socket.io';
@@ -80,5 +82,15 @@ export class GameGateway {
         players: game.players,
       });
     }
+  }
+
+  @UseGuards(WsGuard)
+  @SubscribeMessage('rollDice')
+  async rollDice(
+    @GetGameId() gameId: string,
+    @MessageBody('playerId') playerId: string
+  ) {
+    const dices = await this.gameService.rollDice();
+    this.server.to(gameId).emit('rolledDice', { gameId, playerId, dices });
   }
 }
