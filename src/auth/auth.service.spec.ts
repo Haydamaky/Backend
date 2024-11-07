@@ -45,7 +45,7 @@ describe('AuthService', () => {
         return Promise.resolve(user);
       },
       findById: (userId: string) => {
-        const [user] = users.filter((user) => user.userId === userId);
+        const [user] = users.filter((user) => user.id === userId);
         return Promise.resolve(user);
       },
       create: async (createArgs: Prisma.UserCreateArgs<DefaultArgs>) => {
@@ -60,11 +60,11 @@ describe('AuthService', () => {
           ...createArgs.data,
           hashedRt: 'hashedRt',
           emailConfirmationToken: createArgs.data.emailConfirmationToken,
-          userId: 'id',
+          id: 'id',
           createdAt: new Date(),
           updatedAt: new Date(),
           isEmailConfirmed: false,
-        });
+        } as User);
         return Promise.resolve(createArgs.data as unknown as UserPayload);
       },
       update: jest.fn(),
@@ -167,7 +167,7 @@ describe('AuthService', () => {
     await service.logout('id');
     expect(mockUserRepo.updateMany).toHaveBeenCalledWith({
       where: {
-        userId: 'id',
+        id: 'id',
         hashedRt: {
           not: null,
         },
@@ -342,7 +342,7 @@ describe('AuthService', () => {
     expect(argon2.hash).toHaveBeenCalledWith('token');
     expect(mockUserRepo.update).toHaveBeenCalledWith({
       where: {
-        userId: 'id',
+        id: 'id',
       },
       data: {
         hashedRt: 'hash',
