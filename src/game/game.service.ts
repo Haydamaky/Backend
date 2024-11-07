@@ -30,7 +30,7 @@ export class GameService {
     });
   }
 
-  async joinGame(gameId: string, userId: string) {
+  async onJoinGame(gameId: string, userId: string) {
     const game = await this.gameRepository.findFirst({
       where: { id: gameId },
       include: { players: true },
@@ -53,7 +53,7 @@ export class GameService {
     return { game: updatedGame, shouldStart: false };
   }
 
-  async leaveGame(gameId: string, userId: string) {
+  async onLeaveGame(gameId: string, userId: string) {
     const player = await this.playerService.findFirst({
       where: { userId, gameId },
     });
@@ -79,7 +79,7 @@ export class GameService {
     return this.gameRepository.findById(gameId);
   }
 
-  async rollDice() {
+  async onRollDice() {
     const firstDice = Math.ceil(Math.random() * 6);
     const secondDice = Math.ceil(Math.random() * 6);
     return { firstDice, secondDice };
