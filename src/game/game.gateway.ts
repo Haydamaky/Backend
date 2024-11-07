@@ -22,6 +22,7 @@ import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 })
 @UseFilters(WebsocketExceptionsFilter)
 @UsePipes(new WsValidationPipe())
+@UseGuards(WsGuard)
 export class GameGateway {
   constructor(private gameService: GameService) {}
 
@@ -38,13 +39,12 @@ export class GameGateway {
     });
   }
 
-  @UseGuards(WsGuard)
   @SubscribeMessage('joinGame')
-  async joinGame(
+  async onJoinGame(
     socket: Socket & { jwtPayload: JwtPayload },
     data: { id: string }
   ) {
-    const { game, shouldStart } = await this.gameService.joinGame(
+    const { game, shouldStart } = await this.gameService.onJoinGame(
       data.id,
       socket.jwtPayload.sub
     );
@@ -65,13 +65,17 @@ export class GameGateway {
     }
   }
 
-  @UseGuards(WsGuard)
+  async onAutoRollDice(gameId: string, playerId: string) {
+    const dices = this.gameService.onRollDice();
+    this.server.to(gameId).emit('rolledDice', { gameId, playerId, dices });
+  }
+
   @SubscribeMessage('leaveGame')
-  async leaveGame(
+  async onLeaveGame(
     socket: Socket & { jwtPayload: JwtPayload },
     data: { id: string }
   ) {
-    const game = await this.gameService.leaveGame(
+    const game = await this.gameService.onLeaveGame(
       data.id,
       socket.jwtPayload.sub
     );
@@ -84,13 +88,12 @@ export class GameGateway {
     }
   }
 
-  @UseGuards(WsGuard)
   @SubscribeMessage('rollDice')
-  async rollDice(
+  async onRollDice(
     @GetGameId() gameId: string,
     @MessageBody('playerId') playerId: string
   ) {
-    const dices = await this.gameService.rollDice();
+    const dices = await this.gameService.onRollDice();
     this.server.to(gameId).emit('rolledDice', { gameId, playerId, dices });
   }
 }
