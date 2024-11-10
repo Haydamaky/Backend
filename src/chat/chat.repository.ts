@@ -7,6 +7,15 @@ import { PrismaService } from 'src/prisma/prisma.service';
 type ChatPayload = Prisma.$ChatPayload['objects'] &
   Prisma.$ChatPayload['scalars'];
 
+type includes = keyof Prisma.$ChatPayload['objects'];
+type includesObj = {
+  [K in includes]: true;
+};
+
+type ChatPayloadNew = Prisma.ChatGetPayload<{
+  include: includesObj;
+}>;
+
 @Injectable()
 export class ChatRepository extends BaseRepository<
   Prisma.ChatDelegate<DefaultArgs>,

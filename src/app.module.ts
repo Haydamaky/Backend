@@ -9,6 +9,8 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { JwtGuard } from './auth/guard/jwt.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { ChatModule } from './chat/chat.module';
+import { GameModule } from './game/game.module';
+import { PlayerModule } from './player/player.module';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { ChatModule } from './chat/chat.module';
       },
     }),
     ChatModule,
+    GameModule,
+    PlayerModule,
   ],
   controllers: [AppController],
   providers: [

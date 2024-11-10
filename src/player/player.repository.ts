@@ -5,22 +5,24 @@ import { BaseRepository } from 'src/base-repository/base.repository';
 import { IncludeAllRelations } from 'src/base-repository/type';
 import { PrismaService } from 'src/prisma/prisma.service';
 
-type GameNestedIncludes = IncludeAllRelations<Prisma.$GamePayload['objects']>;
+type PlayerNestedIncludes = IncludeAllRelations<
+  Prisma.$PlayerPayload['objects']
+>;
 
-export type GamePayload = Prisma.GameGetPayload<{
-  include: GameNestedIncludes;
+type PlayerPayload = Prisma.PlayerGetPayload<{
+  include: PlayerNestedIncludes;
 }>;
 
 @Injectable()
-export class GameRepository extends BaseRepository<
-  Prisma.GameDelegate<DefaultArgs>,
-  Prisma.GameCreateArgs,
-  Prisma.GameFindManyArgs,
-  Prisma.GameUpdateArgs,
-  Prisma.GameDeleteArgs,
-  GamePayload
+export class PlayerRepository extends BaseRepository<
+  Prisma.PlayerDelegate<DefaultArgs>,
+  Prisma.PlayerCreateArgs,
+  Prisma.PlayerFindManyArgs,
+  Prisma.PlayerUpdateArgs,
+  Prisma.PlayerDeleteArgs,
+  PlayerPayload
 > {
   constructor(private readonly prismaService: PrismaService) {
-    super(prismaService.game);
+    super(prismaService.player);
   }
 }
