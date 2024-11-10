@@ -6,15 +6,22 @@ import {
   MessageBody,
   ConnectedSocket,
   WsException,
+  OnGatewayConnection,
 } from '@nestjs/websockets';
 import { GameService } from './game.service';
 import { Server, Socket } from 'socket.io';
-import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
+import {
+  UseFilters,
+  UseGuards,
+  UseInterceptors,
+  UsePipes,
+} from '@nestjs/common';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 import { GamePayload } from './game.repository';
+import { parse } from 'cookie';
 
 @WebSocketGateway({
   cors: {
@@ -32,6 +39,23 @@ export class GameGateway {
   }
 
   @WebSocketServer() server: Server;
+
+  @SubscribeMessage('rejoinGame')
+  async onRejoin(
+    @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
+    @GetGameId() gameId: string
+  ) {
+    if (gameId && [...socket.rooms].length === 1) {
+      const game = await this.gameService.findById(gameId);
+      if (game.status === 'ACTIVE') {
+        socket.join(gameId);
+      } else {
+        throw new WsException('Your game is not active anymore');
+      }
+    } else {
+      throw new WsException('Cant connect to room');
+    }
+  }
 
   private leaveAllRoomsExceptInitial(socket: Socket) {
     const rooms = socket.rooms;
