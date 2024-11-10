@@ -1,8 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { GamePayload, GameRepository } from './game.repository';
 import { PlayerService } from 'src/player/player.service';
-import { Socket } from 'socket.io';
-import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 
 @Injectable()
 export class GameService {
@@ -42,7 +40,6 @@ export class GameService {
       where: { id: gameId },
       include: { players: true },
     });
-
     const filteredPlayers = game.players.filter(
       (player) => player.userId === userId
     );
@@ -108,7 +105,6 @@ export class GameService {
     rollDiceCallBack: (game: Partial<GamePayload>) => Promise<void>
   ) {
     this.clearRollTimer(game.id);
-
     const timer = setTimeout(function () {
       rollDiceCallBack(game);
     }, game.timeOfTurn);

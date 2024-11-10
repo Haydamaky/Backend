@@ -10,6 +10,9 @@ export const GetGameId = createParamDecorator(
     }
 
     const { gameId } = parse(client.handshake.headers.cookie);
+    if (!gameId) {
+      throw new WsException('You dont have started games');
+    }
     return gameId;
   }
 );

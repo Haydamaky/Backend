@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+    provider  = "postgresql"
+    url       = env("DATABASE_URL")
     directUrl = env("DIRECT_URL")
 }
 
@@ -26,7 +26,7 @@ model User {
     sentMessages Message[]  @relation("sentMessages")
     chats        ChatUser[]
     players      Player[]   @relation("UserPlayers")
-    role ROLE @default(USER)
+    role         ROLE       @default(USER)
 }
 
 enum FollowStatus {
@@ -36,7 +36,7 @@ enum FollowStatus {
 }
 
 model Follow {
-    id      String @id @default(uuid())
+    id            String @id @default(uuid())
     requestedBy   User   @relation("requestedBy", fields: [requestedById], references: [id])
     requestedById String
     requested     User   @relation("requested", fields: [requestedId], references: [id])
@@ -93,7 +93,7 @@ model Game {
     playersCapacity   Int                @default(4)
     status            GameStatus         @default(LOBBY)
     turnOfUserId      String?
-    timeOfTurn        Int?
+    timeOfTurn        Int                @default(120)
     players           Player[]           @relation("GamePlayers")
     gameFields        GameField[]
     gameMoves         GameMoves[]        @relation("GameMovesGame")
@@ -115,31 +115,31 @@ model Player {
 }
 
 model GameMoves {
-    id String   @id @default(uuid())
-    gameId     String
-    action     String
-    playerId   String
-    player     Player   @relation(fields: [playerId], references: [id])
-    game       Game     @relation(name: "GameMovesGame", fields: [gameId], references: [id])
-    createdAt  DateTime @default(now())
-    updatedAt  DateTime @updatedAt
+    id        String   @id @default(uuid())
+    gameId    String
+    action    String
+    playerId  String
+    player    Player   @relation(fields: [playerId], references: [id])
+    game      Game     @relation(name: "GameMovesGame", fields: [gameId], references: [id])
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 model GameField {
-    id String   @id @default(uuid())
-    gameId      String
-    playerId    String
-    fieldId     String
-    cost        Float
-    player      Player   @relation(fields: [playerId], references: [id])
-    game        Game     @relation(fields: [gameId], references: [id])
-    field       Field    @relation(fields: [fieldId], references: [id])
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @updatedAt
+    id        String   @id @default(uuid())
+    gameId    String
+    playerId  String
+    fieldId   String
+    cost      Float
+    player    Player   @relation(fields: [playerId], references: [id])
+    game      Game     @relation(fields: [gameId], references: [id])
+    field     Field    @relation(fields: [fieldId], references: [id])
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 model Transaction {
-    id     String             @id @default(uuid())
+    id                String             @id @default(uuid())
     amount            Float
     createdAt         DateTime           @default(now())
     updatedAt         DateTime           @updatedAt
@@ -149,19 +149,19 @@ model Transaction {
 }
 
 model FieldTransaction {
-    id String      @id @default(uuid())
-    gameId             String
-    transactionId      String
-    playerId           String
-    transaction        Transaction @relation(fields: [transactionId], references: [id])
-    game               Game        @relation(name: "FieldTransactionGame", fields: [gameId], references: [id])
-    player             Player      @relation(name: "FieldTransactionPlayer", fields: [playerId], references: [id])
-    createdAt          DateTime    @default(now())
-    updatedAt          DateTime    @updatedAt
+    id            String      @id @default(uuid())
+    gameId        String
+    transactionId String
+    playerId      String
+    transaction   Transaction @relation(fields: [transactionId], references: [id])
+    game          Game        @relation(name: "FieldTransactionGame", fields: [gameId], references: [id])
+    player        Player      @relation(name: "FieldTransactionPlayer", fields: [playerId], references: [id])
+    createdAt     DateTime    @default(now())
+    updatedAt     DateTime    @updatedAt
 }
 
 model Field {
-    id    String      @id @default(uuid())
+    id         String      @id @default(uuid())
     name       String
     price      Float
     groupId    String
@@ -172,14 +172,13 @@ model Field {
 }
 
 model Group {
-    id   String   @id @default(uuid())
+    id        String   @id @default(uuid())
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
     name      String
     color     String
     fields    Field[]
 }
-
 
 enum ROLE {
     USER
