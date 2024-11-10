@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { GameRepository } from './game.repository';
 import { PlayerService } from 'src/player/player.service';
+import { WsException } from '@nestjs/websockets';
 
 @Injectable()
 export class GameService {
@@ -35,6 +36,8 @@ export class GameService {
       where: { id: gameId },
       include: { players: true },
     });
+
+    if (!game) throw new WsException('Game doesnt exist');
 
     const filteredPlayers = game.players.filter(
       (player) => player.userId === userId
