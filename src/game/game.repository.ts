@@ -7,7 +7,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 
 type GameNestedIncludes = IncludeAllRelations<Prisma.$GamePayload['objects']>;
 
-type GamePayload = Prisma.GameGetPayload<{
+export type GamePayload = Prisma.GameGetPayload<{
   include: GameNestedIncludes;
 }>;
 

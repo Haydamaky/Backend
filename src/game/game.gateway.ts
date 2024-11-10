@@ -4,6 +4,8 @@ import {
   SubscribeMessage,
   WebSocketServer,
   MessageBody,
+  ConnectedSocket,
+  WsException,
 } from '@nestjs/websockets';
 import { GameService } from './game.service';
 import { Server, Socket } from 'socket.io';
@@ -12,6 +14,7 @@ import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-except
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
+import { GamePayload } from './game.repository';
 
 @WebSocketGateway({
   cors: {
@@ -24,7 +27,9 @@ import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 @UsePipes(new WsValidationPipe())
 @UseGuards(WsGuard)
 export class GameGateway {
-  constructor(private gameService: GameService) {}
+  constructor(private gameService: GameService) {
+    this.rollDice = this.rollDice.bind(this);
+  }
 
   @WebSocketServer() server: Server;
 
@@ -57,17 +62,16 @@ export class GameGateway {
       });
       if (shouldStart) {
         // We can setTimeout here for some countdown on frontend
-        this.server.to(game.id).emit('startGame', { gameId: game.id });
         this.server.emit('clearStartedGame', {
           gameId: game.id,
         });
+        this.server.to(game.id).emit('startGame', {
+          gameId: game.id,
+          turnOfUserId: game.turnOfUserId,
+        });
+        this.gameService.setRollDiceTimer(game, this.rollDice);
       }
     }
-  }
-
-  async onAutoRollDice(gameId: string, playerId: string) {
-    const dices = this.gameService.onRollDice();
-    this.server.to(gameId).emit('rolledDice', { gameId, playerId, dices });
   }
 
   @SubscribeMessage('leaveGame')
@@ -90,10 +94,29 @@ export class GameGateway {
 
   @SubscribeMessage('rollDice')
   async onRollDice(
-    @GetGameId() gameId: string,
-    @MessageBody('playerId') playerId: string
+    @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
+    @GetGameId() gameId: string
   ) {
-    const dices = await this.gameService.onRollDice();
-    this.server.to(gameId).emit('rolledDice', { gameId, playerId, dices });
+    const game = await this.gameService.getCurrentGame(gameId);
+    if (game.turnOfUserId !== socket.jwtPayload.sub)
+      throw new WsException('Wrong turn');
+    this.rollDice(game);
+  }
+
+  async rollDice(game: Partial<GamePayload>) {
+    const { turnOfNextUserId, turnEnds } =
+      this.gameService.findNextTurnUser(game);
+    const gameWithNextTurn = await this.gameService.changeTurnTo(
+      game.id,
+      turnOfNextUserId
+    );
+    const dices = this.gameService.onRollDice();
+    this.server.to(game.id).emit('rolledDice', {
+      dices,
+      userTurn: gameWithNextTurn.turnOfUserId,
+      turnEnds,
+      timeOfTurn: gameWithNextTurn.timeOfTurn,
+    });
+    this.gameService.setRollDiceTimer(gameWithNextTurn, this.rollDice);
   }
 }

@@ -92,6 +92,8 @@ model Game {
     updatedAt         DateTime           @updatedAt
     playersCapacity   Int                @default(4)
     status            GameStatus         @default(LOBBY)
+    turnOfUserId      String?
+    timeOfTurn        Int?
     players           Player[]           @relation("GamePlayers")
     gameFields        GameField[]
     gameMoves         GameMoves[]        @relation("GameMovesGame")
@@ -102,7 +104,7 @@ model Game {
 model Player {
     id                String             @id @default(uuid())
     money             Float              @default(0)
-    userId            String             @unique
+    userId            String
     user              User               @relation(name: "UserPlayers", fields: [userId], references: [id])
     gameId            String
     game              Game               @relation(name: "GamePlayers", fields: [gameId], references: [id])
