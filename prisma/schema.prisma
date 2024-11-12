@@ -93,6 +93,8 @@ model Game {
     playersCapacity   Int                @default(4)
     status            GameStatus         @default(LOBBY)
     turnOfUserId      String?
+    turnEnds          String
+    dices             String?
     timeOfTurn        Int                @default(120)
     players           Player[]           @relation("GamePlayers")
     gameFields        GameField[]

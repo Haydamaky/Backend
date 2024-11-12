@@ -94,10 +94,10 @@ export class GameService {
     return this.gameRepository.findById(gameId);
   }
 
-  async onRollDice() {
+  onRollDice() {
     const firstDice = Math.ceil(Math.random() * 6);
     const secondDice = Math.ceil(Math.random() * 6);
-    return { firstDice, secondDice };
+    return `${firstDice}:${secondDice}`;
   }
 
   setRollDiceTimer(
@@ -116,6 +116,12 @@ export class GameService {
     );
   }
 
+  calculateEndOfTurn(timeOfTurn: number) {
+    let turnEnds = Date.now();
+    turnEnds += timeOfTurn;
+    return turnEnds.toString();
+  }
+
   findNextTurnUser(game: Partial<GamePayload>) {
     const index = game.players.findIndex(
       (player) => player.userId === game.turnOfUserId
@@ -125,8 +131,7 @@ export class GameService {
       nextIndex = 0;
     }
     const turnOfNextUserId = game.players[nextIndex].userId;
-    let turnEnds = Date.now();
-    turnEnds += game.timeOfTurn;
+    const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
     return { turnOfNextUserId, turnEnds };
   }
 
@@ -139,9 +144,14 @@ export class GameService {
     }
   }
 
-  async changeTurnTo(gameId: string, turnOfUserId: string) {
+  async changeTurnTo(
+    gameId: string,
+    turnOfUserId: string,
+    turnEnds: string,
+    dices: string
+  ) {
     return this.gameRepository.updateById(gameId, {
-      data: { turnOfUserId },
+      data: { turnOfUserId, turnEnds, dices },
       include: {
         players: { include: { user: { select: { nickname: true } } } },
       },

@@ -40,21 +40,39 @@ export class GameGateway {
 
   @WebSocketServer() server: Server;
 
-  @SubscribeMessage('rejoinGame')
-  async onRejoin(
-    @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
-    @GetGameId() gameId: string
+  async handleConnection(
+    @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload }
   ) {
-    if (gameId && [...socket.rooms].length === 1) {
-      const game = await this.gameService.findById(gameId);
-      if (game.status === 'ACTIVE') {
-        socket.join(gameId);
-      } else {
-        throw new WsException('Your game is not active anymore');
-      }
-    } else {
-      throw new WsException('Cant connect to room');
+    if (!socket.handshake.headers.cookie) return;
+    const cookies = parse(socket.handshake.headers.cookie);
+    const gameId = cookies.gameId;
+    if (!gameId) return;
+    const game = await this.gameService.findGameWithPlayers(gameId);
+    if (game.status !== 'ACTIVE') return;
+    const timers = this.gameService.rollTimers;
+    if (timers.has(gameId)) {
+      this.rejoin(socket, game);
+      return;
     }
+    const turnEnds = this.gameService.calculateEndOfTurn(game.timeOfTurn);
+    const updatedGame = await this.gameService.changeTurnTo(
+      game.id,
+      game.turnOfUserId,
+      turnEnds,
+      game.dices
+    );
+    this.rejoin(socket, updatedGame);
+    this.gameService.setRollDiceTimer(game, this.rollDice);
+  }
+
+  async rejoin(socket: Socket, game: Partial<GamePayload>) {
+    socket.join(game.id);
+    socket.emit('rolledDice', {
+      dices: game.dices,
+      userTurn: game.turnOfUserId,
+      turnEnds: game.turnEnds,
+      timeOfTurn: game.timeOfTurn,
+    });
   }
 
   private leaveAllRoomsExceptInitial(socket: Socket) {
@@ -130,11 +148,13 @@ export class GameGateway {
   async rollDice(game: Partial<GamePayload>) {
     const { turnOfNextUserId, turnEnds } =
       this.gameService.findNextTurnUser(game);
+    const dices = this.gameService.onRollDice();
     const gameWithNextTurn = await this.gameService.changeTurnTo(
       game.id,
-      turnOfNextUserId
+      turnOfNextUserId,
+      turnEnds.toString(),
+      dices
     );
-    const dices = this.gameService.onRollDice();
     this.server.to(game.id).emit('rolledDice', {
       dices,
       userTurn: gameWithNextTurn.turnOfUserId,
