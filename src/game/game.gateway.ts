@@ -36,7 +36,6 @@ import { parse } from 'cookie';
 export class GameGateway {
   constructor(private gameService: GameService) {
     this.rollDice = this.rollDice.bind(this);
-    this.startTradeField = this.startTradeField.bind(this);
     this.tradeField = this.tradeField.bind(this);
   }
 
@@ -53,6 +52,7 @@ export class GameGateway {
     if (game.status !== 'ACTIVE') return;
     const timers = this.gameService.rollTimers;
     if (timers.has(gameId)) {
+      socket.join(gameId);
       socket.emit('rejoin', {
         turnEnds: game.turnEnds,
         turnOfUserId: game.turnOfUserId,
@@ -61,8 +61,9 @@ export class GameGateway {
       return;
     }
     const turnEnds = this.gameService.calculateEndOfTurn(game.timeOfTurn);
+    socket.join(gameId);
     socket.emit('rejoin', {
-      turnEnds: turnEnds,
+      turnEnds,
       turnOfUserId: game.turnOfUserId,
       dices: game.dices,
     });
@@ -80,7 +81,7 @@ export class GameGateway {
     });
   }
 
-  @SubscribeMessage('joinGame')
+  @SubscribeMessage('joinGames')
   async onJoinGame(
     socket: Socket & { jwtPayload: JwtPayload },
     data: { id: string }
@@ -136,13 +137,14 @@ export class GameGateway {
     const game = await this.gameService.getCurrentGame(gameId);
     if (game.turnOfUserId !== socket.jwtPayload.sub)
       throw new WsException('Wrong turn');
+    this.gameService.clearTimer(gameId);
     this.rollDice(game);
   }
 
   async rollDice(game: Partial<GamePayload>) {
     const dices = this.gameService.onRollDice();
     const turnEnds = this.gameService.calculateEndOfTurn(game.timeOfTurn);
-    await this.gameService.updateById(game.id, {
+    const updatedGame = await this.gameService.updateById(game.id, {
       dices,
       turnEnds,
     });
@@ -150,27 +152,33 @@ export class GameGateway {
       dices,
       turnEnds,
     });
-    this.gameService.setTimer(game, this.startTradeField);
+    this.gameService.setTimer(updatedGame, this.tradeField);
   }
 
-  async startTradeField(game: Partial<GamePayload>) {
-    const turnEnds = this.gameService.calculateEndOfTurn(game.timeOfTurn);
-    this.server.to(game.id).emit('startTradeField', {
-      turnEnds,
-    });
-    this.gameService.setTimer(game, this.tradeField);
+  @SubscribeMessage('tradeField')
+  async onTradeField(
+    @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
+    @GetGameId() gameId: string
+  ) {
+    const game = await this.gameService.getCurrentGame(gameId);
+    if (game.turnOfUserId !== socket.jwtPayload.sub)
+      throw new WsException('Wrong turn');
+    this.gameService.clearTimer(gameId);
+    this.tradeField(game);
   }
 
   async tradeField(game: Partial<GamePayload>) {
     // Logic of buying field
+    const turnEnds = this.gameService.calculateEndOfTurn(game.timeOfTurn);
     const { turnOfNextUserId } = this.gameService.findNextTurnUser(game);
     const gameWithNextTurn = await this.gameService.updateById(game.id, {
       turnOfUserId: turnOfNextUserId,
       dices: '',
+      turnEnds,
     });
     this.server
       .to(game.id)
-      .emit('tradedField', { turnOfNextUserId, dices: '' });
+      .emit('tradedField', { turnOfNextUserId, dices: '', turnEnds });
     this.gameService.setTimer(gameWithNextTurn, this.rollDice);
   }
 }

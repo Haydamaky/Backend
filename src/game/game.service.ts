@@ -105,7 +105,7 @@ export class GameService {
     game: Partial<GamePayload>,
     rollDiceCallBack: (game: Partial<GamePayload>) => Promise<void>
   ) {
-    this.clearRollTimer(game.id);
+    this.clearTimer(game.id);
     const timer = setTimeout(function () {
       rollDiceCallBack(game);
     }, game.timeOfTurn);
@@ -135,7 +135,7 @@ export class GameService {
     return { turnOfNextUserId };
   }
 
-  clearRollTimer(gameId: string) {
+  clearTimer(gameId: string) {
     if (this.rollTimers.has(gameId)) {
       const timer = this.rollTimers.get(gameId);
       clearTimeout(timer);
