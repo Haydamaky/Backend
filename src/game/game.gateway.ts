@@ -61,9 +61,12 @@ export class GameGateway {
       return;
     }
     const turnEnds = this.gameService.calculateEndOfTurn(game.timeOfTurn);
+    const updatedGame = await this.gameService.updateById(game.id, {
+      turnEnds,
+    });
     socket.join(gameId);
     socket.emit('rejoin', {
-      turnEnds,
+      turnEnds: updatedGame.turnEnds,
       turnOfUserId: game.turnOfUserId,
       dices: game.dices,
     });
@@ -79,6 +82,12 @@ export class GameGateway {
       }
       i++;
     });
+  }
+
+  @SubscribeMessage('getGame')
+  async getGameData(@GetGameId() gameId: string) {
+    const game = await this.gameService.findGameWithPlayers(gameId);
+    return game;
   }
 
   @SubscribeMessage('joinGames')
