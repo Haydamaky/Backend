@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { GamePayload, GameRepository } from './game.repository';
 import { PlayerService } from 'src/player/player.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class GameService {
@@ -100,7 +101,7 @@ export class GameService {
     return `${firstDice}:${secondDice}`;
   }
 
-  setRollDiceTimer(
+  setTimer(
     game: Partial<GamePayload>,
     rollDiceCallBack: (game: Partial<GamePayload>) => Promise<void>
   ) {
@@ -131,8 +132,7 @@ export class GameService {
       nextIndex = 0;
     }
     const turnOfNextUserId = game.players[nextIndex].userId;
-    const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
-    return { turnOfNextUserId, turnEnds };
+    return { turnOfNextUserId };
   }
 
   clearRollTimer(gameId: string) {
@@ -144,14 +144,12 @@ export class GameService {
     }
   }
 
-  async changeTurnTo(
+  async updateById(
     gameId: string,
-    turnOfUserId: string,
-    turnEnds: string,
-    dices: string
+    fieldsToUpdate: Partial<Prisma.$GamePayload['scalars']>
   ) {
     return this.gameRepository.updateById(gameId, {
-      data: { turnOfUserId, turnEnds, dices },
+      data: { ...fieldsToUpdate },
       include: {
         players: { include: { user: { select: { nickname: true } } } },
       },
