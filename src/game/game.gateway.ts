@@ -53,11 +53,6 @@ export class GameGateway {
     const timers = this.gameService.rollTimers;
     if (timers.has(gameId)) {
       socket.join(gameId);
-      socket.emit('rejoin', {
-        turnEnds: game.turnEnds,
-        turnOfUserId: game.turnOfUserId,
-        dices: game.dices,
-      });
       return;
     }
     const turnEnds = this.gameService.calculateEndOfTurn(game.timeOfTurn);
@@ -65,12 +60,7 @@ export class GameGateway {
       turnEnds,
     });
     socket.join(gameId);
-    socket.emit('rejoin', {
-      turnEnds: updatedGame.turnEnds,
-      turnOfUserId: game.turnOfUserId,
-      dices: game.dices,
-    });
-    this.gameService.setTimer(game, this.rollDice);
+    this.gameService.setTimer(updatedGame, this.rollDice);
   }
 
   private leaveAllRoomsExceptInitial(socket: Socket) {
