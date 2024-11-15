@@ -22,6 +22,7 @@ import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 import { GamePayload } from './game.repository';
 import { parse } from 'cookie';
+import { fields } from 'src/utils/fields';
 
 @WebSocketGateway({
   cors: {
@@ -74,10 +75,10 @@ export class GameGateway {
     });
   }
 
-  @SubscribeMessage('getGame')
+  @SubscribeMessage('getGameData')
   async getGameData(@GetGameId() gameId: string) {
     const game = await this.gameService.findGameWithPlayers(gameId);
-    return game;
+    return { game, fields };
   }
 
   @SubscribeMessage('joinGames')
