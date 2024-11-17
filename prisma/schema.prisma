@@ -103,13 +103,14 @@ model Player {
     id                String        @id @default(uuid())
     money             Float         @default(0)
     userId            String
-    currentFieldIndex Int?          @default(0)
-    allFields         Json?
-    ownedFields       Json?
+    currentFieldIndex Int           @default(1)
+    customFields      Json?
     user              User          @relation(name: "UserPlayers", fields: [userId], references: [id])
     gameId            String
     game              Game          @relation(name: "GamePlayers", fields: [gameId], references: [id])
     transactions      Transaction[]
+
+    @@unique([userId, gameId])
 }
 
 model Transaction {
