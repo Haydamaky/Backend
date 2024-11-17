@@ -87,99 +87,38 @@ enum GameStatus {
 }
 
 model Game {
-    id                String             @id @default(uuid())
-    createdAt         DateTime           @default(now())
-    updatedAt         DateTime           @updatedAt
-    playersCapacity   Int                @default(4)
-    status            GameStatus         @default(LOBBY)
-    turnOfUserId      String?
-    turnEnds          String
-    dices             String?
-    timeOfTurn        Int                @default(120)
-    players           Player[]           @relation("GamePlayers")
-    gameFields        GameField[]
-    gameMoves         GameMoves[]        @relation("GameMovesGame")
-    fieldTransactions FieldTransaction[] @relation("FieldTransactionGame")
-    fields            Field[]            @relation("GameFieldRelation")
+    id              String     @id @default(uuid())
+    createdAt       DateTime   @default(now())
+    updatedAt       DateTime   @updatedAt
+    playersCapacity Int        @default(4)
+    status          GameStatus @default(LOBBY)
+    turnOfUserId    String?
+    turnEnds        String
+    dices           String?
+    timeOfTurn      Int        @default(120)
+    players         Player[]   @relation("GamePlayers")
 }
 
 model Player {
-    id                String             @id @default(uuid())
-    money             Float              @default(0)
+    id                String        @id @default(uuid())
+    money             Float         @default(0)
     userId            String
-    user              User               @relation(name: "UserPlayers", fields: [userId], references: [id])
+    currentFieldIndex Int?          @default(0)
+    allFields         Json?
+    ownedFields       Json?
+    user              User          @relation(name: "UserPlayers", fields: [userId], references: [id])
     gameId            String
-    game              Game               @relation(name: "GamePlayers", fields: [gameId], references: [id])
-    gameMoves         GameMoves[]
+    game              Game          @relation(name: "GamePlayers", fields: [gameId], references: [id])
     transactions      Transaction[]
-    gameFields        GameField[]
-    fieldTransactions FieldTransaction[] @relation("FieldTransactionPlayer")
-}
-
-model GameMoves {
-    id        String   @id @default(uuid())
-    gameId    String
-    action    String
-    playerId  String
-    player    Player   @relation(fields: [playerId], references: [id])
-    game      Game     @relation(name: "GameMovesGame", fields: [gameId], references: [id])
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-}
-
-model GameField {
-    id        String   @id @default(uuid())
-    gameId    String
-    playerId  String
-    fieldId   String
-    cost      Float
-    player    Player   @relation(fields: [playerId], references: [id])
-    game      Game     @relation(fields: [gameId], references: [id])
-    field     Field    @relation(fields: [fieldId], references: [id])
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
 }
 
 model Transaction {
-    id                String             @id @default(uuid())
-    amount            Float
-    createdAt         DateTime           @default(now())
-    updatedAt         DateTime           @updatedAt
-    playerId          String
-    player            Player             @relation(fields: [playerId], references: [id])
-    fieldTransactions FieldTransaction[]
-}
-
-model FieldTransaction {
-    id            String      @id @default(uuid())
-    gameId        String
-    transactionId String
-    playerId      String
-    transaction   Transaction @relation(fields: [transactionId], references: [id])
-    game          Game        @relation(name: "FieldTransactionGame", fields: [gameId], references: [id])
-    player        Player      @relation(name: "FieldTransactionPlayer", fields: [playerId], references: [id])
-    createdAt     DateTime    @default(now())
-    updatedAt     DateTime    @updatedAt
-}
-
-model Field {
-    id         String      @id @default(uuid())
-    name       String
-    price      Float
-    groupId    String
-    gameId     String
-    game       Game        @relation(name: "GameFieldRelation", fields: [gameId], references: [id])
-    group      Group       @relation(fields: [groupId], references: [id])
-    gameFields GameField[]
-}
-
-model Group {
     id        String   @id @default(uuid())
+    amount    Float
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
-    name      String
-    color     String
-    fields    Field[]
+    playerId  String
+    player    Player   @relation(fields: [playerId], references: [id])
 }
 
 enum ROLE {
