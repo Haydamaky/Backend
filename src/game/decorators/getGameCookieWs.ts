@@ -10,7 +10,6 @@ export const GetGameId = createParamDecorator(
     }
 
     const { gameId } = parse(client.handshake.headers.cookie);
-    console.log({ gameId });
     return gameId;
   }
 );

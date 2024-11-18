@@ -5,6 +5,8 @@ import { PlayerService } from 'src/player/player.service';
 import { Prisma } from '@prisma/client';
 import { Auction } from './types/auction.type';
 import { WsException } from '@nestjs/websockets';
+import { Socket } from 'socket.io';
+import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 
 @Injectable()
 export class GameService {
@@ -118,21 +120,34 @@ export class GameService {
     callback: (args: unknown) => Promise<void>
   ) {
     this.clearTimer(id);
-    const timer = setTimeout(() => {
-      callback(args);
-    }, time);
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(async () => {
+        try {
+          await callback(args);
+        } catch (err) {
+          console.log(err.message);
+          reject(err);
+        }
+      }, time);
+      this.timers.set(id, timer);
 
-    this.timers.set(id, timer);
-
-    this.logger.log(
-      `Timer with this id:${id} was set for ${time / 1000} seconds`
-    );
+      this.logger.log(`Timer with id:${id} was set for ${time / 1000} seconds`);
+    });
   }
 
   calculateEndOfTurn(timeOfTurn: number) {
     let turnEnds = Date.now();
     turnEnds += timeOfTurn;
     return turnEnds.toString();
+  }
+
+  async findCurrentFieldFromGame(game: Partial<GamePayload>) {
+    const player = await this.playerService.findByUserAndGameId(
+      game.turnOfUserId,
+      game.id
+    );
+    const field = this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
+    return field;
   }
 
   async updateGameWithNewTurn(
@@ -244,15 +259,17 @@ export class GameService {
     this.deletePlayerId(playerField.players, currentPlayer.id);
     const playerNextField = this.findPlayerFieldByIndex(fields, nextIndex);
     playerNextField.players.push(updatedPlayer.id);
-    return { updatedGame, fields, nextIndex };
+    return { updatedGame, fields, nextIndex, playerNextField };
   }
 
-  async createAuction(game: Partial<GamePayload>) {
+  async putUpForAuction(game: Partial<GamePayload>) {
     const player = await this.playerService.findByUserAndGameId(
       game.turnOfUserId,
       game.id
     );
     const field = this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
+    if (!field.price)
+      throw new WsException('You cant put this field to auction');
     this.setAuction(game.id, {
       fieldIndex: field.index,
       bid: field.price,
@@ -297,6 +314,7 @@ export class GameService {
         auction.gameId,
         auction.bid
       );
+    this.setAuction(auction.gameId, null);
     return updatedPlayer;
   }
 

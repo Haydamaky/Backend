@@ -51,28 +51,35 @@ export class GameGateway {
 
   async handleConnection(socket: Socket & { jwtPayload: JwtPayload }) {
     const gameId = this.extractGameIdCookie(socket);
+    if (!gameId) return;
     const game = await this.gameService.findGameWithPlayers(gameId);
-
     if (!game || game.status !== 'ACTIVE') return;
-
     const timers = this.gameService.timers;
     if (timers.has(gameId)) {
       this.rejoinGame(socket, gameId);
       return;
     }
-
     const updatedGame = await this.gameService.updateGameWithNewTurn(game);
-
     this.rejoinGame(socket, gameId);
-
-    const timerCallback = game.dices ? this.putUpForAuction : this.rollDice;
-
-    this.gameService.setTimer(
-      gameId,
-      game.timeOfTurn,
-      updatedGame,
-      timerCallback
-    );
+    const currentField = await this.gameService.findCurrentFieldFromGame(game);
+    let timerCallback: (args: unknown) => Promise<void>;
+    if (game.dices) {
+      timerCallback = currentField.price
+        ? this.putUpForAuction
+        : this.passTurnToNext;
+    } else {
+      timerCallback = this.rollDice;
+    }
+    try {
+      await this.gameService.setTimer(
+        gameId,
+        updatedGame.timeOfTurn,
+        updatedGame,
+        timerCallback
+      );
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   private extractGameIdCookie(socket: Socket & { jwtPayload: JwtPayload }) {
@@ -80,7 +87,7 @@ export class GameGateway {
       ? parse(socket.handshake.headers.cookie)
       : null;
 
-    if (!cookies?.gameId) return;
+    if (!cookies?.gameId) return null;
 
     const { gameId } = cookies;
     return gameId;
@@ -174,7 +181,8 @@ export class GameGateway {
   }
 
   async rollDice(game: Partial<GamePayload>) {
-    const { updatedGame, nextIndex } = await this.gameService.makeTurn(game);
+    const { updatedGame, nextIndex, playerNextField } =
+      await this.gameService.makeTurn(game);
     this.server.to(game.id).emit('rolledDice', {
       dices: updatedGame.dices,
       turnEnds: updatedGame.turnEnds,
@@ -185,7 +193,7 @@ export class GameGateway {
       game.id,
       game.timeOfTurn,
       updatedGame,
-      this.putUpForAuction
+      playerNextField.price ? this.putUpForAuction : this.passTurnToNext
     );
   }
 
@@ -198,11 +206,12 @@ export class GameGateway {
     const game = await this.gameService.getCurrentGame(gameId);
     if (game.turnOfUserId !== userId) throw new WsException('Wrong turn');
     this.gameService.clearTimer(gameId);
-    this.putUpForAuction(game);
+    await this.putUpForAuction(game);
   }
 
   async putUpForAuction(game: Partial<GamePayload>) {
-    this.gameService.createAuction(game);
+    await this.gameService.putUpForAuction(game);
+
     const updatedGame = await this.gameService.updateGameWithNewTurn(
       game,
       5000
