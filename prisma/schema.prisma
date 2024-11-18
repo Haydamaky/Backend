@@ -105,6 +105,7 @@ model Player {
     userId            String
     currentFieldIndex Int           @default(1)
     customFields      Json?
+    color             String
     user              User          @relation(name: "UserPlayers", fields: [userId], references: [id])
     gameId            String
     game              Game          @relation(name: "GamePlayers", fields: [gameId], references: [id])
