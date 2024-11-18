@@ -23,6 +23,8 @@ import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 import { GamePayload } from './game.repository';
 import { parse } from 'cookie';
 import { fields } from 'src/utils/fields';
+import { PlayerService } from 'src/player/player.service';
+import { Auction } from './types/auction.type';
 
 @WebSocketGateway({
   cors: {
@@ -35,33 +37,58 @@ import { fields } from 'src/utils/fields';
 @UsePipes(new WsValidationPipe())
 @UseGuards(WsGuard)
 export class GameGateway {
-  constructor(private gameService: GameService) {
+  constructor(
+    private gameService: GameService,
+    private playerService: PlayerService
+  ) {
     this.rollDice = this.rollDice.bind(this);
-    this.tradeField = this.tradeField.bind(this);
+    this.putUpForAuction = this.putUpForAuction.bind(this);
+    this.passTurnToNext = this.passTurnToNext.bind(this);
+    this.winAuction = this.winAuction.bind(this);
   }
 
   @WebSocketServer() server: Server;
 
-  async handleConnection(
-    @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload }
-  ) {
-    if (!socket.handshake.headers.cookie) return;
-    const cookies = parse(socket.handshake.headers.cookie);
-    const gameId = cookies.gameId;
-    if (!gameId) return;
+  async handleConnection(socket: Socket & { jwtPayload: JwtPayload }) {
+    const gameId = this.extractGameIdCookie(socket);
     const game = await this.gameService.findGameWithPlayers(gameId);
-    if (game.status !== 'ACTIVE') return;
-    const timers = this.gameService.rollTimers;
+
+    if (!game || game.status !== 'ACTIVE') return;
+
+    const timers = this.gameService.timers;
     if (timers.has(gameId)) {
-      socket.join(gameId);
+      this.rejoinGame(socket, gameId);
       return;
     }
-    const turnEnds = this.gameService.calculateEndOfTurn(game.timeOfTurn);
-    const updatedGame = await this.gameService.updateById(game.id, {
-      turnEnds,
-    });
+
+    const updatedGame = await this.gameService.updateGameWithNewTurn(game);
+
+    this.rejoinGame(socket, gameId);
+
+    const timerCallback = game.dices ? this.putUpForAuction : this.rollDice;
+
+    this.gameService.setTimer(
+      gameId,
+      game.timeOfTurn,
+      updatedGame,
+      timerCallback
+    );
+  }
+
+  private extractGameIdCookie(socket: Socket & { jwtPayload: JwtPayload }) {
+    const cookies = socket.handshake.headers.cookie
+      ? parse(socket.handshake.headers.cookie)
+      : null;
+
+    if (!cookies?.gameId) return;
+
+    const { gameId } = cookies;
+    return gameId;
+  }
+
+  private rejoinGame(socket: Socket, gameId: string) {
     socket.join(gameId);
-    this.gameService.setTimer(updatedGame, this.rollDice);
+    socket.emit('rejoin');
   }
 
   private leaveAllRoomsExceptInitial(socket: Socket) {
@@ -81,7 +108,7 @@ export class GameGateway {
     return { game, fields };
   }
 
-  @SubscribeMessage('joinGames')
+  @SubscribeMessage('joinGame')
   async onJoinGame(
     socket: Socket & { jwtPayload: JwtPayload },
     data: { id: string }
@@ -106,7 +133,12 @@ export class GameGateway {
           gameId: game.id,
           turnOfUserId: game.turnOfUserId,
         });
-        this.gameService.setTimer(game, this.rollDice);
+        this.gameService.setTimer(
+          game.id,
+          game.timeOfTurn,
+          game,
+          this.rollDice
+        );
       }
     }
   }
@@ -142,43 +174,86 @@ export class GameGateway {
   }
 
   async rollDice(game: Partial<GamePayload>) {
-    const dices = this.gameService.onRollDice();
-    const turnEnds = this.gameService.calculateEndOfTurn(game.timeOfTurn);
-    const updatedGame = await this.gameService.updateById(game.id, {
-      dices,
-      turnEnds,
-    });
+    const { updatedGame, nextIndex } = await this.gameService.makeTurn(game);
     this.server.to(game.id).emit('rolledDice', {
-      dices,
-      turnEnds,
+      dices: updatedGame.dices,
+      turnEnds: updatedGame.turnEnds,
+      fields,
+      moveToIndex: nextIndex,
     });
-    this.gameService.setTimer(updatedGame, this.tradeField);
+    this.gameService.setTimer(
+      game.id,
+      game.timeOfTurn,
+      updatedGame,
+      this.putUpForAuction
+    );
   }
 
-  @SubscribeMessage('tradeField')
-  async onTradeField(
+  @SubscribeMessage('putUpForAuction')
+  async onPutUpForAuction(
     @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
     @GetGameId() gameId: string
   ) {
+    const userId = socket.jwtPayload.sub;
     const game = await this.gameService.getCurrentGame(gameId);
-    if (game.turnOfUserId !== socket.jwtPayload.sub)
-      throw new WsException('Wrong turn');
+    if (game.turnOfUserId !== userId) throw new WsException('Wrong turn');
     this.gameService.clearTimer(gameId);
-    this.tradeField(game);
+    this.putUpForAuction(game);
   }
 
-  async tradeField(game: Partial<GamePayload>) {
-    // Logic of buying field
-    const turnEnds = this.gameService.calculateEndOfTurn(game.timeOfTurn);
-    const { turnOfNextUserId } = this.gameService.findNextTurnUser(game);
-    const gameWithNextTurn = await this.gameService.updateById(game.id, {
-      turnOfUserId: turnOfNextUserId,
-      dices: '',
-      turnEnds,
-    });
+  async putUpForAuction(game: Partial<GamePayload>) {
+    this.gameService.createAuction(game);
+    const updatedGame = await this.gameService.updateGameWithNewTurn(
+      game,
+      5000
+    );
     this.server
       .to(game.id)
-      .emit('tradedField', { turnOfNextUserId, dices: '', turnEnds });
-    this.gameService.setTimer(gameWithNextTurn, this.rollDice);
+      .emit('hasPutUpForAuction', { turnEnds: updatedGame.turnEnds });
+    this.gameService.setTimer(game.id, 5000, updatedGame, this.passTurnToNext);
+  }
+
+  @SubscribeMessage('raisePrice')
+  async raisePrice(
+    @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
+    @GetGameId() gameId: string,
+    @MessageBody('raiseBy') raiseBy: number
+  ) {
+    const userId = socket.jwtPayload.sub;
+    const { auctionUpdated, turnEnds } = await this.gameService.raisePrice(
+      gameId,
+      userId,
+      raiseBy
+    );
+    this.server.to(gameId).emit('raisedPrice', { turnEnds, auctionUpdated });
+    this.gameService.setTimer(
+      gameId,
+      3000,
+      { ...auctionUpdated, gameId },
+      this.winAuction
+    );
+  }
+
+  async winAuction(auction: Auction & { gameId: string }) {
+    const updatedPlayer = await this.gameService.winAuction(auction);
+    this.server
+      .to(auction.gameId)
+      .emit('wonAuction', { auction, updatedPlayer, fields });
+    const game = await this.gameService.findGameWithPlayers(auction.gameId);
+    this.passTurnToNext(game);
+  }
+
+  async passTurnToNext(game: Partial<GamePayload>) {
+    const { turnEnds, turnOfNextUserId, updatedGame, dices } =
+      await this.gameService.passTurnToNext(game);
+    this.server
+      .to(game.id)
+      .emit('passTurnToNext', { turnOfNextUserId, dices, turnEnds });
+    this.gameService.setTimer(
+      game.id,
+      game.timeOfTurn,
+      updatedGame,
+      this.rollDice
+    );
   }
 }
