@@ -7,13 +7,13 @@ import { Prisma } from '@prisma/client';
 @Injectable()
 export class PlayerService {
   constructor(private playerRepository: PlayerRepository) {}
+  readonly COLORS = ['blue', 'yellow', 'white', 'black', 'red', 'pink'];
   create(createPlayerDto: CreatePlayerDto) {
     return this.playerRepository.create({
       data: {
+        color: createPlayerDto.color,
         userId: createPlayerDto.userId,
         gameId: createPlayerDto.gameId,
-        allFields: createPlayerDto.allFields,
-        ownedFields: [],
       },
       include: {
         game: {

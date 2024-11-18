@@ -6,5 +6,5 @@ export class CreatePlayerDto {
   gameId: string;
   @IsUUID()
   userId: string;
-  allFields: FieldsType;
+  color: string;
 }

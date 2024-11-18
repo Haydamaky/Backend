@@ -52,11 +52,11 @@ export class GameService {
     );
     if (filteredPlayers.length || game.status === 'ACTIVE')
       return { game: null, shouldStart: false };
-
+    const color = this.playerService.COLORS[game.players.length];
     const player = await this.playerService.create({
+      color,
       userId,
       gameId,
-      allFields: fields,
     });
     const { game: gameWithCreatedPlayer } = player;
     if (
