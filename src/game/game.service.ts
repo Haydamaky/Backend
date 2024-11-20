@@ -124,6 +124,7 @@ export class GameService {
       const timer = setTimeout(async () => {
         try {
           await callback(args);
+          resolve();
         } catch (err) {
           console.log(err.message);
           reject(err);

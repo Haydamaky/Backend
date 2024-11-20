@@ -10,12 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { GameService } from './game.service';
 import { Server, Socket } from 'socket.io';
-import {
-  UseFilters,
-  UseGuards,
-  UseInterceptors,
-  UsePipes,
-} from '@nestjs/common';
+import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
@@ -25,6 +20,7 @@ import { parse } from 'cookie';
 import { fields } from 'src/utils/fields';
 import { PlayerService } from 'src/player/player.service';
 import { Auction } from './types/auction.type';
+import { TurnGuard } from 'src/auth/guard/turn.guard';
 
 @WebSocketGateway({
   cors: {
@@ -168,16 +164,14 @@ export class GameGateway {
     }
   }
 
+  @UseGuards(TurnGuard)
   @SubscribeMessage('rollDice')
   async onRollDice(
-    @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
-    @GetGameId() gameId: string
+    @ConnectedSocket()
+    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
   ) {
-    const game = await this.gameService.getCurrentGame(gameId);
-    if (game.turnOfUserId !== socket.jwtPayload.sub)
-      throw new WsException('Wrong turn');
-    this.gameService.clearTimer(gameId);
-    this.rollDice(game);
+    this.gameService.clearTimer(socket.game.id);
+    await this.rollDice(socket.game);
   }
 
   async rollDice(game: Partial<GamePayload>) {
@@ -199,14 +193,11 @@ export class GameGateway {
 
   @SubscribeMessage('putUpForAuction')
   async onPutUpForAuction(
-    @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
-    @GetGameId() gameId: string
+    @ConnectedSocket()
+    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
   ) {
-    const userId = socket.jwtPayload.sub;
-    const game = await this.gameService.getCurrentGame(gameId);
-    if (game.turnOfUserId !== userId) throw new WsException('Wrong turn');
-    this.gameService.clearTimer(gameId);
-    await this.putUpForAuction(game);
+    this.gameService.clearTimer(socket.game.id);
+    await this.putUpForAuction(socket.game);
   }
 
   async putUpForAuction(game: Partial<GamePayload>) {
