@@ -319,8 +319,31 @@ export class GameService {
     return updatedPlayer;
   }
 
+  async buyField(game: Partial<GamePayload>) {
+    const player = this.findPlayerByUserId(game);
+    const field = this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
+    if (
+      !field.price ||
+      field.price > player.money ||
+      this.getAuction(game.id)
+    ) {
+      console.log({ field, auction: this.getAuction(game.id) });
+      throw new WsException('You cant buy this field');
+    }
+    this.clearTimer(game.id);
+    field.ownedBy = game.turnOfUserId;
+    const updatedPlayer =
+      await this.playerService.decrementMoneyWithUserAndGameId(
+        game.turnOfUserId,
+        game.id,
+        field.price
+      );
+    return { updatedPlayer, field };
+  }
+
   async passTurnToNext(game: Partial<GamePayload>) {
     const dices = '';
+    this.setAuction(game.id, null);
     const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
     const { turnOfNextUserId } = this.findNextTurnUser(game);
     const updatedGame = await this.updateById(game.id, {

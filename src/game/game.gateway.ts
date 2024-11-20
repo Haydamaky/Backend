@@ -191,6 +191,7 @@ export class GameGateway {
     );
   }
 
+  @UseGuards(TurnGuard)
   @SubscribeMessage('putUpForAuction')
   async onPutUpForAuction(
     @ConnectedSocket()
@@ -240,6 +241,24 @@ export class GameGateway {
       .to(auction.gameId)
       .emit('wonAuction', { auction, updatedPlayer, fields });
     const game = await this.gameService.findGameWithPlayers(auction.gameId);
+    this.passTurnToNext(game);
+  }
+
+  @UseGuards(TurnGuard)
+  @SubscribeMessage('buyField')
+  async onBuyField(
+    @ConnectedSocket()
+    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
+  ) {
+    await this.buyField(socket.game);
+  }
+
+  async buyField(game: Partial<GamePayload>) {
+    const { updatedPlayer } = await this.gameService.buyField(game);
+    console.log('Buy field');
+    this.server
+      .to(game.id)
+      .emit('boughtField', { player: updatedPlayer, fields });
     this.passTurnToNext(game);
   }
 
