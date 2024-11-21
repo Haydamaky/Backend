@@ -66,6 +66,33 @@ export class PlayerService {
     });
   }
 
+  incrementMoneyWithUserAndGameId(
+    userId: string,
+    gameId: string,
+    amount: number
+  ) {
+    return this.update({
+      where: {
+        userId_gameId: {
+          userId: userId,
+          gameId: gameId,
+        },
+      },
+      data: {
+        money: {
+          increment: amount,
+        },
+      },
+      include: {
+        game: {
+          include: {
+            players: { include: { user: { select: { nickname: true } } } },
+          },
+        },
+      },
+    });
+  }
+
   deleteById(playerId: string) {
     return this.playerRepository.deleteById(playerId);
   }

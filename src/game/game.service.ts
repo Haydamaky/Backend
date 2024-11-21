@@ -260,7 +260,22 @@ export class GameService {
     this.deletePlayerId(playerField.players, currentPlayer.id);
     const playerNextField = this.findPlayerFieldByIndex(fields, nextIndex);
     playerNextField.players.push(updatedPlayer.id);
-    return { updatedGame, fields, nextIndex, playerNextField };
+    return {
+      updatedGame,
+      fields,
+      nextIndex,
+      playerNextField,
+      hasOwner: playerNextField.ownedBy,
+    };
+  }
+
+  async findCurrentFieldWithUserId(game: Partial<GamePayload>) {
+    const player = this.findPlayerByUserId(game);
+    const playerField = this.findPlayerFieldByIndex(
+      fields,
+      player.currentFieldIndex
+    );
+    return playerField;
   }
 
   async putUpForAuction(game: Partial<GamePayload>) {
@@ -352,5 +367,19 @@ export class GameService {
       turnEnds,
     });
     return { updatedGame, turnEnds, turnOfNextUserId, dices };
+  }
+
+  async payForField(game: Partial<GamePayload>, playerNextField: FieldType) {
+    const payed = await this.playerService.decrementMoneyWithUserAndGameId(
+      game.turnOfUserId,
+      game.id,
+      playerNextField.incomeWithoutBranches
+    );
+    const received = await this.playerService.incrementMoneyWithUserAndGameId(
+      playerNextField.ownedBy,
+      game.id,
+      playerNextField.incomeWithoutBranches
+    );
+    return { payed, received, updatedGame: received.game };
   }
 }
