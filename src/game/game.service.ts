@@ -49,10 +49,10 @@ export class GameService {
       where: { id: gameId },
       include: { players: true },
     });
-    const filteredPlayers = game.players.filter(
+    const alreadyJoined = game.players.some(
       (player) => player.userId === userId
     );
-    if (filteredPlayers.length || game.status === 'ACTIVE')
+    if (alreadyJoined || game.status === 'ACTIVE')
       return { game: null, shouldStart: false };
     const color = this.playerService.COLORS[game.players.length];
     const player = await this.playerService.create({
@@ -153,7 +153,7 @@ export class GameService {
 
   async updateGameWithNewTurn(
     game: Partial<GamePayload>,
-    timeOfTurn: number = null
+    timeOfTurn: number | null = null
   ) {
     const turnEnds = this.calculateEndOfTurn(
       timeOfTurn ? timeOfTurn : game.timeOfTurn
@@ -268,6 +268,7 @@ export class GameService {
       game.turnOfUserId,
       game.id
     );
+    if (!player) throw new WsException('No such player');
     const field = this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
     if (!field.price)
       throw new WsException('You cant put this field to auction');
@@ -296,6 +297,7 @@ export class GameService {
 
   async raisePrice(gameId: string, userId: string, raiseBy: number) {
     const player = await this.playerService.findByUserAndGameId(userId, gameId);
+    if (!player) throw new WsException('No such player');
     const auction = this.getAuction(gameId);
     if (raiseBy < 100) throw new WsException('Raise is not big enough');
     if (!auction) throw new WsException('Auction wasn’t started');

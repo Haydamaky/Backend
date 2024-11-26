@@ -13,7 +13,7 @@ export class TurnGuard implements CanActivate {
     const { gameId } = parse(client.handshake.headers.cookie);
     try {
       const game = await this.gameService.getCurrentGame(gameId);
-      if (game.turnOfUserId !== userId) throw new WsException('Wrong turn');
+      if (game?.turnOfUserId !== userId) throw new WsException('Wrong turn');
       client.game = game;
       return game;
     } catch (ex) {
