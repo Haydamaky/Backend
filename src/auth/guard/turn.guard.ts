@@ -15,7 +15,7 @@ export class TurnGuard implements CanActivate {
       const game = await this.gameService.getCurrentGame(gameId);
       if (game?.turnOfUserId !== userId) throw new WsException('Wrong turn');
       client.game = game;
-      return game;
+      return true;
     } catch (ex) {
       throw new WsException(ex.message);
     }

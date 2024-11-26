@@ -17,8 +17,14 @@ describe('AuthController', () => {
     mockAuthService = {
       signup: jest.fn(),
       signin: jest.fn().mockReturnValue({
-        access_token: 'accessToken',
-        refresh_token: 'refreshToken',
+        tokens: {
+          access_token: 'accessToken',
+          refresh_token: 'refreshToken',
+        },
+        user: {
+          nickname: 'test',
+          email: 'test@gmail.com',
+        },
       }),
       logout: jest.fn(),
       refreshTokens: jest.fn().mockReturnValue({
@@ -26,8 +32,14 @@ describe('AuthController', () => {
         refresh_token: 'refreshTokenNew',
       }),
       confirmEmail: jest.fn().mockReturnValue({
-        access_token: 'accessToken',
-        refresh_token: 'refreshToken',
+        tokens: {
+          access_token: 'accessToken',
+          refresh_token: 'refreshToken',
+        },
+        user: {
+          nickname: 'test',
+          email: 'test@gmail.com',
+        },
       }),
       changePassword: jest.fn(),
       forgotPassword: jest.fn().mockReturnValue('forgotPasswordToken'),
@@ -156,6 +168,10 @@ describe('AuthController', () => {
     expect(res.send).toHaveBeenCalledWith({
       status: 'success',
       message: 'Confirmed email successfully',
+      user: {
+        email: 'test@gmail.com',
+        nickname: 'test',
+      },
     });
   });
 

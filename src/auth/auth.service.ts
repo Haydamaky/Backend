@@ -78,7 +78,7 @@ export class AuthService {
     }
     const tokens = await this.signTokens(user.id, user.email);
     await this.updateRtHash(user.id, tokens.refresh_token);
-    return tokens;
+    return { tokens, user: { nickname: user.nickname, email: user.email } };
   }
 
   async logout(id: string) {
@@ -149,7 +149,7 @@ export class AuthService {
 
     const tokens = await this.signTokens(user.id, user.email);
     await this.updateRtHash(user.id, tokens.refresh_token);
-    return tokens;
+    return { tokens, user: { nickname: user.nickname, email: user.email } };
   }
 
   async changePassword(

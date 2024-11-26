@@ -95,13 +95,13 @@ export class AuthController {
   @Post('/local/signin')
   @ApiOperation({ summary: 'signin' })
   async signin(@Body() dto: SignInDto, @Res() res: Response) {
-    const { access_token: accessToken, refresh_token: refreshToken } =
-      await this.authService.signin(dto);
-
+    const { tokens, user } = await this.authService.signin(dto);
+    console.log({ tokens });
+    const { access_token: accessToken, refresh_token: refreshToken } = tokens;
     this.setTokens(res, accessToken, refreshToken);
     return res
       .status(HttpStatus.OK)
-      .send({ status: 'success', message: 'Logged in successfully' });
+      .send({ status: 'success', message: 'Logged in successfully', user });
   }
 
   @Post('logout')
@@ -135,14 +135,15 @@ export class AuthController {
   @Get('confirm-email/:token')
   @ApiOperation({ summary: 'confirm-email' })
   async confirmEmail(@Param('token') token: string, @Res() res: Response) {
-    const { access_token: accessToken, refresh_token: refreshToken } =
-      await this.authService.confirmEmail(token);
-
+    const { tokens, user } = await this.authService.confirmEmail(token);
+    const { access_token: accessToken, refresh_token: refreshToken } = tokens;
     this.setTokens(res, accessToken, refreshToken);
 
-    return res
-      .status(HttpStatus.OK)
-      .send({ status: 'success', message: 'Confirmed email successfully' });
+    return res.status(HttpStatus.OK).send({
+      status: 'success',
+      message: 'Confirmed email successfully',
+      user,
+    });
   }
 
   @Patch('change-password')

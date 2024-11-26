@@ -152,8 +152,14 @@ describe('AuthService', () => {
       password: signingUser.password,
     });
     expect(tokens).toStrictEqual({
-      access_token: 'at_token',
-      refresh_token: 'rt_token',
+      tokens: {
+        access_token: 'at_token',
+        refresh_token: 'rt_token',
+      },
+      user: {
+        nickname: 'test',
+        email: 'test@gmail.com',
+      },
     });
   });
 
@@ -232,8 +238,14 @@ describe('AuthService', () => {
     await service.signup(signingUser);
     const tokens = await service.confirmEmail('token');
     expect(tokens).toStrictEqual({
-      access_token: 'token',
-      refresh_token: 'token',
+      tokens: {
+        access_token: 'token',
+        refresh_token: 'token',
+      },
+      user: {
+        nickname: 'test',
+        email: 'test@gmail.com',
+      },
     });
   });
 
