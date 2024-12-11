@@ -6,11 +6,6 @@ import { Request } from 'express';
 export class GameController {
   constructor(private readonly gameService: GameService) {}
 
-  @Get()
-  getAllGames() {
-    return this.gameService.getAllVisibleGames();
-  }
-
   @Get('currentGame')
   getCurrentGame(@Req() req: Request) {
     const gameId = req.cookies['gameId'];

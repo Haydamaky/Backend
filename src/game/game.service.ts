@@ -21,7 +21,7 @@ export class GameService {
   timers: Map<string, NodeJS.Timeout> = new Map();
   auctions: Map<string, Auction> = new Map();
 
-  async getAllVisibleGames() {
+  async getVisibleGames() {
     const games = await this.gameRepository.findMany({
       where: { status: 'LOBBY' },
       include: {
