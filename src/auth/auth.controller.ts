@@ -96,7 +96,6 @@ export class AuthController {
   @ApiOperation({ summary: 'signin' })
   async signin(@Body() dto: SignInDto, @Res() res: Response) {
     const { tokens, user } = await this.authService.signin(dto);
-    console.log({ tokens });
     const { access_token: accessToken, refresh_token: refreshToken } = tokens;
     this.setTokens(res, accessToken, refreshToken);
     return res

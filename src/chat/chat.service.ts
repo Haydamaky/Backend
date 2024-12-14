@@ -21,6 +21,7 @@ export class ChatService {
           select: {
             id: true,
             nickname: true,
+            updatedAt: true,
           },
         },
       },

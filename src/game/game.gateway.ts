@@ -108,6 +108,12 @@ export class GameGateway {
     });
   }
 
+  @SubscribeMessage('getVisibleGames')
+  async getVisibleGames() {
+    const games = await this.gameService.getVisibleGames();
+    return games;
+  }
+
   @SubscribeMessage('getGameData')
   async getGameData(@GetGameId() gameId: string) {
     const game = await this.gameService.findGameWithPlayers(gameId);
