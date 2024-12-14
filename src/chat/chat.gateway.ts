@@ -46,7 +46,7 @@ export class ChatGateway implements OnModuleInit {
       data
     );
 
-    this.server.emit('onMessage', { ...data, ...message.sender });
+    this.server.emit('onMessage', message);
   }
 
   @SubscribeMessage('chatData')

@@ -52,7 +52,7 @@ export class GameService {
     const alreadyJoined = game.players.some(
       (player) => player.userId === userId
     );
-    if (alreadyJoined || game.status === 'ACTIVE')
+    if (alreadyJoined || game.status !== 'LOBBY')
       return { game: null, shouldStart: false };
     const color = this.playerService.COLORS[game.players.length];
     const player = await this.playerService.create({
