@@ -42,7 +42,7 @@ export class AuthController {
   static readonly REFRESH_COOKIES_ATTRIBUTES: RefreshCookieAttributes = {
     httpOnly: true,
     sameSite: 'lax',
-    path: '/auth/refresh',
+    path: '/',
     domain: 'localhost',
   };
 
@@ -62,7 +62,7 @@ export class AuthController {
   ) {
     const cookieOptions = {
       ...options,
-      ...(this.NODE_ENV === 'production' ? { secure: true } : {}),
+      secure: false,
     };
     res.cookie(name, value, cookieOptions);
   }

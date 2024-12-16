@@ -78,7 +78,10 @@ export class AuthService {
     }
     const tokens = await this.signTokens(user.id, user.email);
     await this.updateRtHash(user.id, tokens.refresh_token);
-    return { tokens, user: { nickname: user.nickname, email: user.email } };
+    return {
+      tokens,
+      user: { nickname: user.nickname, email: user.email, id: user.id },
+    };
   }
 
   async logout(id: string) {
