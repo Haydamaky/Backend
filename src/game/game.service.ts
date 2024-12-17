@@ -89,11 +89,11 @@ export class GameService {
 
     await this.playerService.deleteById(player.id);
 
-    const game = await this.findGameWithPlayers(gameId);
+    const game = await this.getGame(gameId);
     return game;
   }
 
-  async findGameWithPlayers(gameId: string) {
+  async getGame(gameId: string) {
     const game = await this.gameRepository.findFirst({
       where: { id: gameId },
       include: {

@@ -50,7 +50,7 @@ export class GameGateway {
     try {
       const gameId = this.extractGameIdCookie(socket);
       if (!gameId) return;
-      const game = await this.gameService.findGameWithPlayers(gameId);
+      const game = await this.gameService.getGame(gameId);
       if (!game || game.status !== 'ACTIVE') return;
       const timers = this.gameService.timers;
       if (timers.has(gameId)) {
@@ -116,7 +116,7 @@ export class GameGateway {
 
   @SubscribeMessage('getGameData')
   async getGameData(@GetGameId() gameId: string) {
-    const game = await this.gameService.findGameWithPlayers(gameId);
+    const game = await this.gameService.getCurrentGame(gameId);
     return { game, fields };
   }
 
@@ -297,7 +297,7 @@ export class GameGateway {
     this.server
       .to(auction.gameId)
       .emit('wonAuction', { auction, updatedPlayer, fields });
-    const game = await this.gameService.findGameWithPlayers(auction.gameId);
+    const game = await this.gameService.getGame(auction.gameId);
     this.passTurnToNext(game);
   }
 
