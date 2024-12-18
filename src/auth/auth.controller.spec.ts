@@ -75,6 +75,7 @@ describe('AuthController', () => {
     });
     expect(res.cookie).toHaveBeenCalledWith('access_token', 'token', {
       httpOnly: true,
+      secure: false,
     });
   });
 
