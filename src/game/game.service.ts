@@ -33,8 +33,8 @@ export class GameService {
     return games;
   }
 
-  async getCurrentGame(gameId: string) {
-    return this.gameRepository.findFirst({
+  async getGame(gameId: string) {
+    return this.gameRepository.findUnique({
       where: { id: gameId },
       include: {
         players: {
