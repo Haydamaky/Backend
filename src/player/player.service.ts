@@ -7,7 +7,7 @@ import { Prisma } from '@prisma/client';
 @Injectable()
 export class PlayerService {
   constructor(private playerRepository: PlayerRepository) {}
-  readonly COLORS = ['blue', 'yellow', 'white', 'black', 'red', 'pink'];
+  readonly COLORS = ['blue', 'yellow', 'red', 'green', 'pink'];
   create(createPlayerDto: CreatePlayerDto) {
     return this.playerRepository.create({
       data: {

@@ -65,10 +65,12 @@ export class GameService {
       gameWithCreatedPlayer.playersCapacity ===
       gameWithCreatedPlayer.players.length
     ) {
+      const randomPlayerIndex =
+        Math.floor(Math.random() * gameWithCreatedPlayer.players.length) - 1;
       const startedGame = await this.gameRepository.updateById(gameId, {
         data: {
           status: 'ACTIVE',
-          turnOfUserId: gameWithCreatedPlayer.players[0].id,
+          turnOfUserId: gameWithCreatedPlayer.players[randomPlayerIndex].userId,
         },
         include: {
           players: {
@@ -93,8 +95,8 @@ export class GameService {
     return game;
   }
 
-  async getGame(gameId: string) {
-    const game = await this.gameRepository.findFirst({
+  async findGameWithPlayers(gameId: string) {
+    const game = await this.gameRepository.findUnique({
       where: { id: gameId },
       include: {
         players: { include: { user: { select: { nickname: true } } } },
@@ -344,7 +346,6 @@ export class GameService {
       field.price > player.money ||
       this.getAuction(game.id)
     ) {
-      console.log({ field, auction: this.getAuction(game.id) });
       throw new WsException('You cant buy this field');
     }
     this.clearTimer(game.id);

@@ -188,7 +188,6 @@ export class GameGateway {
   async rollDice(game: Partial<GamePayload>) {
     const { updatedGame, nextIndex, playerNextField, hasOwner } =
       await this.gameService.makeTurn(game);
-    console.log({ hasOwner });
     this.server.to(game.id).emit('rolledDice', {
       dices: updatedGame.dices,
       turnEnds: updatedGame.turnEnds,
@@ -236,7 +235,6 @@ export class GameGateway {
     game: Partial<GamePayload>;
     field: FieldType;
   }) {
-    console.log({ game, field });
     const { updatedGame, payed, received } = await this.gameService.payForField(
       game,
       field
