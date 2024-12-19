@@ -277,7 +277,13 @@ export class GameGateway {
       socket.jwtPayload
     );
 
-    this.server.emit('newGameCreated', createdGameWithPlayer);
+    if (!createdGameWithPlayer)
+      return socket.emit('error', {
+        message:
+          'Ви вже знаходитесь в кімнаті, покиньте її щоб приєднатись до іншої',
+      });
+
+    return this.server.emit('newGameCreated', createdGameWithPlayer);
   }
 
   @SubscribeMessage('raisePrice')

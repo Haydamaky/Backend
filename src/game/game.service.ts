@@ -34,6 +34,19 @@ export class GameService {
   }
 
   async createGame(creator: JwtPayload) {
+    const activePlayer = await this.gameRepository.findFirst({
+      where: {
+        OR: [{ status: 'LOBBY' }, { status: 'ACTIVE' }],
+        players: {
+          some: {
+            userId: creator.sub,
+          },
+        },
+      },
+    });
+
+    if (activePlayer) return null;
+
     return this.gameRepository.create({
       data: {
         playersCapacity: 4, // TODO change players capacity to dynamic number
