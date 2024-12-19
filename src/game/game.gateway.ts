@@ -269,6 +269,17 @@ export class GameGateway {
     this.gameService.setTimer(game.id, 5000, updatedGame, this.passTurnToNext);
   }
 
+  @SubscribeMessage('createGame')
+  async createGame(
+    @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload }
+  ) {
+    const createdGameWithPlayer = await this.gameService.createGame(
+      socket.jwtPayload
+    );
+
+    this.server.emit('newGameCreated', createdGameWithPlayer);
+  }
+
   @SubscribeMessage('raisePrice')
   async raisePrice(
     @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },

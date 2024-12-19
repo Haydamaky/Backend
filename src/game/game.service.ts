@@ -33,6 +33,31 @@ export class GameService {
     return games;
   }
 
+  async createGame(creator: JwtPayload) {
+    return this.gameRepository.create({
+      data: {
+        playersCapacity: 4, // TODO change players capacity to dynamic number
+        players: {
+          create: {
+            userId: creator.sub,
+            color: this.playerService.COLORS[0],
+          },
+        },
+      },
+      include: {
+        players: {
+          include: {
+            user: {
+              select: {
+                nickname: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   async getCurrentGame(gameId: string) {
     return this.gameRepository.findFirst({
       where: { id: gameId },
