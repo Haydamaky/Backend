@@ -195,6 +195,7 @@ export class GameGateway {
       playerNextField,
       hasOwner,
       moveToIndex: nextIndex,
+      game: updatedGame,
     });
     if (hasOwner) {
       this.gameService.setTimer(

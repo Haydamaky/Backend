@@ -278,10 +278,6 @@ export class GameService {
   async makeTurn(game: Partial<GamePayload>) {
     const dices = this.onRollDice();
     const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
-    const updatedGame = await this.updateById(game.id, {
-      dices,
-      turnEnds,
-    });
     const currentPlayer = this.findPlayerByUserId(game);
     const dicesArr = this.parseDicesToArr(dices);
     const nextIndex = this.calculateNextIndex(
@@ -295,6 +291,10 @@ export class GameService {
         currentFieldIndex: nextIndex,
       }
     );
+    const updatedGame = await this.updateById(game.id, {
+      dices,
+      turnEnds,
+    });
     const playerField = this.findPlayerFieldByIndex(
       fields,
       currentPlayer.currentFieldIndex
