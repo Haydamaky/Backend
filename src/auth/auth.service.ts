@@ -15,6 +15,7 @@ import { JwtRtGuard } from './guard';
 import { MailService } from 'src/mail/mail.service';
 import { JwtPayload } from './types/jwtPayloadType.type';
 import { UserRepository } from 'src/user/user.repository';
+import { JwtPayloadWithRt } from './types/jwtPayloadWithRt.type';
 
 @Injectable()
 export class AuthService {
@@ -81,6 +82,26 @@ export class AuthService {
     return {
       tokens,
       user: { nickname: user.nickname, email: user.email, id: user.id },
+    };
+  }
+
+  async me(user: JwtPayloadWithRt) {
+    const userFromDB = await this.userRepository.findByEmail(user.email);
+    if (!userFromDB) throw new UnauthorizedException('User does not exist');
+    const access_token = await this.jwtService.signAsync(
+      { sub: userFromDB.id, email: userFromDB.email },
+      {
+        expiresIn: '15min',
+        privateKey: this.configService.get('ACCESS_TOKEN_PRIV_KEY'),
+        algorithm: 'RS256',
+      }
+    );
+    return {
+      access_token,
+      nickname: userFromDB.nickname,
+      email: userFromDB.email,
+      id: userFromDB.id,
+      isEmailConfirmed: userFromDB.isEmailConfirmed,
     };
   }
 

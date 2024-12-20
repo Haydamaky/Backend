@@ -26,6 +26,9 @@ import { Public } from './decorator/public.decorator';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AccessCookieAttributes, RefreshCookieAttributes } from './types';
+import { JwtRtGuard } from './guard';
+import { GetUser } from './decorator';
+import { JwtPayloadWithRt } from './types/jwtPayloadWithRt.type';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -101,6 +104,23 @@ export class AuthController {
     return res
       .status(HttpStatus.OK)
       .send({ status: 'success', message: 'Logged in successfully', user });
+  }
+
+  @Public()
+  @UseGuards(JwtRtGuard)
+  @Get('local/me')
+  async me(@GetUser() user: JwtPayloadWithRt, @Res() res: Response) {
+    const result = await this.authService.me(user);
+
+    this.setCookie(
+      res,
+      'access_token',
+      result.access_token,
+      AuthController.ACCESS_COOKIES_ATTRIBUTES
+    );
+    delete result.access_token;
+
+    return res.status(HttpStatus.OK).send(result);
   }
 
   @Post('logout')

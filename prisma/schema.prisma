@@ -5,7 +5,6 @@ generator client {
 datasource db {
     provider  = "postgresql"
     url       = env("DATABASE_URL")
-    directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -93,7 +92,7 @@ model Game {
     playersCapacity Int        @default(4)
     status          GameStatus @default(LOBBY)
     turnOfUserId    String?
-    turnEnds        String
+    turnEnds        String?
     dices           String?
     timeOfTurn      Int        @default(120)
     players         Player[]   @relation("GamePlayers")

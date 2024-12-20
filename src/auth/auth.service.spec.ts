@@ -157,6 +157,7 @@ describe('AuthService', () => {
         refresh_token: 'rt_token',
       },
       user: {
+        id: 'id',
         nickname: 'test',
         email: 'test@gmail.com',
       },
