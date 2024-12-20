@@ -2,7 +2,7 @@ import { fields, FieldsType, FieldType } from './../utils/fields';
 import { Injectable, Logger } from '@nestjs/common';
 import { GamePayload, GameRepository } from './game.repository';
 import { PlayerService } from 'src/player/player.service';
-import { Prisma } from '@prisma/client';
+import { Player, Prisma } from '@prisma/client';
 import { Auction } from './types/auction.type';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
@@ -267,12 +267,12 @@ export class GameService {
     return playerField;
   }
 
-  deletePlayerId(playerIds: string[], idToDelete: string) {
-    if (playerIds.length === 0) return;
-    const indexToDelete = playerIds.findIndex(
-      (playerId) => playerId === idToDelete
+  deletePlayer(players: Player[], idToDelete: string) {
+    if (players.length === 0) return;
+    const indexToDelete = players.findIndex(
+      (player) => player.id === idToDelete
     );
-    playerIds.splice(indexToDelete, 1);
+    players.splice(indexToDelete, 1);
   }
 
   async makeTurn(game: Partial<GamePayload>) {
@@ -299,9 +299,9 @@ export class GameService {
       fields,
       currentPlayer.currentFieldIndex
     );
-    this.deletePlayerId(playerField.players, currentPlayer.id);
+    this.deletePlayer(playerField.players, currentPlayer.id);
     const playerNextField = this.findPlayerFieldByIndex(fields, nextIndex);
-    playerNextField.players.push(updatedPlayer.id);
+    playerNextField.players.push(updatedPlayer);
     return {
       updatedGame,
       fields,

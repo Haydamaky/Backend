@@ -91,7 +91,7 @@ export class AuthService {
     const access_token = await this.jwtService.signAsync(
       { sub: userFromDB.id, email: userFromDB.email },
       {
-        expiresIn: '15min',
+        expiresIn: '1d',
         privateKey: this.configService.get('ACCESS_TOKEN_PRIV_KEY'),
         algorithm: 'RS256',
       }
