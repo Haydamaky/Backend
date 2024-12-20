@@ -122,7 +122,7 @@ export class AuthService {
 
     const [at_token, rt_token] = await Promise.all([
       this.jwtService.signAsync(payLoad, {
-        expiresIn: '15min',
+        expiresIn: '30d',
         privateKey: atPrivKey,
         algorithm: 'RS256',
       }),

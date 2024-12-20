@@ -229,6 +229,7 @@ export class GameService {
   }
 
   deletePlayerId(playerIds: string[], idToDelete: string) {
+    if (playerIds.length === 0) return;
     const indexToDelete = playerIds.findIndex(
       (playerId) => playerId === idToDelete
     );
@@ -267,7 +268,7 @@ export class GameService {
       fields,
       nextIndex,
       playerNextField,
-      hasOwner: playerNextField.ownedBy,
+      hasOwner: playerNextField?.ownedBy,
     };
   }
 

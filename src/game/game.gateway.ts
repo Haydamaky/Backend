@@ -63,7 +63,7 @@ export class GameGateway {
         await this.gameService.findCurrentFieldFromGame(game);
       let timerCallback: (args: unknown) => Promise<void>;
       if (game.dices) {
-        timerCallback = currentField.price
+        timerCallback = currentField?.price
           ? this.putUpForAuction
           : this.passTurnToNext;
       } else {
