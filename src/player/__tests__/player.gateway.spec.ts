@@ -2,14 +2,32 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PlayerGateway } from '../player.gateway';
 import { PlayerService } from '../player.service';
 import { CreatePlayerDto } from '../dto/create-player.dto';
+import { PlayerRepository } from '../player.repository';
 
 describe('PlayerGateway', () => {
   let gateway: PlayerGateway;
   let playerService: jest.Mocked<PlayerService>;
 
-  const mockPlayerService: Partial<Record<keyof PlayerService, jest.Mock>> = {
+  const mockPlayerRepository: jest.Mocked<PlayerRepository> = {
     create: jest.fn(),
-  };
+    findById: jest.fn(),
+    findFirst: jest.fn(),
+    updateById: jest.fn(),
+    deleteById: jest.fn(),
+  } as any;
+
+  const mockPlayerService: jest.Mocked<PlayerService> = {
+    playerRepository: mockPlayerRepository,
+    create: jest.fn(),
+    findFirst: jest.fn(),
+    updateById: jest.fn(),
+    decrementMoneyWithUserAndGameId: jest.fn(),
+    findByUserAndGameId: jest.fn(),
+    update: jest.fn(),
+    incrementMoneyWithUserAndGameId: jest.fn(),
+    deleteById: jest.fn(),
+    COLORS: ['red', 'blue', 'green', 'yellow'],
+  } as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -20,7 +38,6 @@ describe('PlayerGateway', () => {
     }).compile();
 
     gateway = module.get<PlayerGateway>(PlayerGateway);
-    playerService = module.get<PlayerService>(PlayerService) as jest.Mocked<PlayerService>;
   });
 
   it('should be defined', () => {
@@ -36,7 +53,7 @@ describe('PlayerGateway', () => {
       };
       const expectedResult = { id: 'player-789', ...createPlayerDto };
 
-      mockPlayerService.create!.mockResolvedValue(expectedResult);
+      mockPlayerService.create.mockResolvedValue(expectedResult);
 
       const result = await gateway.create(createPlayerDto);
 
@@ -51,9 +68,10 @@ describe('PlayerGateway', () => {
         gameId: 'game-456',
       };
 
-      mockPlayerService.create!.mockRejectedValue(new Error('Test Error'));
+      const error = new Error('Test Error');
+      mockPlayerService.create.mockRejectedValue(error);
 
-      await expect(gateway.create(createPlayerDto)).rejects.toThrow('Test Error');
+      await expect(gateway.create(createPlayerDto)).rejects.toThrowError('Test Error');
     });
   });
 });
