@@ -14,3 +14,17 @@ jobs:
         run: npm install
       - name: Run tests
         run: npm test
+
+  integration-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Node and dependencies
+        uses: ./.github/actions/install
+      - name: Start database
+        run: docker compose up -d && sleep 5
+      - name: Start migration
+        run: npm run test:migrate
+      - name: Run integration tests
+        run: npm run test:integration

@@ -341,7 +341,6 @@ describe('GameService', () => {
       const game = await prismaService.game.findFirst({
         include: { players: true },
       });
-      console.log('GAME IN BUY FILED',game)
 
       const player = game.players[0];
       await prismaService.player.updateMany({
@@ -367,7 +366,6 @@ describe('GameService', () => {
       const game = await prismaService.game.findFirst({
         include: { players: true },
       });
-      console.log('GAME IN MAKE TURN',game)
 
       await prismaService.player.updateMany({
         where: { gameId: game.id },
@@ -385,7 +383,6 @@ describe('GameService', () => {
       const game = await prismaService.game.findFirst({
         include: { players: true },
       });
-      console.log('GAME IN MAKE TURN2',game)
 
       await prismaService.player.updateMany({
         where: { gameId: game.id },
@@ -406,7 +403,6 @@ describe('GameService', () => {
       const game = await prismaService.game.findFirst({
         include: { players: true },
       });
-      console.log('GAME IN MAKE TURN3',game)
 
       await prismaService.player.updateMany({
         where: { gameId: game.id },
