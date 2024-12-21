@@ -3,10 +3,10 @@ import {
   PrismaClientKnownRequestError,
 } from '@prisma/client/runtime/library';
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';
+import { AuthService } from '../auth.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { MailService } from '../mail/mail.service';
+import { MailService } from '../../mail/mail.service';
 import { UserPayload, UserRepository } from 'src/user/user.repository';
 import { Prisma, User } from '@prisma/client';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';

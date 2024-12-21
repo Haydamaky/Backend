@@ -17,7 +17,10 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:migrate": "dotenv -f .testing.env -- prisma migrate deploy",
+    "test:integration": "dotenv -f .testing.env -- jest -c jest-integration.json",
+    "integration:full": "docker compose up -d && sleep 5s && npm run test:migrate && npm run test:integration && docker compose down"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
