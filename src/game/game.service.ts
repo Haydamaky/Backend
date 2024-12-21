@@ -1,11 +1,10 @@
-import { fields, FieldsType, FieldType } from './../utils/fields';
+import { fields, FieldsType, FieldType } from '../utils/fields';
 import { Injectable, Logger } from '@nestjs/common';
 import { GamePayload, GameRepository } from './game.repository';
 import { PlayerService } from 'src/player/player.service';
 import { Player, Prisma } from '@prisma/client';
 import { Auction } from './types/auction.type';
 import { WsException } from '@nestjs/websockets';
-import { Socket } from 'socket.io';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 
 @Injectable()
@@ -16,13 +15,14 @@ export class GameService {
   ) {}
 
   readonly PLAYING_FIELDS_QUANTITY = 34;
+  private readonly MIN_RAISE = 100;
 
   private readonly logger = new Logger(GameService.name);
   timers: Map<string, NodeJS.Timeout> = new Map();
   auctions: Map<string, Auction> = new Map();
 
   async getVisibleGames() {
-    const games = await this.gameRepository.findMany({
+    return this.gameRepository.findMany({
       where: { status: 'LOBBY' },
       include: {
         players: {
@@ -30,7 +30,6 @@ export class GameService {
         },
       },
     });
-    return games;
   }
 
   async createGame(creator: JwtPayload) {
@@ -105,7 +104,7 @@ export class GameService {
       gameWithCreatedPlayer.players.length
     ) {
       const randomPlayerIndex =
-        Math.floor(Math.random() * gameWithCreatedPlayer.players.length) - 1;
+        Math.floor(Math.random() * gameWithCreatedPlayer.players.length);
       const startedGame = await this.gameRepository.updateById(gameId, {
         data: {
           status: 'ACTIVE',
@@ -130,18 +129,7 @@ export class GameService {
 
     await this.playerService.deleteById(player.id);
 
-    const game = await this.getGame(gameId);
-    return game;
-  }
-
-  async findGameWithPlayers(gameId: string) {
-    const game = await this.gameRepository.findUnique({
-      where: { id: gameId },
-      include: {
-        players: { include: { user: { select: { nickname: true } } } },
-      },
-    });
-    return game;
+    return this.getGame(gameId);
   }
 
   findById(gameId: string) {
@@ -188,8 +176,7 @@ export class GameService {
       game.turnOfUserId,
       game.id
     );
-    const field = this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
-    return field;
+    return this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
   }
 
   async updateGameWithNewTurn(
@@ -199,10 +186,9 @@ export class GameService {
     const turnEnds = this.calculateEndOfTurn(
       timeOfTurn ? timeOfTurn : game.timeOfTurn
     );
-    const updatedGame = await this.updateById(game.id, {
+    return this.updateById(game.id, {
       turnEnds,
     });
-    return updatedGame;
   }
 
   findNextTurnUser(game: Partial<GamePayload>) {
@@ -239,10 +225,9 @@ export class GameService {
   }
 
   findPlayerByUserId(game: Partial<GamePayload>) {
-    const player = game.players.find(
+    return game.players.find(
       (player) => player.userId === game.turnOfUserId
     );
-    return player;
   }
 
   parseDicesToArr(dices: string) {
@@ -263,8 +248,7 @@ export class GameService {
   }
 
   findPlayerFieldByIndex(fields: FieldsType, indexOfField: number) {
-    const playerField = fields.find((field) => field.index === indexOfField);
-    return playerField;
+    return fields.find((field) => field.index === indexOfField);
   }
 
   deletePlayer(players: Player[], idToDelete: string) {
@@ -313,11 +297,10 @@ export class GameService {
 
   async findCurrentFieldWithUserId(game: Partial<GamePayload>) {
     const player = this.findPlayerByUserId(game);
-    const playerField = this.findPlayerFieldByIndex(
+    return this.findPlayerFieldByIndex(
       fields,
       player.currentFieldIndex
     );
-    return playerField;
   }
 
   async putUpForAuction(game: Partial<GamePayload>) {
@@ -347,7 +330,9 @@ export class GameService {
   setBuyerOnAuction(gameId: string, userId: string, raiseBy: number) {
     const auction = this.getAuction(gameId);
     auction.userId = userId;
-    auction.bid += raiseBy;
+    if (raiseBy !== 0) {
+      auction.bid += raiseBy;
+    }
     this.setAuction(gameId, auction);
     return auction;
   }
@@ -356,8 +341,8 @@ export class GameService {
     const player = await this.playerService.findByUserAndGameId(userId, gameId);
     if (!player) throw new WsException('No such player');
     const auction = this.getAuction(gameId);
-    if (raiseBy < 100) throw new WsException('Raise is not big enough');
     if (!auction) throw new WsException('Auction wasn’t started');
+    if (raiseBy < this.MIN_RAISE) throw new WsException('Raise is not big enough');
     if (player.money < auction.bid) throw new WsException('Not enough money');
     this.clearTimer(gameId);
     const auctionUpdated = this.setBuyerOnAuction(gameId, userId, raiseBy);
@@ -413,6 +398,12 @@ export class GameService {
   }
 
   async payForField(game: Partial<GamePayload>, playerNextField: FieldType) {
+    const currentPlayer = this.findPlayerByUserId(game);
+
+    if (currentPlayer.money < playerNextField.incomeWithoutBranches) {
+      throw new WsException('Not enough money to pay for the field');
+    }
+
     const payed = await this.playerService.decrementMoneyWithUserAndGameId(
       game.turnOfUserId,
       game.id,

@@ -34,10 +34,10 @@ import { PlayerModule } from './player/player.module';
   controllers: [AppController],
   providers: [
     AppService,
-    {
-      provide: APP_GUARD,
-      useClass: JwtGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: JwtGuard,
+    // },
   ],
 })
 export class AppModule {}
