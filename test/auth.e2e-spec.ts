@@ -13,7 +13,9 @@ describe('AuthController E2E Test', () => {
     email: `${name}@gmail.com`,
     password: name,
   };
-  let refreshToken: string;
+
+  const accessTokenObj: { accessToken?: string; cookie?: string } = {};
+  const refreshTokenObj: { refreshToken?: string; cookie?: string } = {};
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -49,9 +51,9 @@ describe('AuthController E2E Test', () => {
           email: credentials.email,
         },
       });
-
-      const accessTokenCookie = cookie.parse(res.headers['set-cookie']?.[0]);
-      const refreshTokenCookie = cookie.parse(res.headers['set-cookie']?.[1]);
+      const [accessCookie, refreshCookie] = res.headers['set-cookie'];
+      const accessTokenCookie = cookie.parse(accessCookie);
+      const refreshTokenCookie = cookie.parse(refreshCookie);
 
       if (
         !accessTokenCookie?.access_token ||
@@ -59,7 +61,47 @@ describe('AuthController E2E Test', () => {
       )
         throw new Error('Tokens are not present in response object!');
 
-      refreshToken = refreshTokenCookie.refresh_token;
+      accessTokenObj.accessToken = accessTokenCookie.access_token;
+      accessTokenObj.cookie = accessCookie;
+      refreshTokenObj.refreshToken = refreshTokenCookie.refresh_token;
+      refreshTokenObj.cookie = refreshCookie;
+
+      return res;
+    });
+  });
+
+  describe('Retrieve user by refresh token ( /local/me )', () => {
+    it('Should automatically relogin', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/auth/local/me')
+        .set('Cookie', refreshTokenObj.cookie)
+        .expect(200);
+
+      if (!res.headers['set-cookie'].length)
+        throw new Error('/auth/local/me does not return new access token!');
+
+      expect(res.body).toMatchObject({
+        nickname: name,
+        email: credentials.email,
+      });
+      return res;
+    });
+  });
+
+  describe('Operations', () => {
+    it('Should change password', async () => {
+      const res = await request(app.getHttpServer())
+        .patch('/auth/change-password')
+        .set('Cookie', accessTokenObj.cookie)
+        .send({
+          oldPassword: name,
+          newPassword: 'AbsoluteNewPass123',
+          confirmNewPassword: 'AbsoluteNewPass123',
+        })
+        .expect(200, {
+          status: 'success',
+          message: 'Password changed successfully',
+        });
 
       return res;
     });
