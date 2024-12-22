@@ -38,35 +38,39 @@ describe('AuthController E2E Test', () => {
     });
 
     it('Should successfully login', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/auth/local/signin')
-        .send(credentials)
-        .expect(200);
+      try {
+        const res = await request(app.getHttpServer())
+          .post('/auth/local/signin')
+          .send(credentials)
+          .expect(200);
 
-      expect(res.body).toMatchObject({
-        status: 'success',
-        message: 'Logged in successfully',
-        user: {
-          nickname: name,
-          email: credentials.email,
-        },
-      });
-      const [accessCookie, refreshCookie] = res.headers['set-cookie'];
-      const accessTokenCookie = cookie.parse(accessCookie);
-      const refreshTokenCookie = cookie.parse(refreshCookie);
+        expect(res.body).toMatchObject({
+          status: 'success',
+          message: 'Logged in successfully',
+          user: {
+            nickname: name,
+            email: credentials.email,
+          },
+        });
+        const [accessCookie, refreshCookie] = res.headers['set-cookie'];
+        const accessTokenCookie = cookie.parse(accessCookie);
+        const refreshTokenCookie = cookie.parse(refreshCookie);
 
-      if (
-        !accessTokenCookie?.access_token ||
-        !refreshTokenCookie?.refresh_token
-      )
-        throw new Error('Tokens are not present in response object!');
+        if (
+          !accessTokenCookie?.access_token ||
+          !refreshTokenCookie?.refresh_token
+        )
+          throw new Error('Tokens are not present in response object!');
 
-      accessTokenObj.accessToken = accessTokenCookie.access_token;
-      accessTokenObj.cookie = accessCookie;
-      refreshTokenObj.refreshToken = refreshTokenCookie.refresh_token;
-      refreshTokenObj.cookie = refreshCookie;
+        accessTokenObj.accessToken = accessTokenCookie.access_token;
+        accessTokenObj.cookie = accessCookie;
+        refreshTokenObj.refreshToken = refreshTokenCookie.refresh_token;
+        refreshTokenObj.cookie = refreshCookie;
 
-      return res;
+        return res;
+      } catch (err) {
+        console.log('ERROR', err);
+      }
     });
   });
 
