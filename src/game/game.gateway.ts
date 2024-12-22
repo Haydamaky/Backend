@@ -282,6 +282,8 @@ export class GameGateway {
           'Ви вже знаходитесь в кімнаті, покиньте її щоб приєднатись до іншої',
       });
 
+    socket.join(createdGameWithPlayer.id);
+
     return this.server.emit('newGameCreated', createdGameWithPlayer);
   }
 
