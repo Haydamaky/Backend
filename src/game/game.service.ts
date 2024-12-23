@@ -15,7 +15,7 @@ export class GameService {
     private playerService: PlayerService
   ) {}
 
-  readonly PLAYING_FIELDS_QUANTITY = 34;
+  readonly PLAYING_FIELDS_QUANTITY = 40;
 
   private readonly logger = new Logger(GameService.name);
   timers: Map<string, NodeJS.Timeout> = new Map();
@@ -27,6 +27,9 @@ export class GameService {
       include: {
         players: {
           include: { user: { select: { nickname: true } } },
+          orderBy: {
+            createdAt: 'asc',
+          },
         },
       },
     });
@@ -67,6 +70,9 @@ export class GameService {
               },
             },
           },
+          orderBy: {
+            createdAt: 'asc',
+          },
         },
       },
     });
@@ -78,6 +84,9 @@ export class GameService {
       include: {
         players: {
           include: { user: { select: { nickname: true, id: true } } },
+          orderBy: {
+            createdAt: 'asc',
+          },
         },
       },
     });
@@ -86,7 +95,13 @@ export class GameService {
   async onJoinGame(gameId: string, userId: string) {
     const game = await this.gameRepository.findFirst({
       where: { id: gameId },
-      include: { players: true },
+      include: {
+        players: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
     });
     const alreadyJoined = game.players.some(
       (player) => player.userId === userId
@@ -114,6 +129,9 @@ export class GameService {
         include: {
           players: {
             include: { user: { select: { nickname: true, id: true } } },
+            orderBy: {
+              createdAt: 'asc',
+            },
           },
         },
       });
@@ -138,7 +156,12 @@ export class GameService {
     const game = await this.gameRepository.findUnique({
       where: { id: gameId },
       include: {
-        players: { include: { user: { select: { nickname: true } } } },
+        players: {
+          include: { user: { select: { nickname: true } } },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
       },
     });
     return game;
@@ -233,7 +256,12 @@ export class GameService {
     return this.gameRepository.updateById(gameId, {
       data: fieldsToUpdate,
       include: {
-        players: { include: { user: { select: { nickname: true } } } },
+        players: {
+          include: { user: { select: { nickname: true } } },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
       },
     });
   }
