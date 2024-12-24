@@ -13,7 +13,6 @@ export class MailService {
     const confirmationUrl = `${this.configService.get('DOMAIN_NAME')}/auth/confirm-email/${token}`;
     await this.mailerService.sendMail({
       to: email,
-      from: 'me@gmail.com',
       subject: 'Confirm Your Email',
       text: `Please confirm your email by clicking the following link: ${confirmationUrl}`,
       html: `<a href="${confirmationUrl}">Click here to confirm your email</a>`,
@@ -24,7 +23,6 @@ export class MailService {
     const forgotPasswordUrl = `${this.configService.get('DOMAIN_NAME')}/auth/reset-password/${token}`;
     await this.mailerService.sendMail({
       to: email,
-      from: 'me@gmail.com',
       subject: 'Reset Your password',
       text: `Reset your password by clicking the following link: ${forgotPasswordUrl}`,
       html: `<a href="${forgotPasswordUrl}">Click here to reset your password</a>`,

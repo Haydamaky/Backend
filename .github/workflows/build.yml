@@ -5,26 +5,97 @@ on:
   push:
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
+        
       - name: Install dependencies
         run: npm install
-      - name: Run tests
-        run: npm test
+        
+      - name: Build Docker image
+        run: |
+          docker build -t myapp:latest .
+          docker save myapp:latest > myapp.tar
+
+      - name: Upload Docker Image Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: myapp-image
+          path: myapp.tar
+
+    env:
+      ACTIONS_STEP_DEBUG: true
+      
+
+  unit-test:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Unit Tests
+        run: npm test  # Or any specific script for unit tests
 
   integration-test:
     runs-on: ubuntu-latest
+    needs: build
+    services:
+      docker:
+        image: docker:19.03.12-dind
+        options: --privileged  # Allow privileged access for Docker-in-Docker
+        
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
+        
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2  # Set up Buildx for Docker
+
       - name: Install Node and dependencies
-        uses: ./.github/actions/install
-      - name: Start database
-        run: docker compose up -d && sleep 5
-      - name: Start migration
-        run: npm run test:migrate
-      - name: Run integration tests
-        run: npm run test:integration
+        run: npm install
+
+      - name: Start Database and Other Services
+        run: docker compose up -d && sleep 5  # Ensure DB is up
+
+      - name: Start Migration
+        run: docker compose exec api npx prisma migrate deploy  # Run migrations
+
+      - name: Run Integration Tests
+        run: docker compose exec api npm run test:integration  # Run your integration tests
+
+  e2e-test:
+    runs-on: ubuntu-latest
+    needs: build
+    services:
+      docker:
+        image: docker:19.03.12-dind
+        options: --privileged  # Allow privileged access for Docker-in-Docker
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Install dependencies
+        run: npm install
+
+      - name: Start Database and Other Services
+        env:
+          EMAIL_HOST: ${{secrets.EMAIL_HOST}}
+          EMAIL_USERNAME: ${{secrets.EMAIL_USERNAME}}
+          EMAIL_PASSWORD: ${{secrets.EMAIL_PASSWORD}}
+          
+        run: |
+          docker compose up -d
+          sleep 10
+
+      - name: Start Migration
+        run: docker compose  exec api npx prisma migrate deploy  # Run migrations
+
+      - name: Run E2E Tests
+        run: docker compose exec api npm run test:e2e  # Run your E2E tests
