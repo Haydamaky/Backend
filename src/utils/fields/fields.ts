@@ -25,7 +25,7 @@ export const fields = [
     players: [],
     color: 'yellow',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/UaPoshta.svg?t=2024-12-19T19%3A09%3A02.506Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/ukr_poshta.svg?t=2024-12-26T13%3A54%3A43.654Z',
   },
 
   {
@@ -37,7 +37,7 @@ export const fields = [
     ownedBy: null,
     players: [],
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Que2.svg',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/que1.svg',
   },
 
   {
@@ -53,7 +53,7 @@ export const fields = [
     players: [],
     color: 'yellow',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/NovaPoshta.svg?t=2024-12-19T19%3A56%3A40.300Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/nova_poshta.svg?t=2024-12-26T13%3A47%3A58.811Z',
   },
 
   {
@@ -69,7 +69,7 @@ export const fields = [
     players: [],
     color: 'yellow',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Meest.svg',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/meest.svg?t=2024-12-26T13%3A47%3A35.242Z',
   },
 
   {
@@ -81,7 +81,7 @@ export const fields = [
     ownedBy: null,
     players: [],
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/VDNX.svg',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/vdng.svg?t=2024-12-26T13%3A55%3A02.015Z',
   },
 
   {
@@ -97,7 +97,7 @@ export const fields = [
     players: [],
     color: 'blue',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Tumoshenko.svg?t=2024-12-19T20%3A17%3A54.213Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/tumoshenko.svg?t=2024-12-26T13%3A54%3A08.461Z',
   },
 
   {
@@ -113,7 +113,7 @@ export const fields = [
     players: [],
     color: 'blue',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Poroshenko.svg?t=2024-12-19T20%3A18%3A13.474Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/poroshenkoEc.svg?t=2024-12-26T13%3A48%3A50.748Z',
   },
 
   {
@@ -125,7 +125,7 @@ export const fields = [
     ownedBy: null,
     players: [],
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Que2.svg',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/que1.svg',
   },
 
   {
@@ -141,7 +141,7 @@ export const fields = [
     players: [],
     color: 'blue',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/SlygaNaroda.svg',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/sluga_naroda.svg?t=2024-12-26T13%3A53%3A35.907Z',
   },
 
   {
@@ -170,7 +170,7 @@ export const fields = [
     players: [],
     color: 'gray',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/EPAM.svg?t=2024-12-19T20%3A19%3A40.462Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/epam.svg?t=2024-12-26T13%3A46%3A09.770Z',
   },
 
   {
@@ -186,7 +186,7 @@ export const fields = [
     players: [],
     color: 'tortoise',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Allo.svg?t=2024-12-19T20%3A19%3A52.839Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/allo.svg?t=2024-12-26T13%3A45%3A09.069Z',
   },
 
   {
@@ -198,7 +198,7 @@ export const fields = [
     ownedBy: null,
     players: [],
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Que.svg',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/que.svg',
   },
 
   {
@@ -214,7 +214,7 @@ export const fields = [
     players: [],
     color: 'tortoise',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Comfy.svg?t=2024-12-19T20%3A20%3A29.505Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/comfy.svg?t=2024-12-26T13%3A45%3A41.366Z',
   },
 
   {
@@ -230,7 +230,7 @@ export const fields = [
     players: [],
     color: 'gray',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/SoftServe.svg?t=2024-12-19T20%3A20%3A37.875Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/sofrserve.svg?t=2024-12-26T13%3A53%3A54.663Z',
   },
 
   {
@@ -246,7 +246,7 @@ export const fields = [
     players: [],
     color: 'pink',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Ryd.svg',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/rydi.svg',
   },
 
   {
@@ -262,7 +262,7 @@ export const fields = [
     players: [],
     color: 'gray',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Global_Logic.svg?t=2024-12-19T20%3A20%3A58.543Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/global_logic.svg?t=2024-12-26T13%3A46%3A20.883Z',
   },
 
   {
@@ -278,7 +278,7 @@ export const fields = [
     players: [],
     color: 'tortoise',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Citrus.svg?t=2024-12-19T20%3A21%3A08.044Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/citrus.svg?t=2024-12-26T13%3A45%3A26.876Z',
   },
 
   {
@@ -290,7 +290,7 @@ export const fields = [
     ownedBy: null,
     players: [],
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/UAH.svg',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/uah.svg?t=2024-12-26T13%3A54%3A23.098Z',
   },
 
   {
@@ -306,7 +306,7 @@ export const fields = [
     players: [],
     color: 'pink',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Olkom.svg?t=2024-12-19T20%3A21%3A38.806Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/olkom.svg?t=2024-12-26T13%3A48%3A24.061Z',
   },
 
   {
@@ -322,7 +322,7 @@ export const fields = [
     players: [],
     color: 'orange',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Respublika.svg?t=2024-12-19T20%3A21%3A51.055Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/respublika.svg',
   },
 
   {
@@ -338,7 +338,7 @@ export const fields = [
     players: [],
     color: 'red',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/ICTV.svg?t=2024-12-19T20%3A22%3A01.508Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/ictv.svg?t=2024-12-26T13%3A46%3A49.709Z',
   },
 
   {
@@ -354,7 +354,7 @@ export const fields = [
     players: [],
     color: 'orange',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/OceanPlaza.svg?t=2024-12-19T20%3A22%3A11.822Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/ocean_plaza.svg?t=2024-12-26T13%3A48%3A12.630Z',
   },
 
   {
@@ -370,7 +370,7 @@ export const fields = [
     players: [],
     color: 'red',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/1+1.svg',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/1+1New.svg?t=2024-12-26T13%3A29%3A23.885Z',
   },
 
   {
@@ -382,7 +382,7 @@ export const fields = [
     ownedBy: null,
     players: [],
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Que.svg',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/que.svg',
   },
 
   {
@@ -394,7 +394,7 @@ export const fields = [
     ownedBy: null,
     players: [],
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Que.svg',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/que.svg',
   },
 
   {
@@ -410,7 +410,7 @@ export const fields = [
     players: [],
     color: 'orange',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Lavina.svg?t=2024-12-19T20%3A23%3A09.061Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/lavina.svg?t=2024-12-26T13%3A47%3A03.067Z',
   },
 
   {
@@ -426,7 +426,7 @@ export const fields = [
     players: [],
     color: 'red',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/QTV.svg',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/qtv.svg',
   },
 
   {
@@ -455,7 +455,7 @@ export const fields = [
     players: [],
     color: 'purple',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Ninja.svg?t=2024-12-19T20%3A23%3A42.533Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/ninja_sushi.svg?t=2024-12-26T13%3A47%3A46.647Z',
   },
 
   {
@@ -471,7 +471,7 @@ export const fields = [
     players: [],
     color: 'purple',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Lviv.svg?t=2024-12-19T20%3A23%3A51.159Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/lviv_croiss.svg?t=2024-12-26T13%3A47%3A16.247Z',
   },
 
   {
@@ -487,7 +487,7 @@ export const fields = [
     players: [],
     color: 'green',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/4aGames.svg?t=2024-12-19T20%3A24%3A00.553Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/4a_games.svg?t=2024-12-26T13%3A44%3A48.919Z',
   },
 
   {
@@ -503,7 +503,7 @@ export const fields = [
     players: [],
     color: 'purple',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/PyzataHata.svg?t=2024-12-19T20%3A24%3A11.201Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/puzata_hata.svg?t=2024-12-26T13%3A49%3A01.820Z',
   },
 
   {
@@ -519,7 +519,7 @@ export const fields = [
     players: [],
     color: 'green',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/GSCGame.svg?t=2024-12-19T20%3A24%3A23.440Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/gsc.svg?t=2024-12-26T14%3A42%3A04.364Z',
   },
 
   {
@@ -535,7 +535,7 @@ export const fields = [
     players: [],
     color: 'dark-blue',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Dynamo.svg?t=2024-12-19T20%3A24%3A32.906Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/dunamo.svg?t=2024-12-26T13%3A45%3A57.199Z',
   },
 
   {
@@ -547,7 +547,7 @@ export const fields = [
     ownedBy: null,
     players: [],
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Que2.svg',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/que1.svg',
   },
 
   {
@@ -563,7 +563,7 @@ export const fields = [
     players: [],
     color: 'dark-blue',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Shahtar.svg?t=2024-12-19T20%3A25%3A05.516Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/shahtar.svg',
   },
 
   {
@@ -579,7 +579,7 @@ export const fields = [
     players: [],
     color: 'dark-blue',
     imageUrl:
-      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/Polissya.svg?t=2024-12-19T20%3A25%3A15.380Z',
+      'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/polissya.svg?t=2024-12-26T13%3A48%3A34.584Z',
   },
 
   {

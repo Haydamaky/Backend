@@ -101,7 +101,7 @@ model Game {
 
 model Player {
     id                String        @id @default(uuid())
-    money             Float         @default(0)
+    money             Float         @default(25000)
     userId            String
     currentFieldIndex Int           @default(1)
     customFields      Json?

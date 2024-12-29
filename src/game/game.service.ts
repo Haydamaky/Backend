@@ -330,6 +330,7 @@ export class GameService {
       nextIndex,
       playerNextField,
       hasOwner: playerNextField?.ownedBy,
+      currentPlayer,
     };
   }
 

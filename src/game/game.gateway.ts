@@ -262,9 +262,7 @@ export class GameGateway {
       game,
       5000
     );
-    this.server
-      .to(game.id)
-      .emit('hasPutUpForAuction', { turnEnds: updatedGame.turnEnds });
+    this.server.to(game.id).emit('hasPutUpForAuction', { game: updatedGame });
     this.gameService.setTimer(game.id, 5000, updatedGame, this.passTurnToNext);
   }
 
@@ -330,16 +328,13 @@ export class GameGateway {
     const { updatedPlayer } = await this.gameService.buyField(game);
     this.server
       .to(game.id)
-      .emit('boughtField', { player: updatedPlayer, fields });
+      .emit('boughtField', { game: updatedPlayer.game, fields });
     this.passTurnToNext(game);
   }
 
   async passTurnToNext(game: Partial<GamePayload>) {
-    const { turnEnds, turnOfNextUserId, updatedGame, dices } =
-      await this.gameService.passTurnToNext(game);
-    this.server
-      .to(game.id)
-      .emit('passTurnToNext', { turnOfNextUserId, dices, turnEnds });
+    const { updatedGame } = await this.gameService.passTurnToNext(game);
+    this.server.to(game.id).emit('passTurnToNext', { game: updatedGame });
     this.gameService.setTimer(
       game.id,
       game.timeOfTurn,

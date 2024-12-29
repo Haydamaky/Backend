@@ -63,6 +63,13 @@ export class PlayerService {
           decrement: amount,
         },
       },
+      include: {
+        game: {
+          include: {
+            players: { include: { user: { select: { nickname: true } } } },
+          },
+        },
+      },
     });
   }
 
