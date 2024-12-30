@@ -110,6 +110,7 @@ model Player {
     game              Game          @relation(name: "GamePlayers", fields: [gameId], references: [id])
     transactions      Transaction[]
     createdAt         DateTime      @default(now())
+    lost              Boolean       @default(false)
 
     @@unique([userId, gameId])
 }
