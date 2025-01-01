@@ -14,6 +14,7 @@ import { Server, Socket } from 'socket.io';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 import { GamePayload } from 'src/game/game.repository';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
+import { fields } from 'src/utils/fields';
 
 @WebSocketGateway({
   cors: {
@@ -28,16 +29,20 @@ import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 export class PlayerGateway {
   constructor(private readonly playerService: PlayerService) {}
   @WebSocketServer() server: Server;
-  @SubscribeMessage('test')
+  @SubscribeMessage('buyBranch')
   async buyBranch(
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload> },
     @MessageBody('index') index: number
   ) {
+    const game = socket.game;
     const fieldToBuyBranch = this.playerService.checkWhetherPlayerHasAllGroup(
-      socket.game,
+      game,
       index
     );
-    this.playerService.buyBranch(socket.game, fieldToBuyBranch);
+    const player = await this.playerService.buyBranch(game, fieldToBuyBranch);
+    return this.server
+      .to(game.id)
+      .emit('playerBoughtBranch', { fields, game: game, player });
   }
 }

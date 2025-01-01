@@ -158,12 +158,13 @@ export class PlayerService {
     return fieldToBuyBranch;
   }
 
-  buyBranch(game: Partial<GamePayload>, fieldToBuyBranch: FieldType) {
-    this.decrementMoneyWithUserAndGameId(
+  async buyBranch(game: Partial<GamePayload>, fieldToBuyBranch: FieldType) {
+    const player = await this.decrementMoneyWithUserAndGameId(
       game.turnOfUserId,
       game.id,
       fieldToBuyBranch.branchPrice
     );
     fieldToBuyBranch.amountOfBranches++;
+    return player;
   }
 }
