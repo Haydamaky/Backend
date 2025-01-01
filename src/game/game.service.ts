@@ -452,7 +452,10 @@ export class GameService {
   async payForField(game: Partial<GamePayload>, playerNextField: FieldType) {
     const currentPlayer = this.findPlayerByUserId(game);
 
-    if (currentPlayer.money < playerNextField.incomeWithoutBranches) {
+    if (
+      currentPlayer.money <
+      playerNextField.income[playerNextField.amountOfBranches]
+    ) {
       // We can add pledging of last owned field or smt to not make player lose immidiately
       const updatedPlayer = await this.playerService.updateById(
         currentPlayer.id,
@@ -464,12 +467,12 @@ export class GameService {
     await this.playerService.decrementMoneyWithUserAndGameId(
       game.turnOfUserId,
       game.id,
-      playerNextField.incomeWithoutBranches
+      playerNextField.income[playerNextField.amountOfBranches]
     );
     const received = await this.playerService.incrementMoneyWithUserAndGameId(
       playerNextField.ownedBy,
       game.id,
-      playerNextField.incomeWithoutBranches
+      playerNextField.income[playerNextField.amountOfBranches]
     );
     return { updatedGame: received.game };
   }

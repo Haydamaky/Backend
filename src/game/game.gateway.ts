@@ -55,8 +55,6 @@ export class GameGateway {
       if (!gameId) return;
       const game = await this.gameService.getGame(gameId);
       if (!game || game.status !== 'ACTIVE') return;
-      const notLosers = this.gameService.findPlayersWhoDidntLose(game);
-      if (notLosers.length === 1) return;
       const timers = this.gameService.timers;
       if (timers.has(gameId)) {
         this.rejoinGame(socket, gameId);
@@ -218,7 +216,8 @@ export class GameGateway {
     game: Partial<GamePayload>
   ) {
     if (
-      this.playerService.estimateAssets(player) >= field.incomeWithoutBranches
+      this.playerService.estimateAssets(player) >=
+      field.income[field.amountOfBranches]
     ) {
       this.gameService.setTimer(
         game.id,
