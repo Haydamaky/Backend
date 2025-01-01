@@ -20,9 +20,4 @@ import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 @UsePipes(new WsValidationPipe())
 export class PlayerGateway {
   constructor(private readonly playerService: PlayerService) {}
-
-  @SubscribeMessage('createPlayer')
-  create(@MessageBody() createPlayerDto: CreatePlayerDto) {
-    return this.playerService.create(createPlayerDto);
-  }
 }
