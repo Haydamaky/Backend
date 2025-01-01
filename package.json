@@ -18,8 +18,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:migrate": "dotenv -f .testing.env -- prisma migrate deploy",
-    "test:integration": "dotenv -f .testing.env -- jest -c jest-integration.json",
+    "test:migrate": "docker compose exec api npx prisma migrate deploy",
+    "test:integration": "jest -c jest-integration.json",
     "integration:full": "docker compose up -d && sleep 5s && npm run test:migrate && npm run test:integration && docker compose down"
   },
   "dependencies": {
@@ -38,6 +38,7 @@
     "argon2": "^0.41.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "cookie": "^1.0.2",
     "cookie-parser": "^1.4.6",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -76,6 +77,9 @@
       "json",
       "ts"
     ],
+    "moduleNameMapper": {
+      "src/(.*)$": "<rootDir>/src/$1"
+    },
     "rootDir": "./",
     "modulePaths": [
       "<rootDir>"
