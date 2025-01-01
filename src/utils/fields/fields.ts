@@ -222,7 +222,7 @@ export const fields = [
     group: 'IT',
     specialField: false,
     line: 'vertical-left',
-    ownedBy: null,
+    ownedBy: '7539a3b1-da03-4c94-af9c-5e62e3cb2292',
     players: [],
     color: 'gray',
     imageUrl:
@@ -306,7 +306,7 @@ export const fields = [
     group: 'IT',
     specialField: false,
     line: 'vertical-left',
-    ownedBy: null,
+    ownedBy: '7539a3b1-da03-4c94-af9c-5e62e3cb2292',
     players: [],
     color: 'gray',
     imageUrl:
@@ -330,7 +330,7 @@ export const fields = [
     group: 'food-producer',
     specialField: false,
     line: 'vertical-right',
-    ownedBy: null,
+    ownedBy: '7539a3b1-da03-4c94-af9c-5e62e3cb2292',
     players: [],
     color: 'pink',
     imageUrl:
@@ -354,7 +354,7 @@ export const fields = [
     group: 'IT',
     specialField: false,
     line: 'vertical-left',
-    ownedBy: null,
+    ownedBy: '7539a3b1-da03-4c94-af9c-5e62e3cb2292',
     players: [],
     color: 'gray',
     imageUrl:
@@ -378,7 +378,7 @@ export const fields = [
     group: 'resale',
     specialField: false,
     line: 'vertical-right',
-    ownedBy: null,
+    ownedBy: '7539a3b1-da03-4c94-af9c-5e62e3cb2292',
     players: [],
     color: 'tortoise',
     imageUrl:
