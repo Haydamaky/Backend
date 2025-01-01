@@ -1,5 +1,4 @@
 import { CanActivate, Injectable } from '@nestjs/common';
-import { parse } from 'cookie';
 import { WsException } from '@nestjs/websockets';
 import { GameService } from 'src/game/game.service';
 
@@ -10,11 +9,12 @@ export class TurnGuard implements CanActivate {
   async canActivate(context: any): Promise<boolean | any> {
     const client = context.switchToWs().getClient();
     const userId = client.jwtPayload.sub;
-    const { gameId } = parse(client.handshake.headers.cookie);
     try {
-      const game = await this.gameService.getGame(gameId);
-      if (game?.turnOfUserId !== userId) throw new WsException('Wrong turn');
-      client.game = game;
+      if (
+        client.game?.turnOfUserId !== userId &&
+        client.game.status === 'ACTIVE'
+      )
+        throw new WsException('Wrong turn');
       return true;
     } catch (ex) {
       throw new WsException(ex.message);
