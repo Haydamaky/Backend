@@ -95,12 +95,13 @@ model Game {
     turnEnds        String?
     dices           String?
     timeOfTurn      Int        @default(120)
+    passStartBonus  Int        @default(3000)
     players         Player[]   @relation("GamePlayers")
 }
 
 model Player {
     id                String        @id @default(uuid())
-    money             Float         @default(25000)
+    money             Float         @default(20000)
     userId            String
     currentFieldIndex Int           @default(1)
     customFields      Json?
