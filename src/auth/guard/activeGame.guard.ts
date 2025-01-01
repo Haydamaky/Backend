@@ -12,7 +12,7 @@ export class ActiveGameGuard implements CanActivate {
     const { gameId } = parse(client.handshake.headers.cookie);
     try {
       const game = await this.gameService.getGame(gameId);
-      if (game.status === 'ACTIVE')
+      if (game.status !== 'ACTIVE')
         throw new WsException('Game is not active anymore');
       client.game = game;
       return true;
