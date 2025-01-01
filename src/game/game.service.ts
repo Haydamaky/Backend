@@ -421,11 +421,26 @@ export class GameService {
     return { updatedPlayer, field };
   }
 
+  findPlayersWhoDidntLose(game: Partial<GamePayload>) {
+    return game.players.filter((player) => !player.lost);
+  }
+
   async passTurnToNext(game: Partial<GamePayload>) {
     const dices = '';
     this.setAuction(game.id, null);
+    let { turnOfNextUserId } = this.findNextTurnUser(game);
+    game.turnOfUserId = turnOfNextUserId;
+    let playersNotLost = game.players.length;
+    while (playersNotLost !== 1) {
+      if (this.findPlayerByUserId(game).lost) {
+        turnOfNextUserId = this.findNextTurnUser(game).turnOfNextUserId;
+        game.turnOfUserId = turnOfNextUserId;
+      } else {
+        break;
+      }
+      --playersNotLost;
+    }
     const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
-    const { turnOfNextUserId } = this.findNextTurnUser(game);
     const updatedGame = await this.updateById(game.id, {
       turnOfUserId: turnOfNextUserId,
       dices,
@@ -438,10 +453,15 @@ export class GameService {
     const currentPlayer = this.findPlayerByUserId(game);
 
     if (currentPlayer.money < playerNextField.incomeWithoutBranches) {
-      throw new WsException('Not enough money to pay for the field');
+      // We can add pledging of last owned field or smt to not make player lose immidiately
+      const updatedPlayer = await this.playerService.updateById(
+        currentPlayer.id,
+        { lost: true }
+      );
+      return { updatedGame: updatedPlayer.game };
     }
 
-    const payed = await this.playerService.decrementMoneyWithUserAndGameId(
+    await this.playerService.decrementMoneyWithUserAndGameId(
       game.turnOfUserId,
       game.id,
       playerNextField.incomeWithoutBranches
@@ -451,6 +471,11 @@ export class GameService {
       game.id,
       playerNextField.incomeWithoutBranches
     );
-    return { payed, received, updatedGame: received.game };
+    return { updatedGame: received.game };
+  }
+
+  hasWinner(game: Partial<GamePayload>) {
+    const notLosers = this.findPlayersWhoDidntLose(game);
+    return notLosers.length === 1;
   }
 }
