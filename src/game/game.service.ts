@@ -278,11 +278,15 @@ export class GameService {
     dicesArr: number[],
     quantityOfElements: number
   ) {
-    let nextIndex = currentIndex + dicesArr[0] + dicesArr[1];
-    return (nextIndex =
-      nextIndex > quantityOfElements
-        ? nextIndex - quantityOfElements
-        : nextIndex);
+    const potentialNextIndex = currentIndex + dicesArr[0] + dicesArr[1];
+    const resObj =
+      potentialNextIndex > quantityOfElements
+        ? {
+            nextIndex: potentialNextIndex - quantityOfElements,
+            shouldGetMoney: true,
+          }
+        : { nextIndex: potentialNextIndex, shouldGetMoney: false };
+    return resObj;
   }
 
   findPlayerFieldByIndex(fields: FieldsType, indexOfField: number) {
@@ -302,7 +306,7 @@ export class GameService {
     const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
     const currentPlayer = this.findPlayerByUserId(game);
     const dicesArr = this.parseDicesToArr(dices);
-    const nextIndex = this.calculateNextIndex(
+    const { nextIndex, shouldGetMoney } = this.calculateNextIndex(
       currentPlayer.currentFieldIndex,
       dicesArr,
       this.PLAYING_FIELDS_QUANTITY
@@ -311,6 +315,7 @@ export class GameService {
       currentPlayer.id,
       {
         currentFieldIndex: nextIndex,
+        money: { increment: shouldGetMoney ? game.passStartBonus : 0 },
       }
     );
     const updatedGame = await this.updateById(game.id, {
