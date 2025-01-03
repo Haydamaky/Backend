@@ -97,6 +97,7 @@ model Game {
     dices           String?
     timeOfTurn      Int        @default(120)
     passStartBonus  Int        @default(3000)
+    turnsToUnpledge Int        @default(10)
     players         Player[]   @relation("GamePlayers")
 }
 

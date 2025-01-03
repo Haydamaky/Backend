@@ -1,4 +1,5 @@
-import { fields, FieldsType, FieldType } from '../utils/fields';
+import { fields } from 'src/utils/fields';
+import { FieldsType, FieldType } from '../utils/fields';
 import { Injectable, Logger } from '@nestjs/common';
 import { GamePayload, GameRepository } from './game.repository';
 import { PlayerService } from 'src/player/player.service';
@@ -301,6 +302,17 @@ export class GameService {
     players.splice(indexToDelete, 1);
   }
 
+  decrementPledgedFields(fields: FieldsType) {
+    fields.forEach((field) => {
+      if (field.isPledged && field.turnsToUnpledge === 0) {
+        field.isPledged = false;
+        field.ownedBy = '';
+      } else if (field.isPledged) {
+        field.turnsToUnpledge--;
+      }
+    });
+  }
+
   async makeTurn(game: Partial<GamePayload>) {
     const dices = this.onRollDice();
     const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
@@ -311,6 +323,7 @@ export class GameService {
       dicesArr,
       this.PLAYING_FIELDS_QUANTITY
     );
+    this.decrementPledgedFields(fields);
     const updatedPlayer = await this.playerService.updateById(
       currentPlayer.id,
       {

@@ -167,4 +167,16 @@ export class PlayerService {
     fieldToBuyBranch.amountOfBranches++;
     return player;
   }
+
+  async pledgeField(game: Partial<GamePayload>, index: number) {
+    const fieldToPledge = this.findPlayerFieldByIndex(fields, index);
+    const player = await this.incrementMoneyWithUserAndGameId(
+      game.turnOfUserId,
+      game.id,
+      fieldToPledge.branchPrice
+    );
+    fieldToPledge.isPledged = true;
+    fieldToPledge.turnsToUnpledge = game.turnsToUnpledge;
+    return player;
+  }
 }

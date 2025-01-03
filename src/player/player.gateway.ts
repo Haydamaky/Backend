@@ -45,4 +45,17 @@ export class PlayerGateway {
       .to(game.id)
       .emit('playerBoughtBranch', { fields, game: game, player });
   }
+
+  @SubscribeMessage('pledgeField')
+  async pledgeField(
+    @ConnectedSocket()
+    socket: Socket & { game: Partial<GamePayload> },
+    @MessageBody('index') index: number
+  ) {
+    const game = socket.game;
+    const player = await this.playerService.pledgeField(game, index);
+    return this.server
+      .to(game.id)
+      .emit('playerPledgedField', { fields, game: game, player });
+  }
 }
