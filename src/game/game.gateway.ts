@@ -24,6 +24,8 @@ import { TurnGuard } from 'src/auth/guard/turn.guard';
 import { HasLostGuard } from 'src/auth/guard';
 import { ActiveGameGuard } from 'src/auth/guard/activeGame.guard';
 import { PlayerPayload } from 'src/player/player.repository';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 @WebSocketGateway({
   cors: {
@@ -38,7 +40,9 @@ import { PlayerPayload } from 'src/player/player.repository';
 export class GameGateway {
   constructor(
     private gameService: GameService,
-    private playerService: PlayerService
+    private playerService: PlayerService,
+    private jwtService: JwtService,
+    private configService: ConfigService
   ) {
     this.rollDice = this.rollDice.bind(this);
     this.putUpForAuction = this.putUpForAuction.bind(this);
@@ -51,8 +55,10 @@ export class GameGateway {
 
   async handleConnection(socket: Socket & { jwtPayload: JwtPayload }) {
     try {
-      const gameId = this.extractGameIdCookie(socket);
+      const { gameId, userId } = await this.extractCookies(socket);
       if (!gameId) return;
+      if (!userId) return;
+      socket.join(userId);
       const game = await this.gameService.getGame(gameId);
       if (!game || game.status !== 'ACTIVE') return;
       const timers = this.gameService.timers;
@@ -84,15 +90,18 @@ export class GameGateway {
     }
   }
 
-  private extractGameIdCookie(socket: Socket & { jwtPayload: JwtPayload }) {
+  private async extractCookies(socket: Socket & { jwtPayload: JwtPayload }) {
     const cookies = socket.handshake.headers.cookie
       ? parse(socket.handshake.headers.cookie)
       : null;
 
     if (!cookies?.gameId) return null;
 
-    const { gameId } = cookies;
-    return gameId;
+    const { gameId, access_token } = cookies;
+    const decoded = await this.jwtService.verify(access_token, {
+      publicKey: this.configService.get('ACCESS_TOKEN_PUB_KEY'),
+    });
+    return { gameId, userId: decoded.sub };
   }
 
   private rejoinGame(socket: Socket, gameId: string) {

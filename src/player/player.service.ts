@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { CreatePlayerDto } from './dto/create-player.dto';
-import { UpdatePlayerDto } from './dto/update-player.dto';
 import { PlayerPayload, PlayerRepository } from './player.repository';
 import { Prisma } from '@prisma/client';
 import { fields, FieldsType, FieldType } from 'src/utils/fields';
 import { GamePayload } from 'src/game/game.repository';
 import { WsException } from '@nestjs/websockets';
+import { OfferTradeDto } from './dto/offer-trade.dto';
 
 @Injectable()
 export class PlayerService {
@@ -141,10 +141,7 @@ export class PlayerService {
     const userFieldsIndexes = userFields.map((field) => field.index);
     if (!userFieldsIndexes.includes(index))
       throw new WsException('You dont have this field');
-
     const fieldToBuyBranch = this.findPlayerFieldByIndex(fields, index);
-    if (!fieldToBuyBranch.price)
-      throw new WsException('This field is not buyable');
     if (fieldToBuyBranch.amountOfBranches >= 5)
       throw new WsException('This field has max amount of branches');
     const groupFields = fields.filter(
@@ -190,5 +187,42 @@ export class PlayerService {
       fieldToPayRedemption.redemptionPrice
     );
     return player;
+  }
+
+  async validateTradeData(game: Partial<GamePayload>, data: OfferTradeDto) {
+    if (
+      data.offerFieldsIndexes.length === 0 &&
+      data.wantedFieldsIndexes.length === 0 &&
+      !data.offeredMoney &&
+      !data.wantedMoney
+    ) {
+      throw new WsException('You must offer something');
+    }
+    if (data.offerFieldsIndexes.length > 0) {
+      const userFields = fields.filter(
+        (field) => field.ownedBy === game.turnOfUserId
+      );
+      const userFieldsIndexes = userFields.map((field) => field.index);
+      const hasAllOfferFields = data.offerFieldsIndexes.every((index) =>
+        userFieldsIndexes.includes(index)
+      );
+      if (!hasAllOfferFields) {
+        throw new WsException('You dont have all offer fields');
+      }
+    }
+    if (data.wantedFieldsIndexes.length > 0) {
+      const otherUserFields = fields.filter(
+        (field) => field.ownedBy !== data.toUserId
+      );
+      const otherUserFieldsIndexes = otherUserFields.map(
+        (field) => field.index
+      );
+      const hasAllWantedFields = data.wantedFieldsIndexes.every((index) =>
+        otherUserFieldsIndexes.includes(index)
+      );
+      if (!hasAllWantedFields) {
+        throw new WsException('Other player doesnt have all wanted fields');
+      }
+    }
   }
 }
