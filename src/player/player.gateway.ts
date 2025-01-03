@@ -59,18 +59,15 @@ export class PlayerGateway {
       .emit('playerPledgedField', { fields, game: player.game });
   }
 
-  @SubscribeMessage('payForRedemptionForField')
-  async payForRedemptionForField(
+  @SubscribeMessage('payRedemptionForField')
+  async payRedemptionForField(
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload> },
     @MessageBody('index') index: number
   ) {
     const game = socket.game;
-    const player = await this.playerService.payForRedemptionForField(
-      game,
-      index
-    );
-    return this.server.to(game.id).emit('payedForRedemptionForField', {
+    const player = await this.playerService.payRedemptionForField(game, index);
+    return this.server.to(game.id).emit('payedRedemptionForField', {
       fields,
       game: player.game,
     });

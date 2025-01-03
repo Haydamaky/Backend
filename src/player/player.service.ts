@@ -180,7 +180,7 @@ export class PlayerService {
     return player;
   }
 
-  async payForRedemptionForField(game: Partial<GamePayload>, index: number) {
+  async payRedemptionForField(game: Partial<GamePayload>, index: number) {
     const fieldToPayRedemption = this.findPlayerFieldByIndex(fields, index);
     fieldToPayRedemption.isPledged = false;
     fieldToPayRedemption.turnsToUnpledge = null;
