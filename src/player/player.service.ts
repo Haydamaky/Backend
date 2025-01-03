@@ -6,10 +6,12 @@ import { fields, FieldsType, FieldType } from 'src/utils/fields';
 import { GamePayload } from 'src/game/game.repository';
 import { WsException } from '@nestjs/websockets';
 import { OfferTradeDto } from './dto/offer-trade.dto';
+import { Trade } from 'src/game/types/trade.type';
 
 @Injectable()
 export class PlayerService {
   constructor(private playerRepository: PlayerRepository) {}
+  trades: Map<string, Trade> = new Map();
   readonly COLORS = ['blue', 'yellow', 'red', 'green', 'pink'];
   create(createPlayerDto: CreatePlayerDto) {
     return this.playerRepository.create({
@@ -224,5 +226,53 @@ export class PlayerService {
         throw new WsException('Other player doesnt have all wanted fields');
       }
     }
+  }
+  setTrade(gameId: string, trade: Trade) {
+    this.trades.set(gameId, trade);
+  }
+  getTrade(gameId: string) {
+    return this.trades.get(gameId);
+  }
+  async acceptTrade(game: Partial<GamePayload>, trade: Trade) {
+    if (!trade) throw new WsException('There is no trade to accept');
+    if (trade.offerFieldsIndexes.length > 0) {
+      trade.offerFieldsIndexes.forEach((index) => {
+        const field = this.findPlayerFieldByIndex(fields, index);
+        field.ownedBy = trade.toUserId;
+      });
+    }
+    if (trade.wantedFieldsIndexes.length > 0) {
+      trade.wantedFieldsIndexes.forEach((index) => {
+        const field = this.findPlayerFieldByIndex(fields, index);
+        field.ownedBy = trade.fromUserId;
+      });
+    }
+    let player = null;
+    if (trade.offeredMoney) {
+      this.decrementMoneyWithUserAndGameId(
+        trade.fromUserId,
+        game.id,
+        trade.offeredMoney
+      );
+      player = await this.incrementMoneyWithUserAndGameId(
+        trade.toUserId,
+        game.id,
+        trade.offeredMoney
+      );
+    }
+    if (trade.wantedMoney) {
+      this.decrementMoneyWithUserAndGameId(
+        trade.toUserId,
+        game.id,
+        trade.wantedMoney
+      );
+      player = await this.incrementMoneyWithUserAndGameId(
+        trade.fromUserId,
+        game.id,
+        trade.wantedMoney
+      );
+    }
+    this.setTrade(game.id, null);
+    return { fields, updatedGame: player?.game ? player.game : null };
   }
 }

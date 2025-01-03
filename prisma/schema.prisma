@@ -102,29 +102,19 @@ model Game {
 }
 
 model Player {
-    id                String        @id @default(uuid())
-    money             Float         @default(20000)
+    id                String   @id @default(uuid())
+    money             Float    @default(20000)
     userId            String
-    currentFieldIndex Int           @default(1)
+    currentFieldIndex Int      @default(1)
     customFields      Json?
     color             String
-    user              User          @relation(name: "UserPlayers", fields: [userId], references: [id])
+    user              User     @relation(name: "UserPlayers", fields: [userId], references: [id])
     gameId            String
-    game              Game          @relation(name: "GamePlayers", fields: [gameId], references: [id])
-    transactions      Transaction[]
-    createdAt         DateTime      @default(now())
-    lost              Boolean       @default(false)
+    game              Game     @relation(name: "GamePlayers", fields: [gameId], references: [id])
+    createdAt         DateTime @default(now())
+    lost              Boolean  @default(false)
 
     @@unique([userId, gameId])
-}
-
-model Transaction {
-    id        String   @id @default(uuid())
-    amount    Float
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-    playerId  String
-    player    Player   @relation(fields: [playerId], references: [id])
 }
 
 enum ROLE {
