@@ -179,4 +179,16 @@ export class PlayerService {
     fieldToPledge.turnsToUnpledge = game.turnsToUnpledge;
     return player;
   }
+
+  async payForRedemptionForField(game: Partial<GamePayload>, index: number) {
+    const fieldToPayRedemption = this.findPlayerFieldByIndex(fields, index);
+    fieldToPayRedemption.isPledged = false;
+    fieldToPayRedemption.turnsToUnpledge = null;
+    const player = await this.decrementMoneyWithUserAndGameId(
+      game.turnOfUserId,
+      game.id,
+      fieldToPayRedemption.redemptionPrice
+    );
+    return player;
+  }
 }

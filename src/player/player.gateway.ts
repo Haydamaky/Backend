@@ -43,7 +43,7 @@ export class PlayerGateway {
     const player = await this.playerService.buyBranch(game, fieldToBuyBranch);
     return this.server
       .to(game.id)
-      .emit('playerBoughtBranch', { fields, game: game, player });
+      .emit('playerBoughtBranch', { fields, game: player.game });
   }
 
   @SubscribeMessage('pledgeField')
@@ -56,6 +56,23 @@ export class PlayerGateway {
     const player = await this.playerService.pledgeField(game, index);
     return this.server
       .to(game.id)
-      .emit('playerPledgedField', { fields, game: game, player });
+      .emit('playerPledgedField', { fields, game: player.game });
+  }
+
+  @SubscribeMessage('payForRedemptionForField')
+  async payForRedemptionForField(
+    @ConnectedSocket()
+    socket: Socket & { game: Partial<GamePayload> },
+    @MessageBody('index') index: number
+  ) {
+    const game = socket.game;
+    const player = await this.playerService.payForRedemptionForField(
+      game,
+      index
+    );
+    return this.server.to(game.id).emit('payedForRedemptionForField', {
+      fields,
+      game: player.game,
+    });
   }
 }
