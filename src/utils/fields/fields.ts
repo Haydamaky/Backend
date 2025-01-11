@@ -1,6 +1,7 @@
 export const fields = [
   {
     id: '71105764-bfec-4dcc-8002-b7788df3f8a8',
+    positionForGrid: 0,
     index: 1,
     name: 'Старт',
     specialField: true,
@@ -14,6 +15,7 @@ export const fields = [
 
   {
     id: 'ea672200-5a74-4a4a-b91b-1cbf4bf56ba5',
+    positionForGrid: 1,
     index: 2,
     name: 'Укр Пошта',
     price: 1000,
@@ -35,6 +37,7 @@ export const fields = [
   },
   {
     id: '02364a2b-534a-47be-96ea-4bca7a7cd1e0',
+    positionForGrid: 2,
     index: 3,
     name: 'Невідомість',
     specialField: true,
@@ -46,6 +49,7 @@ export const fields = [
   },
   {
     id: '36831dc5-0da8-42km-bal1-d9e6802143a82',
+    positionForGrid: 3,
     index: 4,
     name: 'Meest',
     price: 1200,
@@ -67,6 +71,7 @@ export const fields = [
   },
   {
     id: '36831dc5-0da8-42db-bab1-d9e680252a82',
+    positionForGrid: 4,
     index: 5,
     name: 'Нова Пошта',
     price: 1400,
@@ -88,6 +93,7 @@ export const fields = [
   },
   {
     id: '3fe35a3b-ec46-4bd3-bf4f-efb4c520ba0b',
+    positionForGrid: 5,
     index: 6,
     name: 'Попав на бабкі',
     specialField: true,
@@ -99,6 +105,7 @@ export const fields = [
   },
   {
     id: '0416ab25-2d5a-4472-98a5-c36d1970cbf2',
+    positionForGrid: 6,
     index: 7,
     name: 'Батьківщина',
     price: 1800,
@@ -120,6 +127,7 @@ export const fields = [
   },
   {
     id: '25c564ea-f3be-486b-9a07-6fe5f311cc8c',
+    positionForGrid: 7,
     index: 8,
     name: 'Європейська солідарність',
     price: 2000,
@@ -141,6 +149,7 @@ export const fields = [
   },
   {
     id: 'dc168dcd-bb1d-41a8-a268-ecb7e54af146',
+    positionForGrid: 8,
     index: 9,
     name: 'Невідомість',
     specialField: true,
@@ -152,6 +161,7 @@ export const fields = [
   },
   {
     id: '100fe748-cfa4-4f48-b698-64a228ff9740',
+    positionForGrid: 9,
     index: 10,
     name: 'Слуга Народу',
     price: 2200,
@@ -174,6 +184,7 @@ export const fields = [
 
   {
     id: 'd1f5ddd8-fff1-4b8e-a4f1-bc0ce3ccaf75',
+    positionForGrid: 10,
     index: 11,
     name: 'Білоцерківський Строгач',
     specialField: true,
@@ -186,6 +197,7 @@ export const fields = [
   },
   {
     id: '79f3e33b-b8d0-4089-b00b-b5c19cc9a689',
+    positionForGrid: 12,
     index: 40,
     name: 'Epam',
     price: 8000,
@@ -207,6 +219,7 @@ export const fields = [
   },
   {
     id: '1c0588dd-5c64-4046-b751-791683ead722',
+    positionForGrid: 13,
     index: 12,
     name: 'Allo',
     price: 2400,
@@ -228,6 +241,7 @@ export const fields = [
   },
   {
     id: '14be6f6f-b078-4ecb-bb5f-4b3039d9bb7a',
+    positionForGrid: 14,
     index: 39,
     name: 'Невідомість',
     specialField: true,
@@ -239,6 +253,7 @@ export const fields = [
   },
   {
     id: '43b48e4c-925e-4115-8752-fafc1d311176',
+    positionForGrid: 15,
     index: 13,
     name: 'Comfy',
     price: 2600,
@@ -260,6 +275,7 @@ export const fields = [
   },
   {
     id: '4f85e7e7-d81b-4f55-9a92-c5e99e8a6516',
+    positionForGrid: 16,
     index: 38,
     name: 'SoftServe',
     price: 7250,
@@ -281,6 +297,7 @@ export const fields = [
   },
   {
     id: '43b48e4c-925e-4115-8752-fafc1d322276',
+    positionForGrid: 17,
     index: 14,
     name: 'Рудь',
     price: 1800,
@@ -302,6 +319,7 @@ export const fields = [
   },
   {
     id: '4f85e7e7-d81b-4f55-9a92-c5e99e8a6867',
+    positionForGrid: 18,
     index: 37,
     name: 'Global Logic',
     price: 7000,
@@ -323,6 +341,7 @@ export const fields = [
   },
   {
     id: '51599c68-20af-44c7-8c9f-d9656c11d6e9',
+    positionForGrid: 19,
     index: 15,
     name: 'Цитрус',
     price: 2800,
@@ -344,6 +363,7 @@ export const fields = [
   },
   {
     id: '5cf8e0b8-8f70-46b0-93c9-84e2eacfa432',
+    positionForGrid: 20,
     index: 36,
     name: 'Попав на бабкі',
     specialField: true,
@@ -356,6 +376,7 @@ export const fields = [
 
   {
     id: '43b48e4c-925e-4115-8752-fafc1d333376',
+    positionForGrid: 21,
     index: 16,
     name: 'Olkom',
     price: 2000,
@@ -377,6 +398,7 @@ export const fields = [
   },
   {
     id: '4d298902-592f-4216-91cf-d85b08b7e144',
+    positionForGrid: 22,
     index: 35,
     name: 'Respublica',
     price: 6500,
@@ -398,6 +420,7 @@ export const fields = [
   },
   {
     id: '8d2c07d4-2742-45ad-8ac5-3e1b451ad283',
+    positionForGrid: 23,
     index: 17,
     name: 'ICTV',
     price: 3200,
@@ -419,6 +442,7 @@ export const fields = [
   },
   {
     id: 'b3c5f7c4-b54c-4d32-9d56-fef42d587a87',
+    positionForGrid: 24,
     index: 34,
     name: 'Ocean Plaza',
     price: 6200,
@@ -440,6 +464,7 @@ export const fields = [
   },
   {
     id: 'd2d5d875-b8fd-4842-a220-b0726f5f1e0c',
+    positionForGrid: 25,
     index: 18,
     name: '1+1',
     price: 3400,
@@ -461,6 +486,7 @@ export const fields = [
   },
   {
     id: '71c6f94f-2f7f-4787-91e5-9777db201fa1',
+    positionForGrid: 26,
     index: 33,
     name: 'Невідомість',
     specialField: true,
@@ -472,6 +498,7 @@ export const fields = [
   },
   {
     id: '4b8d0a24-d5f8-49e6-ad89-23a99af2c61d',
+    positionForGrid: 27,
     index: 19,
     name: 'Невідомість',
     specialField: true,
@@ -483,6 +510,7 @@ export const fields = [
   },
   {
     id: '0e786507-fdf1-41d9-ae46-5f78d2b48e1b',
+    positionForGrid: 28,
     index: 32,
     name: 'Lavina Mall',
     price: 6000,
@@ -504,6 +532,7 @@ export const fields = [
   },
   {
     id: '5d39a649-c945-47f7-b6be-88ea64e7ad58',
+    positionForGrid: 29,
     index: 20,
     name: 'QTV',
     price: 3600,
@@ -525,6 +554,7 @@ export const fields = [
   },
   {
     id: 'eed3f4c0-85d7-4299-a7be-bf935e3e8a7d',
+    positionForGrid: 29,
     index: 31,
     name: 'Поліція',
     large: true,
@@ -537,6 +567,7 @@ export const fields = [
   },
   {
     id: '14e47b6a-d8e4-4b47-bc7d-204a0b22d460',
+    positionForGrid: 30,
     index: 30,
     name: 'Ninja Sushi',
     price: 5800,
@@ -559,6 +590,7 @@ export const fields = [
 
   {
     id: '3be2d2a1-3975-4c51-b823-dac4e2a68fdb',
+    positionForGrid: 31,
     index: 29,
     name: 'Львівські круасани',
     price: 5400,
@@ -581,6 +613,7 @@ export const fields = [
 
   {
     id: 'ff62432d-c644-44f7-b01f-d2e9f7k057ed',
+    positionForGrid: 32,
     index: 28,
     name: '4A Games',
     price: 5200,
@@ -603,6 +636,7 @@ export const fields = [
 
   {
     id: '9934f60d-c8c2-4010-a6ca-7eaa561254be',
+    positionForGrid: 33,
     index: 27,
     name: 'Пузата хата',
     price: 4800,
@@ -625,6 +659,7 @@ export const fields = [
 
   {
     id: 'ff62432d-c644-44f7-b01f-d2e5f6m057ed',
+    positionForGrid: 34,
     index: 26,
     name: 'GSC Game World',
     price: 5000,
@@ -647,6 +682,7 @@ export const fields = [
 
   {
     id: 'ff62432d-c634-42f7-b01f-d2e5f6c057ed',
+    positionForGrid: 35,
     index: 25,
     name: 'Динамо',
     price: 4400,
@@ -669,6 +705,7 @@ export const fields = [
 
   {
     id: 'c5f56a9f-d5c9-44f9-9e9a-c56d61e042b8',
+    positionForGrid: 36,
     index: 24,
     name: 'Невідомість',
     specialField: true,
@@ -681,6 +718,7 @@ export const fields = [
 
   {
     id: '8e6dbd6d-7419-4fbe-bcba-dbf282f557ba',
+    positionForGrid: 37,
     index: 23,
     name: 'Шахтар',
     price: 4200,
@@ -703,6 +741,7 @@ export const fields = [
 
   {
     id: 'd276b4c5-88c7-4171-9007-4d5de3ad2e52',
+    positionForGrid: 38,
     index: 22,
     name: 'Полісся',
     price: 4000,
@@ -725,6 +764,7 @@ export const fields = [
 
   {
     id: 'a9a8c839-4a8b-44ad-9bdb-e1c7b66e9f70',
+    positionForGrid: 39,
     index: 21,
     name: 'Пан або пропав',
     large: true,
