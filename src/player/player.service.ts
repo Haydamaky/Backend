@@ -320,9 +320,8 @@ export class PlayerService {
         },
       },
     });
-    const usersFields = fields.filter((field) => field.ownedBy === userId);
-    usersFields.forEach((field) => {
-      field.ownedBy = null;
+    fields.forEach((field) => {
+      if (field.ownedBy === updatedPlayer.userId) field.ownedBy = null;
     });
     return { updatedPlayer, fields };
   }

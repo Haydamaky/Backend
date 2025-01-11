@@ -480,7 +480,10 @@ export class GameService {
         currentPlayer.id,
         { lost: true }
       );
-      return { updatedGame: updatedPlayer.game };
+      fields.forEach((field) => {
+        if (field.ownedBy === updatedPlayer.userId) field.ownedBy = null;
+      });
+      return { updatedGame: updatedPlayer.game, fields };
     }
 
     await this.playerService.decrementMoneyWithUserAndGameId(

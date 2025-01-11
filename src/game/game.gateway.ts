@@ -276,10 +276,12 @@ export class GameGateway {
     game: Partial<GamePayload>;
     field: FieldType;
   }) {
-    const { updatedGame } = await this.gameService.payForField(game, field);
-    this.server
-      .to(game.id)
-      .emit('payedForField', { players: updatedGame.players });
+    const { updatedGame, fields: updatedFields } =
+      await this.gameService.payForField(game, field);
+    this.server.to(game.id).emit('payedForField', {
+      game: updatedGame,
+      fields: updatedFields,
+    });
     this.passTurnToNext(updatedGame);
   }
 
