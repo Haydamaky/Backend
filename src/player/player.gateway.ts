@@ -122,4 +122,17 @@ export class PlayerGateway {
     }
     this.server.to(game.id).emit('tradeAccepted', data);
   }
+
+  @SubscribeMessage('surrender')
+  async surrender(
+    @ConnectedSocket()
+    socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload }
+  ) {
+    const userId = socket.jwtPayload.sub;
+    const gameId = socket.game.id;
+    const updatedPlayer = await this.playerService.surrender(userId, gameId);
+    this.server
+      .to(gameId)
+      .emit('playerSurrendered', { game: updatedPlayer.game });
+  }
 }

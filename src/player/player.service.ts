@@ -12,7 +12,7 @@ import { Trade } from 'src/game/types/trade.type';
 export class PlayerService {
   constructor(private playerRepository: PlayerRepository) {}
   trades: Map<string, Trade> = new Map();
-  readonly COLORS = ['blue', 'yellow', 'red', 'green', 'pink'];
+  readonly COLORS = ['blue', 'yellow', 'green', 'purple', 'red'];
   create(createPlayerDto: CreatePlayerDto) {
     return this.playerRepository.create({
       data: {
@@ -274,5 +274,27 @@ export class PlayerService {
     }
     this.setTrade(game.id, null);
     return { fields, updatedGame: player?.game ? player.game : null };
+  }
+
+  surrender(userId: string, gameId: string) {
+    const updatedPlayer = this.update({
+      where: {
+        userId_gameId: {
+          userId: userId,
+          gameId: gameId,
+        },
+      },
+      data: {
+        lost: true,
+      },
+      include: {
+        game: {
+          include: {
+            players: { include: { user: { select: { nickname: true } } } },
+          },
+        },
+      },
+    });
+    return updatedPlayer;
   }
 }
