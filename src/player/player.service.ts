@@ -296,8 +296,8 @@ export class PlayerService {
     return { fields, updatedGame: player?.game ? player.game : null };
   }
 
-  surrender(userId: string, gameId: string) {
-    const updatedPlayer = this.update({
+  async surrender(userId: string, gameId: string) {
+    const updatedPlayer = await this.update({
       where: {
         userId_gameId: {
           userId: userId,
@@ -320,6 +320,10 @@ export class PlayerService {
         },
       },
     });
-    return updatedPlayer;
+    const usersFields = fields.filter((field) => field.ownedBy === userId);
+    usersFields.forEach((field) => {
+      field.ownedBy = null;
+    });
+    return { updatedPlayer, fields };
   }
 }

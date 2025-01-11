@@ -131,9 +131,12 @@ export class PlayerGateway {
   ) {
     const userId = socket.jwtPayload.sub;
     const gameId = socket.game.id;
-    const updatedPlayer = await this.playerService.surrender(userId, gameId);
+    const { updatedPlayer, fields } = await this.playerService.surrender(
+      userId,
+      gameId
+    );
     this.server
       .to(gameId)
-      .emit('playerSurrendered', { game: updatedPlayer.game });
+      .emit('playerSurrendered', { game: updatedPlayer.game, fields });
   }
 }
