@@ -23,7 +23,12 @@ export class PlayerService {
       include: {
         game: {
           include: {
-            players: { include: { user: { select: { nickname: true } } } },
+            players: {
+              include: { user: { select: { nickname: true } } },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
           },
         },
       },
@@ -47,7 +52,12 @@ export class PlayerService {
       include: {
         game: {
           include: {
-            players: { include: { user: { select: { nickname: true } } } },
+            players: {
+              include: { user: { select: { nickname: true } } },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
           },
         },
       },
@@ -78,7 +88,12 @@ export class PlayerService {
       include: {
         game: {
           include: {
-            players: { include: { user: { select: { nickname: true } } } },
+            players: {
+              include: { user: { select: { nickname: true } } },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
           },
         },
       },
@@ -105,7 +120,12 @@ export class PlayerService {
       include: {
         game: {
           include: {
-            players: { include: { user: { select: { nickname: true } } } },
+            players: {
+              include: { user: { select: { nickname: true } } },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
           },
         },
       },
@@ -290,7 +310,12 @@ export class PlayerService {
       include: {
         game: {
           include: {
-            players: { include: { user: { select: { nickname: true } } } },
+            players: {
+              include: { user: { select: { nickname: true } } },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
           },
         },
       },

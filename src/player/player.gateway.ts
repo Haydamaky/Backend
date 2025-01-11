@@ -1,23 +1,24 @@
+import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
 import {
-  WebSocketGateway,
-  SubscribeMessage,
-  MessageBody,
-  WebSocketServer,
   ConnectedSocket,
+  MessageBody,
+  SubscribeMessage,
+  WebSocketGateway,
+  WebSocketServer,
   WsException,
 } from '@nestjs/websockets';
-import { PlayerService } from './player.service';
-import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
-import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 import { Server, Socket } from 'socket.io';
+import { HasLostGuard } from 'src/auth/guard';
+import { ActiveGameGuard } from 'src/auth/guard/activeGame.guard';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
+import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 import { GamePayload } from 'src/game/game.repository';
+import { Trade } from 'src/game/types/trade.type';
+import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
+import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
 import { fields } from 'src/utils/fields';
 import { OfferTradeDto } from './dto/offer-trade.dto';
-import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
-import { Trade } from 'src/game/types/trade.type';
-import { from } from 'rxjs';
+import { PlayerService } from './player.service';
 
 @WebSocketGateway({
   cors: {
@@ -28,7 +29,7 @@ import { from } from 'rxjs';
 })
 @UseFilters(WebsocketExceptionsFilter)
 @UsePipes(new WsValidationPipe())
-@UseGuards(WsGuard)
+@UseGuards(WsGuard, ActiveGameGuard, HasLostGuard)
 export class PlayerGateway {
   constructor(private readonly playerService: PlayerService) {}
   @WebSocketServer() server: Server;
