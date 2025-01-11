@@ -144,6 +144,7 @@ export class GameGateway {
         this.server.to(game.id).emit('startGame', {
           gameId: game.id,
           turnOfUserId: game.turnOfUserId,
+          chatId: game.chat.id,
         });
         this.gameService.setTimer(
           game.id,

@@ -147,6 +147,11 @@ export class GameService {
               createdAt: 'asc',
             },
           },
+          chat: {
+            select: {
+              id: true,
+            },
+          },
         },
       });
       return { game: startedGame, shouldStart: true };
@@ -274,6 +279,11 @@ export class GameService {
             createdAt: 'asc',
           },
         },
+        chat: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
   }
@@ -338,8 +348,13 @@ export class GameService {
     this.deletePlayer(playerField.players, currentPlayer.id);
     const playerNextField = this.findPlayerFieldByIndex(fields, nextIndex);
     playerNextField.players.push(updatedPlayer);
+
     return {
-      updatedGame,
+      updatedGame: {
+        ...updatedGame,
+        chatId: updatedGame.chat.id,
+        chat: undefined,
+      },
       fields,
       nextIndex,
       playerNextField,

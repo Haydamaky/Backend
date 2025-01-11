@@ -11,7 +11,7 @@ import { Socket } from 'socket.io';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 import { WebsocketExceptionsFilter } from '../utils/exceptions/websocket-exceptions.filter';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
-import { NewMessagePayloadDto } from './dto';
+import { NewGameMessageDto, NewMessagePayloadDto } from './dto';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 
 @WebSocketGateway({
@@ -47,6 +47,19 @@ export class ChatGateway implements OnModuleInit {
     );
 
     this.server.emit('onMessage', message);
+  }
+
+  @SubscribeMessage('newGameMessage')
+  async onNewGameMessage(
+    socket: Socket & { jwtPayload: JwtPayload },
+    data: NewGameMessageDto
+  ) {
+    const message = await this.chatService.onNewMessage(
+      socket.jwtPayload.sub,
+      data
+    );
+    if (Array.from(socket.rooms).includes(data.gameId))
+      this.server.to(data.chatId).emit('gameChatMessage', message);
   }
 
   @SubscribeMessage('chatData')
