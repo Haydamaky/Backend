@@ -55,7 +55,9 @@ export class GameGateway {
 
   async handleConnection(socket: Socket & { jwtPayload: JwtPayload }) {
     try {
-      const { gameId, userId } = await this.extractCookies(socket);
+      const cookies = await this.extractCookies(socket);
+      if (!cookies) return;
+      const { gameId, userId } = cookies;
       if (!gameId) return;
       if (!userId) return;
       socket.join(userId);

@@ -424,6 +424,7 @@ export class GameService {
     if (
       !field.price ||
       field.price > player.money ||
+      field.ownedBy === player.userId ||
       this.getAuction(game.id)
     ) {
       throw new WsException('You cant buy this field');
