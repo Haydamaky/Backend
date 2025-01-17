@@ -81,7 +81,7 @@ export class GameGateway {
         timerCallback = this.rollDice;
       }
 
-      await this.gameService.setTimer(
+      this.gameService.setTimer(
         gameId,
         updatedGame.timeOfTurn,
         updatedGame,
@@ -330,19 +330,23 @@ export class GameGateway {
     @MessageBody('raiseBy') raiseBy: number
   ) {
     const userId = socket.jwtPayload.sub;
-    const { auctionUpdated, turnEnds } = await this.gameService.raisePrice(
-      gameId,
-      userId,
-      raiseBy
-    );
-    this.server.to(gameId).emit('raisedPrice', { turnEnds, auctionUpdated });
-    if (this.gameService.getAuction(gameId)) {
-      this.gameService.setTimer(
+    try {
+      const { turnEnds, auctionUpdated } = await this.gameService.raisePrice(
         gameId,
-        3000,
-        { ...auctionUpdated, gameId },
-        this.winAuction
+        userId,
+        raiseBy
       );
+      this.server.to(gameId).emit('raisedPrice', { turnEnds, auctionUpdated });
+      if (this.gameService.getAuction(gameId)) {
+        this.gameService.setTimer(
+          gameId,
+          3000,
+          { ...auctionUpdated, gameId },
+          this.winAuction
+        );
+      }
+    } catch (err) {
+      throw new WsException('Hui');
     }
   }
 

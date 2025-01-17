@@ -7,6 +7,7 @@ import { Player, Prisma } from '@prisma/client';
 import { Auction } from './types/auction.type';
 import { WsException } from '@nestjs/websockets';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
+import { PromisesToWinBid } from './types/promisesToWinBid';
 
 @Injectable()
 export class GameService {
@@ -21,6 +22,7 @@ export class GameService {
   private readonly logger = new Logger(GameService.name);
   timers: Map<string, NodeJS.Timeout> = new Map();
   auctions: Map<string, Auction> = new Map();
+  promisesToWinBid: Map<string, PromisesToWinBid[]> = new Map();
 
   async getVisibleGames() {
     return this.gameRepository.findMany({
@@ -178,19 +180,21 @@ export class GameService {
     return `${firstDice}:${secondDice}`;
   }
 
-  setTimer(
+  setTimer<T, R>(
     id: string,
     time: number,
-    args: unknown,
-    callback: (args: unknown) => Promise<void>
-  ) {
+    args: T,
+    callback: (args: T) => Promise<R>,
+    promiseFns?: Record<string, any>
+  ): Promise<R> {
     this.clearTimer(id);
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<R>((resolve, reject) => {
+      if (promiseFns) promiseFns.reject = reject;
       const timer = setTimeout(async () => {
         try {
-          await callback(args);
-          resolve();
-        } catch (err) {
+          const res: R = await callback(args);
+          resolve(res);
+        } catch (err: any) {
           console.log(err.message);
           reject(err);
         }
@@ -366,10 +370,10 @@ export class GameService {
     const field = this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
     if (!field.price)
       throw new WsException('You cant put this field to auction');
+    const bidder = { bid: field.price, userId: '' };
     this.setAuction(game.id, {
       fieldIndex: field.index,
-      bid: field.price,
-      userId: '',
+      bidders: [bidder],
     });
   }
 
@@ -383,10 +387,12 @@ export class GameService {
 
   setBuyerOnAuction(gameId: string, userId: string, raiseBy: number) {
     const auction = this.getAuction(gameId);
-    auction.userId = userId;
+    const indexOfLast = auction.bidders.length - 1;
+    let bid = auction.bidders[indexOfLast].bid;
     if (raiseBy !== 0) {
-      auction.bid += raiseBy;
+      bid += raiseBy;
     }
+    auction.bidders[auction.bidders.length] = { userId, bid };
     this.setAuction(gameId, auction);
     return auction;
   }
@@ -398,21 +404,95 @@ export class GameService {
     if (!auction) throw new WsException('Auction wasn’t started');
     if (raiseBy < this.MIN_RAISE)
       throw new WsException('Raise is not big enough');
-    if (player.money < auction.bid) throw new WsException('Not enough money');
+    if (player.money < auction.bidders[auction.bidders.length - 1].bid)
+      throw new WsException('Not enough money');
     this.clearTimer(gameId);
-    const auctionUpdated = this.setBuyerOnAuction(gameId, userId, raiseBy);
+    const promisesToWin = this.promisesToWinBid.get(gameId);
+    if (promisesToWin.length >= player.game.players.length)
+      throw new WsException('Wait for your bid to process');
+    const allPromisesLess = promisesToWin.every((promiseObj) => {
+      promiseObj.raiseBy < raiseBy;
+    });
+    if (allPromisesLess) {
+      const promiseFns = { reject: null };
+      const promiseToWinBid = this.setTimer(
+        `${gameId}:${userId}`,
+        2000,
+        { gameId, userId, raiseBy },
+        this.hightestInQueue,
+        promiseFns
+      );
+      promisesToWin.forEach((promise) => {
+        const wsException = new WsException(
+          'there was a player with higher bid'
+        );
+        promise.reject(wsException);
+        this.clearTimer(`${gameId}:${promise.userId}`);
+      });
+      this.promisesToWinBid.set(gameId, [
+        {
+          promise: promiseToWinBid,
+          reject: promiseFns.reject,
+          userId,
+          raiseBy,
+        },
+      ]);
+      return promiseToWinBid;
+    } else {
+      const promiseFns = { reject: null };
+      const promiseToWinBid = this.setTimer(
+        `${gameId}:${userId}`,
+        2000,
+        { gameId, userId, raiseBy },
+        this.hightestInQueue,
+        promiseFns
+      );
+      this.promisesToWinBid.set(gameId, [
+        ...promisesToWin,
+        {
+          promise: promiseToWinBid,
+          reject: promiseFns.reject,
+          userId,
+          raiseBy,
+        },
+      ]);
+      return promiseToWinBid;
+    }
+  }
+
+  async hightestInQueue(args: {
+    gameId: string;
+    userId: string;
+    raiseBy: number;
+  }) {
+    const promisesToWin = this.promisesToWinBid.get(args.gameId);
+    if (promisesToWin.length) {
+      promisesToWin.forEach((promise) => {
+        const wsException = new WsException(
+          'there was a player with higher bid'
+        );
+        promise.reject(wsException);
+        this.clearTimer(`${args.gameId}:${promise.userId}`);
+      });
+    }
+    const auctionUpdated = this.setBuyerOnAuction(
+      args.gameId,
+      args.userId,
+      args.raiseBy
+    );
     const turnEnds = this.calculateEndOfTurn(5000);
     return { turnEnds, auctionUpdated };
   }
 
   async winAuction(auction: Auction & { gameId: string }) {
     const field = this.findPlayerFieldByIndex(fields, auction.fieldIndex);
-    field.ownedBy = auction.userId;
+    const lastBid = auction.bidders[auction.bidders.length - 1];
+    field.ownedBy = lastBid.userId;
     const updatedPlayer =
       await this.playerService.decrementMoneyWithUserAndGameId(
-        auction.userId,
+        lastBid.userId,
         auction.gameId,
-        auction.bid
+        lastBid.bid
       );
     this.setAuction(auction.gameId, null);
     return updatedPlayer;
