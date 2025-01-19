@@ -24,6 +24,8 @@ import { TurnGuard } from 'src/auth/guard/turn.guard';
 import { HasLostGuard } from 'src/auth/guard';
 import { ActiveGameGuard } from 'src/auth/guard/activeGame.guard';
 import { PlayerPayload } from 'src/player/player.repository';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 @WebSocketGateway({
   cors: {
@@ -38,7 +40,9 @@ import { PlayerPayload } from 'src/player/player.repository';
 export class GameGateway {
   constructor(
     private gameService: GameService,
-    private playerService: PlayerService
+    private playerService: PlayerService,
+    private jwtService: JwtService,
+    private configService: ConfigService
   ) {
     this.rollDice = this.rollDice.bind(this);
     this.putUpForAuction = this.putUpForAuction.bind(this);
@@ -51,12 +55,14 @@ export class GameGateway {
 
   async handleConnection(socket: Socket & { jwtPayload: JwtPayload }) {
     try {
-      const gameId = this.extractGameIdCookie(socket);
+      const cookies = await this.extractCookies(socket);
+      if (!cookies) return;
+      const { gameId, userId } = cookies;
       if (!gameId) return;
+      if (!userId) return;
+      socket.join(userId);
       const game = await this.gameService.getGame(gameId);
       if (!game || game.status !== 'ACTIVE') return;
-      const notLosers = this.gameService.findPlayersWhoDidntLose(game);
-      if (notLosers.length === 1) return;
       const timers = this.gameService.timers;
       if (timers.has(gameId)) {
         this.rejoinGame(socket, gameId);
@@ -75,7 +81,7 @@ export class GameGateway {
         timerCallback = this.rollDice;
       }
 
-      await this.gameService.setTimer(
+      this.gameService.setTimer(
         gameId,
         updatedGame.timeOfTurn,
         updatedGame,
@@ -86,15 +92,18 @@ export class GameGateway {
     }
   }
 
-  private extractGameIdCookie(socket: Socket & { jwtPayload: JwtPayload }) {
+  private async extractCookies(socket: Socket & { jwtPayload: JwtPayload }) {
     const cookies = socket.handshake.headers.cookie
       ? parse(socket.handshake.headers.cookie)
       : null;
 
     if (!cookies?.gameId) return null;
 
-    const { gameId } = cookies;
-    return gameId;
+    const { gameId, access_token } = cookies;
+    const decoded = await this.jwtService.verify(access_token, {
+      publicKey: this.configService.get('ACCESS_TOKEN_PUB_KEY'),
+    });
+    return { gameId, userId: decoded.sub };
   }
 
   private rejoinGame(socket: Socket, gameId: string) {
@@ -218,7 +227,8 @@ export class GameGateway {
     game: Partial<GamePayload>
   ) {
     if (
-      this.playerService.estimateAssets(player) >= field.incomeWithoutBranches
+      this.playerService.estimateAssets(player) >=
+      field.income[field.amountOfBranches]
     ) {
       this.gameService.setTimer(
         game.id,
@@ -266,10 +276,12 @@ export class GameGateway {
     game: Partial<GamePayload>;
     field: FieldType;
   }) {
-    const { updatedGame } = await this.gameService.payForField(game, field);
-    this.server
-      .to(game.id)
-      .emit('payedForField', { players: updatedGame.players });
+    const { updatedGame, fields: updatedFields } =
+      await this.gameService.payForField(game, field);
+    this.server.to(game.id).emit('payedForField', {
+      game: updatedGame,
+      fields: updatedFields,
+    });
     this.passTurnToNext(updatedGame);
   }
 
@@ -287,10 +299,10 @@ export class GameGateway {
 
     const updatedGame = await this.gameService.updateGameWithNewTurn(
       game,
-      3000
+      6000
     );
     this.server.to(game.id).emit('hasPutUpForAuction', { game: updatedGame });
-    this.gameService.setTimer(game.id, 3000, updatedGame, this.passTurnToNext);
+    this.gameService.setTimer(game.id, 6000, updatedGame, this.passTurnToNext);
   }
 
   @SubscribeMessage('createGame')
@@ -318,19 +330,25 @@ export class GameGateway {
     @MessageBody('raiseBy') raiseBy: number
   ) {
     const userId = socket.jwtPayload.sub;
-    const { auctionUpdated, turnEnds } = await this.gameService.raisePrice(
-      gameId,
-      userId,
-      raiseBy
-    );
-    this.server.to(gameId).emit('raisedPrice', { turnEnds, auctionUpdated });
-    if (this.gameService.getAuction(gameId)) {
-      this.gameService.setTimer(
+    console.log({ userId, raiseBy });
+    try {
+      const { auctionUpdated: auction } = await this.gameService.raisePrice(
         gameId,
-        3000,
-        { ...auctionUpdated, gameId },
-        this.winAuction
+        userId,
+        raiseBy
       );
+      console.log({ auction, bidders: auction.bidders });
+      this.server.to(gameId).emit('raisedPrice', { auction });
+      if (auction) {
+        this.gameService.setTimer(
+          gameId,
+          6000,
+          { ...auction, gameId },
+          this.winAuction
+        );
+      }
+    } catch (err) {
+      console.log({ err });
     }
   }
 

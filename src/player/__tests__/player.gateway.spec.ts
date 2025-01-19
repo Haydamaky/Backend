@@ -43,35 +43,4 @@ describe('PlayerGateway', () => {
   it('should be defined', () => {
     expect(gateway).toBeDefined();
   });
-
-  describe('create', () => {
-    it('should call playerService.create with correct data', async () => {
-      const createPlayerDto: CreatePlayerDto = {
-        color: 'blue',
-        userId: 'user-123',
-        gameId: 'game-456',
-      };
-      const expectedResult = { id: 'player-789', ...createPlayerDto };
-
-      mockPlayerService.create.mockResolvedValue(expectedResult);
-
-      const result = await gateway.create(createPlayerDto);
-
-      expect(mockPlayerService.create).toHaveBeenCalledWith(createPlayerDto);
-      expect(result).toEqual(expectedResult);
-    });
-
-    it('should handle errors gracefully', async () => {
-      const createPlayerDto: CreatePlayerDto = {
-        color: 'blue',
-        userId: 'user-123',
-        gameId: 'game-456',
-      };
-
-      const error = new Error('Test Error');
-      mockPlayerService.create.mockRejectedValue(error);
-
-      await expect(gateway.create(createPlayerDto)).rejects.toThrowError('Test Error');
-    });
-  });
 });

@@ -1,14 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { CreatePlayerDto } from './dto/create-player.dto';
-import { UpdatePlayerDto } from './dto/update-player.dto';
 import { PlayerPayload, PlayerRepository } from './player.repository';
 import { Prisma } from '@prisma/client';
-import { fields } from 'src/utils/fields';
+import { fields, FieldsType, FieldType } from 'src/utils/fields';
+import { GamePayload } from 'src/game/game.repository';
+import { WsException } from '@nestjs/websockets';
+import { OfferTradeDto } from './dto/offer-trade.dto';
+import { Trade } from 'src/game/types/trade.type';
 
 @Injectable()
 export class PlayerService {
   constructor(private playerRepository: PlayerRepository) {}
-  readonly COLORS = ['blue', 'yellow', 'red', 'green', 'pink'];
+  trades: Map<string, Trade> = new Map();
+  readonly COLORS = ['blue', 'yellow', 'green', 'purple', 'red'];
   create(createPlayerDto: CreatePlayerDto) {
     return this.playerRepository.create({
       data: {
@@ -19,7 +23,12 @@ export class PlayerService {
       include: {
         game: {
           include: {
-            players: { include: { user: { select: { nickname: true } } } },
+            players: {
+              include: { user: { select: { nickname: true } } },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
           },
         },
       },
@@ -31,7 +40,21 @@ export class PlayerService {
   }
 
   findByUserAndGameId(userId: string, gameId: string) {
-    return this.playerRepository.findFirst({ where: { userId, gameId } });
+    return this.playerRepository.findFirst({
+      where: { userId, gameId },
+      include: {
+        game: {
+          include: {
+            players: {
+              include: { user: { select: { nickname: true } } },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
+          },
+        },
+      },
+    });
   }
 
   updateById(
@@ -43,7 +66,12 @@ export class PlayerService {
       include: {
         game: {
           include: {
-            players: { include: { user: { select: { nickname: true } } } },
+            players: {
+              include: { user: { select: { nickname: true } } },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
           },
         },
       },
@@ -74,7 +102,12 @@ export class PlayerService {
       include: {
         game: {
           include: {
-            players: { include: { user: { select: { nickname: true } } } },
+            players: {
+              include: { user: { select: { nickname: true } } },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
           },
         },
       },
@@ -101,7 +134,12 @@ export class PlayerService {
       include: {
         game: {
           include: {
-            players: { include: { user: { select: { nickname: true } } } },
+            players: {
+              include: { user: { select: { nickname: true } } },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
           },
         },
       },
@@ -126,5 +164,179 @@ export class PlayerService {
       0
     );
     return player.money + potentialAmountToPledge;
+  }
+
+  findPlayerFieldByIndex(fields: FieldsType, indexOfField: number) {
+    return fields.find((field) => field.index === indexOfField);
+  }
+
+  checkWhetherPlayerHasAllGroup(game: Partial<GamePayload>, index: number) {
+    const userFields = fields.filter(
+      (field) => field.ownedBy === game.turnOfUserId
+    );
+    const userFieldsIndexes = userFields.map((field) => field.index);
+    if (!userFieldsIndexes.includes(index))
+      throw new WsException('You dont have this field');
+    const fieldToBuyBranch = this.findPlayerFieldByIndex(fields, index);
+    if (fieldToBuyBranch.amountOfBranches >= 5)
+      throw new WsException('This field has max amount of branches');
+    const groupFields = fields.filter(
+      (f) => f.group === fieldToBuyBranch.group
+    );
+    const userGroupFields = userFields.filter(
+      (f) => f.group === fieldToBuyBranch.group
+    );
+    if (groupFields.length !== userGroupFields.length)
+      throw new WsException('You dont have all group fields');
+    return fieldToBuyBranch;
+  }
+
+  async buyBranch(game: Partial<GamePayload>, fieldToBuyBranch: FieldType) {
+    const player = await this.decrementMoneyWithUserAndGameId(
+      game.turnOfUserId,
+      game.id,
+      fieldToBuyBranch.branchPrice
+    );
+    fieldToBuyBranch.amountOfBranches++;
+    return player;
+  }
+
+  async pledgeField(game: Partial<GamePayload>, index: number) {
+    const fieldToPledge = this.findPlayerFieldByIndex(fields, index);
+    const player = await this.incrementMoneyWithUserAndGameId(
+      game.turnOfUserId,
+      game.id,
+      fieldToPledge.branchPrice
+    );
+    fieldToPledge.isPledged = true;
+    fieldToPledge.turnsToUnpledge = game.turnsToUnpledge;
+    return player;
+  }
+
+  async payRedemptionForField(game: Partial<GamePayload>, index: number) {
+    const fieldToPayRedemption = this.findPlayerFieldByIndex(fields, index);
+    fieldToPayRedemption.isPledged = false;
+    fieldToPayRedemption.turnsToUnpledge = null;
+    const player = await this.decrementMoneyWithUserAndGameId(
+      game.turnOfUserId,
+      game.id,
+      fieldToPayRedemption.redemptionPrice
+    );
+    return player;
+  }
+
+  async validateTradeData(game: Partial<GamePayload>, data: OfferTradeDto) {
+    if (
+      data.offerFieldsIndexes.length === 0 &&
+      data.wantedFieldsIndexes.length === 0 &&
+      !data.offeredMoney &&
+      !data.wantedMoney
+    ) {
+      throw new WsException('You must offer something');
+    }
+    if (data.offerFieldsIndexes.length > 0) {
+      const userFields = fields.filter(
+        (field) => field.ownedBy === game.turnOfUserId
+      );
+      const userFieldsIndexes = userFields.map((field) => field.index);
+      const hasAllOfferFields = data.offerFieldsIndexes.every((index) =>
+        userFieldsIndexes.includes(index)
+      );
+      if (!hasAllOfferFields) {
+        throw new WsException('You dont have all offer fields');
+      }
+    }
+    if (data.wantedFieldsIndexes.length > 0) {
+      const otherUserFields = fields.filter(
+        (field) => field.ownedBy !== data.toUserId
+      );
+      const otherUserFieldsIndexes = otherUserFields.map(
+        (field) => field.index
+      );
+      const hasAllWantedFields = data.wantedFieldsIndexes.every((index) =>
+        otherUserFieldsIndexes.includes(index)
+      );
+      if (!hasAllWantedFields) {
+        throw new WsException('Other player doesnt have all wanted fields');
+      }
+    }
+  }
+  setTrade(gameId: string, trade: Trade) {
+    this.trades.set(gameId, trade);
+  }
+  getTrade(gameId: string) {
+    return this.trades.get(gameId);
+  }
+  async acceptTrade(game: Partial<GamePayload>, trade: Trade) {
+    if (!trade) throw new WsException('There is no trade to accept');
+    if (trade.offerFieldsIndexes.length > 0) {
+      trade.offerFieldsIndexes.forEach((index) => {
+        const field = this.findPlayerFieldByIndex(fields, index);
+        field.ownedBy = trade.toUserId;
+      });
+    }
+    if (trade.wantedFieldsIndexes.length > 0) {
+      trade.wantedFieldsIndexes.forEach((index) => {
+        const field = this.findPlayerFieldByIndex(fields, index);
+        field.ownedBy = trade.fromUserId;
+      });
+    }
+    let player = null;
+    if (trade.offeredMoney) {
+      this.decrementMoneyWithUserAndGameId(
+        trade.fromUserId,
+        game.id,
+        trade.offeredMoney
+      );
+      player = await this.incrementMoneyWithUserAndGameId(
+        trade.toUserId,
+        game.id,
+        trade.offeredMoney
+      );
+    }
+    if (trade.wantedMoney) {
+      this.decrementMoneyWithUserAndGameId(
+        trade.toUserId,
+        game.id,
+        trade.wantedMoney
+      );
+      player = await this.incrementMoneyWithUserAndGameId(
+        trade.fromUserId,
+        game.id,
+        trade.wantedMoney
+      );
+    }
+    this.setTrade(game.id, null);
+    return { fields, updatedGame: player?.game ? player.game : null };
+  }
+
+  async surrender(userId: string, gameId: string) {
+    const updatedPlayer = await this.update({
+      where: {
+        userId_gameId: {
+          userId: userId,
+          gameId: gameId,
+        },
+      },
+      data: {
+        lost: true,
+      },
+      include: {
+        game: {
+          include: {
+            players: {
+              include: { user: { select: { nickname: true } } },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
+          },
+        },
+      },
+    });
+    fields.forEach((field) => {
+      if (field.ownedBy === updatedPlayer.userId) field.ownedBy = null;
+    });
+    return { updatedPlayer, fields };
   }
 }
