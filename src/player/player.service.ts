@@ -40,7 +40,21 @@ export class PlayerService {
   }
 
   findByUserAndGameId(userId: string, gameId: string) {
-    return this.playerRepository.findFirst({ where: { userId, gameId } });
+    return this.playerRepository.findFirst({
+      where: { userId, gameId },
+      include: {
+        game: {
+          include: {
+            players: {
+              include: { user: { select: { nickname: true } } },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
+          },
+        },
+      },
+    });
   }
 
   updateById(

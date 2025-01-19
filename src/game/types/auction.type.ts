@@ -1,4 +1,5 @@
 interface Bidder {
+  accepted: boolean;
   userId: string;
   bid: number;
 }
@@ -6,4 +7,5 @@ interface Bidder {
 export interface Auction {
   fieldIndex: number;
   bidders: Bidder[];
+  turnEnds: string;
 }

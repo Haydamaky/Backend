@@ -299,10 +299,10 @@ export class GameGateway {
 
     const updatedGame = await this.gameService.updateGameWithNewTurn(
       game,
-      3000
+      6000
     );
     this.server.to(game.id).emit('hasPutUpForAuction', { game: updatedGame });
-    this.gameService.setTimer(game.id, 3000, updatedGame, this.passTurnToNext);
+    this.gameService.setTimer(game.id, 6000, updatedGame, this.passTurnToNext);
   }
 
   @SubscribeMessage('createGame')
@@ -330,23 +330,25 @@ export class GameGateway {
     @MessageBody('raiseBy') raiseBy: number
   ) {
     const userId = socket.jwtPayload.sub;
+    console.log({ userId, raiseBy });
     try {
-      const { turnEnds, auctionUpdated } = await this.gameService.raisePrice(
+      const { auctionUpdated: auction } = await this.gameService.raisePrice(
         gameId,
         userId,
         raiseBy
       );
-      this.server.to(gameId).emit('raisedPrice', { turnEnds, auctionUpdated });
-      if (this.gameService.getAuction(gameId)) {
+      console.log({ auction, bidders: auction.bidders });
+      this.server.to(gameId).emit('raisedPrice', { auction });
+      if (auction) {
         this.gameService.setTimer(
           gameId,
-          3000,
-          { ...auctionUpdated, gameId },
+          6000,
+          { ...auction, gameId },
           this.winAuction
         );
       }
     } catch (err) {
-      throw new WsException('Hui');
+      console.log({ err });
     }
   }
 
