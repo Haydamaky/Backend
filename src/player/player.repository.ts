@@ -9,7 +9,7 @@ type PlayerNestedIncludes = IncludeAllRelations<
   Prisma.$PlayerPayload['objects']
 >;
 
-type PlayerPayload = Prisma.PlayerGetPayload<{
+export type PlayerPayload = Prisma.PlayerGetPayload<{
   include: PlayerNestedIncludes;
 }>;
 

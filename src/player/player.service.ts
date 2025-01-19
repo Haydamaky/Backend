@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { UpdatePlayerDto } from './dto/update-player.dto';
-import { PlayerRepository } from './player.repository';
+import { PlayerPayload, PlayerRepository } from './player.repository';
 import { Prisma } from '@prisma/client';
+import { fields } from 'src/utils/fields';
 
 @Injectable()
 export class PlayerService {
@@ -39,6 +40,13 @@ export class PlayerService {
   ) {
     return this.playerRepository.updateById(playerId, {
       data: fieldsToUpdate,
+      include: {
+        game: {
+          include: {
+            players: { include: { user: { select: { nickname: true } } } },
+          },
+        },
+      },
     });
   }
 
@@ -61,6 +69,13 @@ export class PlayerService {
       data: {
         money: {
           decrement: amount,
+        },
+      },
+      include: {
+        game: {
+          include: {
+            players: { include: { user: { select: { nickname: true } } } },
+          },
         },
       },
     });
@@ -95,5 +110,21 @@ export class PlayerService {
 
   deleteById(playerId: string) {
     return this.playerRepository.deleteById(playerId);
+  }
+
+  estimateAssets(player: Partial<PlayerPayload>) {
+    const ownedFields = fields.filter(
+      (field) => field.ownedBy === player.userId
+    );
+    const pledgePricesOfOwnedFields = ownedFields.map(
+      (field) => field.pledgePrice
+    );
+    const potentialAmountToPledge = pledgePricesOfOwnedFields.reduce(
+      (finalAmout, currentAmount) => {
+        return finalAmout + currentAmount;
+      },
+      0
+    );
+    return player.money + potentialAmountToPledge;
   }
 }

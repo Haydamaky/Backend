@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 
 describe('AuthController', () => {
   let controller: AuthController;
-  let mockAuthService: Partial<AuthService>;
+  let fakeAuthService: Partial<AuthService>;
   const signingUser = {
     email: 'test@gmail.com',
     password: '123456',
@@ -14,7 +14,7 @@ describe('AuthController', () => {
   let res: any;
 
   beforeEach(async () => {
-    mockAuthService = {
+    fakeAuthService = {
       signup: jest.fn(),
       signin: jest.fn().mockReturnValue({
         tokens: {
@@ -58,7 +58,7 @@ describe('AuthController', () => {
       providers: [
         AuthService,
         ConfigService,
-        { provide: AuthService, useValue: mockAuthService },
+        { provide: AuthService, useValue: fakeAuthService },
       ],
     }).compile();
 
@@ -101,7 +101,7 @@ describe('AuthController', () => {
 
   it('should call signup in auth.service', async () => {
     await controller.signup(signingUser);
-    expect(mockAuthService.signup).toHaveBeenCalledWith(signingUser);
+    expect(fakeAuthService.signup).toHaveBeenCalledWith(signingUser);
   });
 
   it('should return res with status success', async () => {
@@ -114,7 +114,7 @@ describe('AuthController', () => {
 
   it('should call signin in auth.service', async () => {
     await controller.signin(signingUser, res);
-    expect(mockAuthService.signin).toHaveBeenCalledWith(signingUser);
+    expect(fakeAuthService.signin).toHaveBeenCalledWith(signingUser);
   });
 
   it('should call setTokens with tokens from signin service', async () => {
@@ -130,7 +130,7 @@ describe('AuthController', () => {
 
   it('should call logout from service and return response', async () => {
     const response = await controller.logout('id');
-    expect(mockAuthService.logout).toHaveBeenCalledWith('id');
+    expect(fakeAuthService.logout).toHaveBeenCalledWith('id');
     expect(response).toStrictEqual({
       status: 'success',
       message: 'Logout successfully',
@@ -139,7 +139,7 @@ describe('AuthController', () => {
 
   it('should call refreshTokens from auth service and call setTokens with this result', async () => {
     await controller.refreshTokens('id', 'newToken', res);
-    expect(mockAuthService.refreshTokens).toHaveBeenCalledWith(
+    expect(fakeAuthService.refreshTokens).toHaveBeenCalledWith(
       'id',
       'newToken'
     );
@@ -151,7 +151,7 @@ describe('AuthController', () => {
 
   it('should call confirm email from auth.service with given token', async () => {
     await controller.confirmEmail('token', res);
-    expect(mockAuthService.confirmEmail).toHaveBeenCalledWith('token');
+    expect(fakeAuthService.confirmEmail).toHaveBeenCalledWith('token');
   });
 
   it('should call setToken with tokens after calling confirm email service method', async () => {
@@ -183,7 +183,7 @@ describe('AuthController', () => {
       confirmNewPassword: '654321',
     });
 
-    expect(mockAuthService.changePassword).toHaveBeenCalledWith(
+    expect(fakeAuthService.changePassword).toHaveBeenCalledWith(
       'id',
       '123456',
       '654321',
@@ -199,7 +199,7 @@ describe('AuthController', () => {
     const response = await controller.forgotPassword({
       email: 'test@gmail.com',
     });
-    expect(mockAuthService.forgotPassword).toHaveBeenCalledWith(
+    expect(fakeAuthService.forgotPassword).toHaveBeenCalledWith(
       'test@gmail.com'
     );
     expect(response).toStrictEqual({
@@ -214,7 +214,7 @@ describe('AuthController', () => {
       newPassword: '654321',
       confirmNewPassword: '654321',
     });
-    expect(mockAuthService.resetPassword).toHaveBeenCalledWith(
+    expect(fakeAuthService.resetPassword).toHaveBeenCalledWith(
       'forgotPasswordToken',
       '654321',
       '654321'

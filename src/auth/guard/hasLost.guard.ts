@@ -1,20 +1,21 @@
 import { CanActivate, Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
-import { GameService } from 'src/game/game.service';
+import { PlayerService } from 'src/player/player.service';
 
 @Injectable()
-export class TurnGuard implements CanActivate {
-  constructor(private gameService: GameService) {}
+export class HasLostGuard implements CanActivate {
+  constructor(private playerService: PlayerService) {}
 
   async canActivate(context: any): Promise<boolean | any> {
     const client = context.switchToWs().getClient();
     const userId = client.jwtPayload.sub;
     try {
-      if (
-        client.game?.turnOfUserId !== userId &&
-        client.game.status === 'ACTIVE'
-      )
-        throw new WsException('Wrong turn');
+      const player = await this.playerService.findByUserAndGameId(
+        userId,
+        client.game.id
+      );
+      if (player?.lost) throw new WsException('U have already lost');
+      client.player = player;
       return true;
     } catch (ex) {
       throw new WsException(ex.message);

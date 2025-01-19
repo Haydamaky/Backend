@@ -5,6 +5,7 @@ generator client {
 datasource db {
     provider  = "postgresql"
     url       = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -95,12 +96,13 @@ model Game {
     turnEnds        String?
     dices           String?
     timeOfTurn      Int        @default(120)
+    passStartBonus  Int        @default(3000)
     players         Player[]   @relation("GamePlayers")
 }
 
 model Player {
     id                String        @id @default(uuid())
-    money             Float         @default(0)
+    money             Float         @default(20000)
     userId            String
     currentFieldIndex Int           @default(1)
     customFields      Json?
@@ -110,6 +112,7 @@ model Player {
     game              Game          @relation(name: "GamePlayers", fields: [gameId], references: [id])
     transactions      Transaction[]
     createdAt         DateTime      @default(now())
+    lost              Boolean       @default(false)
 
     @@unique([userId, gameId])
 }
