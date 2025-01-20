@@ -6,7 +6,6 @@ export class WsValidationPipe extends ValidationPipe {
   constructor() {
     super({
       whitelist: true,
-      forbidNonWhitelisted: true,
     });
   }
 
