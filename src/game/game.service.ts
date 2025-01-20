@@ -45,6 +45,11 @@ export class GameService {
             createdAt: 'asc',
           },
         },
+        chat: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
   }
@@ -87,6 +92,11 @@ export class GameService {
             createdAt: 'asc',
           },
         },
+        chat: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
   }
@@ -101,6 +111,11 @@ export class GameService {
             createdAt: 'asc',
           },
         },
+        chat: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
   }
@@ -112,6 +127,11 @@ export class GameService {
         players: {
           orderBy: {
             createdAt: 'asc',
+          },
+        },
+        chat: {
+          select: {
+            id: true,
           },
         },
       },
@@ -193,6 +213,11 @@ export class GameService {
           include: { user: { select: { nickname: true } } },
           orderBy: {
             createdAt: 'asc',
+          },
+        },
+        chat: {
+          select: {
+            id: true,
           },
         },
       },
@@ -384,11 +409,7 @@ export class GameService {
     playerNextField.players.push(updatedPlayer);
 
     return {
-      updatedGame: {
-        ...updatedGame,
-        chatId: updatedGame.chat.id,
-        chat: undefined,
-      },
+      updatedGame,
       fields,
       nextIndex,
       playerNextField,

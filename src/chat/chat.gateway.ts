@@ -59,7 +59,7 @@ export class ChatGateway implements OnModuleInit {
       data
     );
     if (Array.from(socket.rooms).includes(data.gameId))
-      this.server.to(data.chatId).emit('gameChatMessage', message);
+      this.server.to(data.gameId).emit('gameChatMessage', message);
   }
 
   @SubscribeMessage('chatData')
