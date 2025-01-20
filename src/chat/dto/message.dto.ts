@@ -8,6 +8,16 @@ export class NewMessagePayloadDto {
   chatId: string;
 }
 
+export class NewGameMessageDto {
+  @IsString()
+  @IsNotEmpty()
+  text: string;
+  @IsUUID()
+  chatId: string;
+  @IsUUID()
+  gameId: string;
+}
+
 export class ChatDataDto {
   @IsUUID()
   chatId: string;

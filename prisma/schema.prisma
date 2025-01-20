@@ -69,6 +69,8 @@ model Chat {
     type         ChatType
     messages     Message[]
     participants ChatUser[]
+    game         Game?      @relation(fields: [gameId], references: [id])
+    gameId       String?    @unique
 }
 
 model ChatUser {
@@ -99,6 +101,8 @@ model Game {
     passStartBonus  Int        @default(3000)
     turnsToUnpledge Int        @default(10)
     players         Player[]   @relation("GamePlayers")
+
+    chat Chat?
 }
 
 model Player {

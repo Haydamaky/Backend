@@ -3,7 +3,7 @@ import { FieldsType, FieldType } from '../utils/fields';
 import { Injectable, Logger } from '@nestjs/common';
 import { GamePayload, GameRepository } from './game.repository';
 import { PlayerService } from 'src/player/player.service';
-import { Player, Prisma } from '@prisma/client';
+import { ChatType, Player, Prisma } from '@prisma/client';
 import { Auction } from './types/auction.type';
 import { WsException } from '@nestjs/websockets';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
@@ -139,12 +139,31 @@ export class GameService {
         data: {
           status: 'ACTIVE',
           turnOfUserId: gameWithCreatedPlayer.players[randomPlayerIndex].userId,
+          chat: {
+            create: {
+              type: ChatType.GAME,
+              participants: {
+                createMany: {
+                  data: [
+                    ...gameWithCreatedPlayer.players.map((player) => ({
+                      userId: player.userId,
+                    })),
+                  ],
+                },
+              },
+            },
+          },
         },
         include: {
           players: {
             include: { user: { select: { nickname: true, id: true } } },
             orderBy: {
               createdAt: 'asc',
+            },
+          },
+          chat: {
+            select: {
+              id: true,
             },
           },
         },
@@ -277,6 +296,11 @@ export class GameService {
             createdAt: 'asc',
           },
         },
+        chat: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
   }
@@ -358,8 +382,13 @@ export class GameService {
     this.deletePlayer(playerField.players, currentPlayer.id);
     const playerNextField = this.findPlayerFieldByIndex(fields, nextIndex);
     playerNextField.players.push(updatedPlayer);
+
     return {
-      updatedGame,
+      updatedGame: {
+        ...updatedGame,
+        chatId: updatedGame.chat.id,
+        chat: undefined,
+      },
       fields,
       nextIndex,
       playerNextField,
