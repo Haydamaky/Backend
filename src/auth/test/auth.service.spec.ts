@@ -19,9 +19,9 @@ jest.mock('argon2', () => ({
 
 describe('AuthService', () => {
   let service: AuthService;
-  let mockJwtService: Partial<JwtService>;
-  let mockMailService: Partial<MailService>;
-  let mockUserRepo: Partial<UserRepository>;
+  let fakeJwtService: Partial<JwtService>;
+  let fakeMailService: Partial<MailService>;
+  let fakeUserRepo: Partial<UserRepository>;
   const signingUser = {
     email: 'test@gmail.com',
     password: '123456',
@@ -29,17 +29,17 @@ describe('AuthService', () => {
   };
   beforeEach(async () => {
     const users: User[] = [];
-    mockJwtService = {
+    fakeJwtService = {
       signAsync: (payload: unknown, options: unknown) => {
         return Promise.resolve('token');
       },
       verify: jest.fn(),
     };
-    mockMailService = {
+    fakeMailService = {
       sendVerificationEmail: jest.fn(),
       sendForgotPasswordEmail: jest.fn(),
     };
-    mockUserRepo = {
+    fakeUserRepo = {
       findByEmail: (email: string) => {
         const [user] = users.filter((user) => user.email === email);
         return Promise.resolve(user);
@@ -49,7 +49,7 @@ describe('AuthService', () => {
         return Promise.resolve(user);
       },
       create: async (createArgs: Prisma.UserCreateArgs<DefaultArgs>) => {
-        const user = await mockUserRepo.findByEmail(createArgs.data.email);
+        const user = await fakeUserRepo.findByEmail(createArgs.data.email);
         if (user) {
           throw new PrismaClientKnownRequestError('prisma error', {
             code: 'P2002',
@@ -76,10 +76,10 @@ describe('AuthService', () => {
         ConfigService,
         {
           provide: UserRepository,
-          useValue: mockUserRepo,
+          useValue: fakeUserRepo,
         },
-        { provide: JwtService, useValue: mockJwtService },
-        { provide: MailService, useValue: mockMailService },
+        { provide: JwtService, useValue: fakeJwtService },
+        { provide: MailService, useValue: fakeMailService },
       ],
     }).compile();
 
@@ -97,7 +97,7 @@ describe('AuthService', () => {
   it('should create user with hash and email confirmation token', async () => {
     service.hashData = jest.fn().mockReturnValue(Promise.resolve('hash'));
     await service.signup(signingUser);
-    const user = await mockUserRepo.findByEmail('test@gmail.com');
+    const user = await fakeUserRepo.findByEmail('test@gmail.com');
     expect(user.hash).toBeDefined();
     expect(user.hash).toBe('hash');
     expect(user.emailConfirmationToken).toBeDefined();
@@ -105,8 +105,8 @@ describe('AuthService', () => {
 
   it('should sendVerificationEmail on users email with verification token', async () => {
     await service.signup(signingUser);
-    await mockUserRepo.findByEmail('test@gmail.com');
-    expect(mockMailService.sendVerificationEmail).toHaveBeenCalledWith(
+    await fakeUserRepo.findByEmail('test@gmail.com');
+    expect(fakeMailService.sendVerificationEmail).toHaveBeenCalledWith(
       'test@gmail.com',
       'token'
     );
@@ -172,7 +172,7 @@ describe('AuthService', () => {
       password: signingUser.password,
     });
     await service.logout('id');
-    expect(mockUserRepo.updateMany).toHaveBeenCalledWith({
+    expect(fakeUserRepo.updateMany).toHaveBeenCalledWith({
       where: {
         id: 'id',
         hashedRt: {
@@ -193,7 +193,7 @@ describe('AuthService', () => {
 
   it('should throw an ForbiddenException if hashedRt doesnt exist', async () => {
     await service.signup(signingUser);
-    const user = await mockUserRepo.findById('id');
+    const user = await fakeUserRepo.findById('id');
     delete user['hashedRt'];
     expect(service.refreshTokens('id', 'someHashRt')).rejects.toThrow(
       ForbiddenException
@@ -227,12 +227,12 @@ describe('AuthService', () => {
   });
 
   it('should throw an BadRequestException if token is invalid', () => {
-    (mockJwtService.verify as jest.Mock).mockReturnValue(null);
+    (fakeJwtService.verify as jest.Mock).mockReturnValue(null);
     expect(service.confirmEmail('token')).rejects.toThrow(BadRequestException);
   });
 
   it('should return tokens after confirmation of email', async () => {
-    (mockJwtService.verify as jest.Mock).mockReturnValue({
+    (fakeJwtService.verify as jest.Mock).mockReturnValue({
       userId: 'id',
       email: 'test@gmail.com',
     });
@@ -251,7 +251,7 @@ describe('AuthService', () => {
   });
 
   it('should call updateRtHash with userId and new refresh token', async () => {
-    (mockJwtService.verify as jest.Mock).mockReturnValue({
+    (fakeJwtService.verify as jest.Mock).mockReturnValue({
       userId: 'id',
       email: 'test@gmail.com',
     });
@@ -275,19 +275,19 @@ describe('AuthService', () => {
   });
 
   it('should throw BadRequestException if input password doesnt match with old', async () => {
-    (mockJwtService.verify as jest.Mock).mockReturnValue(null);
+    (fakeJwtService.verify as jest.Mock).mockReturnValue(null);
     await expect(
       service.changePassword('id', 'nomatch', '654321', '654321')
     ).rejects.toThrow(BadRequestException);
   });
 
   it('should hash the new password and update db with it', async () => {
-    (mockJwtService.verify as jest.Mock).mockReturnValue(true);
+    (fakeJwtService.verify as jest.Mock).mockReturnValue(true);
     service.hashData = jest.fn().mockReturnValue(Promise.resolve('hash'));
     await service.signup(signingUser);
     await service.changePassword('id', '123456', '654321', '654321');
     expect(service.hashData).toHaveBeenCalledWith('654321');
-    expect(mockUserRepo.update).toHaveBeenCalled();
+    expect(fakeUserRepo.update).toHaveBeenCalled();
   });
 
   it('should throw BadReqException if user doesnt exist', async () => {
@@ -305,7 +305,7 @@ describe('AuthService', () => {
   it('should send sendForgotPasswordEmail', async () => {
     await service.signup(signingUser);
     await service.forgotPassword('test@gmail.com');
-    expect(mockMailService.sendForgotPasswordEmail).toHaveBeenCalledWith(
+    expect(fakeMailService.sendForgotPasswordEmail).toHaveBeenCalledWith(
       signingUser.email,
       'token'
     );
@@ -326,14 +326,14 @@ describe('AuthService', () => {
     await service.resetPassword('token', '654321', '654321');
     expect(service.verifyResetToken).toHaveBeenCalledWith('token');
     expect(service.hashData).toHaveBeenCalledWith('654321');
-    expect(mockUserRepo.update).toHaveBeenCalledWith({
+    expect(fakeUserRepo.update).toHaveBeenCalledWith({
       where: { email: signingUser.email },
       data: { hash: 'hash', hashedRt: null },
     });
   });
 
   it('should throw BadReqError if req is token is wrong', async () => {
-    (mockJwtService.verify as jest.Mock).mockRejectedValue({
+    (fakeJwtService.verify as jest.Mock).mockRejectedValue({
       name: 'TokenExpiredError',
     });
     await expect(service.verifyResetToken('token')).rejects.toThrow(
@@ -342,7 +342,7 @@ describe('AuthService', () => {
   });
 
   it('should return decoded token', async () => {
-    (mockJwtService.verify as jest.Mock).mockReturnValue({
+    (fakeJwtService.verify as jest.Mock).mockReturnValue({
       email: 'test@gmail.com',
     });
     const decodedToken = await service.verifyResetToken('token');
@@ -353,7 +353,7 @@ describe('AuthService', () => {
     (argon2.hash as jest.Mock).mockResolvedValue('hash');
     await service.updateRtHash('id', 'token');
     expect(argon2.hash).toHaveBeenCalledWith('token');
-    expect(mockUserRepo.update).toHaveBeenCalledWith({
+    expect(fakeUserRepo.update).toHaveBeenCalledWith({
       where: {
         id: 'id',
       },
