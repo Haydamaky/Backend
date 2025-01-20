@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Game" ADD COLUMN     "passStartBonus" INTEGER NOT NULL DEFAULT 3000;
+
+-- AlterTable
+ALTER TABLE "Player" ALTER COLUMN "money" SET DEFAULT 20000;

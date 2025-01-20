@@ -1,4 +1,5 @@
-import { fields, FieldsType, FieldType } from '../utils/fields';
+import { fields } from 'src/utils/fields';
+import { FieldsType, FieldType } from '../utils/fields';
 import { Injectable, Logger } from '@nestjs/common';
 import { GamePayload, GameRepository } from './game.repository';
 import { PlayerService } from 'src/player/player.service';
@@ -6,13 +7,17 @@ import { ChatType, Player, Prisma } from '@prisma/client';
 import { Auction } from './types/auction.type';
 import { WsException } from '@nestjs/websockets';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
+import { PromisesToWinBid } from './types/promisesToWinBid';
+import { Mutex } from 'async-mutex';
 
 @Injectable()
 export class GameService {
   constructor(
     private gameRepository: GameRepository,
     private playerService: PlayerService
-  ) {}
+  ) {
+    this.hightestInQueue = this.hightestInQueue.bind(this);
+  }
 
   readonly PLAYING_FIELDS_QUANTITY = 40;
   private readonly MIN_RAISE = 100;
@@ -20,6 +25,15 @@ export class GameService {
   private readonly logger = new Logger(GameService.name);
   timers: Map<string, NodeJS.Timeout> = new Map();
   auctions: Map<string, Auction> = new Map();
+  promisesToWinBid: Map<string, PromisesToWinBid[]> = new Map();
+  private readonly auctionMutexes: Map<string, Mutex> = new Map();
+
+  private getMutex(gameId: string): Mutex {
+    if (!this.auctionMutexes.has(gameId)) {
+      this.auctionMutexes.set(gameId, new Mutex());
+    }
+    return this.auctionMutexes.get(gameId)!;
+  }
 
   async getVisibleGames() {
     return this.gameRepository.findMany({
@@ -196,19 +210,22 @@ export class GameService {
     return `${firstDice}:${secondDice}`;
   }
 
-  setTimer(
+  setTimer<T, R>(
     id: string,
     time: number,
-    args: unknown,
-    callback: (args: unknown) => Promise<void>
-  ) {
+    args: T,
+    callback: (args: T) => Promise<R>,
+    promiseFns?: Record<string, any>
+  ): Promise<R> {
     this.clearTimer(id);
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<R>((resolve, reject) => {
+      if (promiseFns) promiseFns.reject = reject;
       const timer = setTimeout(async () => {
         try {
-          await callback(args);
-          resolve();
-        } catch (err) {
+          const res: R = await callback(args);
+          resolve(res);
+        } catch (err: any) {
+          console.log('In Timer');
           console.log(err.message);
           reject(err);
         }
@@ -302,11 +319,15 @@ export class GameService {
     dicesArr: number[],
     quantityOfElements: number
   ) {
-    let nextIndex = currentIndex + dicesArr[0] + dicesArr[1];
-    return (nextIndex =
-      nextIndex > quantityOfElements
-        ? nextIndex - quantityOfElements
-        : nextIndex);
+    const potentialNextIndex = currentIndex + dicesArr[0] + dicesArr[1];
+    const resObj =
+      potentialNextIndex > quantityOfElements
+        ? {
+            nextIndex: potentialNextIndex - quantityOfElements,
+            shouldGetMoney: true,
+          }
+        : { nextIndex: potentialNextIndex, shouldGetMoney: false };
+    return resObj;
   }
 
   findPlayerFieldByIndex(fields: FieldsType, indexOfField: number) {
@@ -321,20 +342,33 @@ export class GameService {
     players.splice(indexToDelete, 1);
   }
 
+  decrementPledgedFields(fields: FieldsType) {
+    fields.forEach((field) => {
+      if (field.isPledged && field.turnsToUnpledge === 0) {
+        field.isPledged = false;
+        field.ownedBy = '';
+      } else if (field.isPledged) {
+        field.turnsToUnpledge--;
+      }
+    });
+  }
+
   async makeTurn(game: Partial<GamePayload>) {
     const dices = this.onRollDice();
     const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
     const currentPlayer = this.findPlayerByUserId(game);
     const dicesArr = this.parseDicesToArr(dices);
-    const nextIndex = this.calculateNextIndex(
+    const { nextIndex, shouldGetMoney } = this.calculateNextIndex(
       currentPlayer.currentFieldIndex,
       dicesArr,
       this.PLAYING_FIELDS_QUANTITY
     );
+    this.decrementPledgedFields(fields);
     const updatedPlayer = await this.playerService.updateById(
       currentPlayer.id,
       {
         currentFieldIndex: nextIndex,
+        money: { increment: shouldGetMoney ? game.passStartBonus : 0 },
       }
     );
     const updatedGame = await this.updateById(game.id, {
@@ -359,6 +393,7 @@ export class GameService {
       nextIndex,
       playerNextField,
       hasOwner: playerNextField?.ownedBy,
+      currentPlayer,
     };
   }
 
@@ -376,10 +411,11 @@ export class GameService {
     const field = this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
     if (!field.price)
       throw new WsException('You cant put this field to auction');
+    const bidder = { bid: field.price, userId: '', accepted: true };
     this.setAuction(game.id, {
       fieldIndex: field.index,
-      bid: field.price,
-      userId: '',
+      bidders: [bidder],
+      turnEnds: '',
     });
   }
 
@@ -391,38 +427,165 @@ export class GameService {
     return this.auctions.get(gameId);
   }
 
-  setBuyerOnAuction(gameId: string, userId: string, raiseBy: number) {
+  setBuyerOnAuction(
+    gameId: string,
+    userId: string,
+    raiseBy: number,
+    accepted: boolean
+  ) {
     const auction = this.getAuction(gameId);
-    auction.userId = userId;
+    const indexOfLastOfAccepted = auction.bidders.findLastIndex(
+      (bidder) => bidder.accepted
+    );
+    console.log({ indexOfLastOfAccepted });
+    let bid = auction.bidders[indexOfLastOfAccepted].bid;
     if (raiseBy !== 0) {
-      auction.bid += raiseBy;
+      bid += raiseBy;
     }
+    const turnEnds = this.calculateEndOfTurn(5000);
+    auction.bidders[auction.bidders.length] = { userId, bid, accepted };
+    auction.turnEnds = turnEnds;
     this.setAuction(gameId, auction);
     return auction;
   }
 
   async raisePrice(gameId: string, userId: string, raiseBy: number) {
-    const player = await this.playerService.findByUserAndGameId(userId, gameId);
-    if (!player) throw new WsException('No such player');
-    const auction = this.getAuction(gameId);
-    if (!auction) throw new WsException('Auction wasn’t started');
-    if (raiseBy < this.MIN_RAISE)
-      throw new WsException('Raise is not big enough');
-    if (player.money < auction.bid) throw new WsException('Not enough money');
-    this.clearTimer(gameId);
-    const auctionUpdated = this.setBuyerOnAuction(gameId, userId, raiseBy);
-    const turnEnds = this.calculateEndOfTurn(5000);
-    return { turnEnds, auctionUpdated };
+    const mutex = this.getMutex(gameId);
+    const release = await mutex.acquire();
+    try {
+      const player = await this.playerService.findByUserAndGameId(
+        userId,
+        gameId
+      );
+      if (!player) throw new WsException('No such player');
+      const auction = this.getAuction(gameId);
+      if (!auction) throw new WsException('Auction wasn’t started');
+      if (raiseBy < this.MIN_RAISE)
+        throw new WsException('Raise is not big enough');
+      if (player.money < auction.bidders[auction.bidders.length - 1].bid)
+        throw new WsException('Not enough money');
+      this.clearTimer(gameId);
+      const promisesToWin = this.promisesToWinBid.get(gameId) || [];
+      const currentUserPromise = promisesToWin.filter(
+        (promise) => promise.userId === userId
+      );
+      if (currentUserPromise.length)
+        throw new WsException('Wait for bids to process');
+      const allPromisesLess = promisesToWin.every((promiseObj) => {
+        promiseObj.raiseBy < raiseBy;
+      });
+      console.log({ promisesToWin, allPromisesLess });
+      if (allPromisesLess) {
+        promisesToWin.forEach((promise) => {
+          promise.reject(auction);
+          this.clearTimer(`${gameId}:${promise.userId}`);
+          this.setBuyerOnAuction(
+            gameId,
+            promise.userId,
+            promise.raiseBy,
+            false
+          );
+        });
+        const promiseFns = { reject: null };
+        const promiseToWinBid = this.setTimer(
+          `${gameId}:${userId}`,
+          200,
+          { gameId, userId, raiseBy },
+          this.hightestInQueue,
+          promiseFns
+        );
+
+        this.promisesToWinBid.set(gameId, [
+          {
+            promise: promiseToWinBid,
+            reject: promiseFns.reject,
+            userId,
+            raiseBy,
+          },
+        ]);
+        return promiseToWinBid;
+      } else {
+        const promiseFns = { reject: null };
+        const promiseToWinBid = this.setTimer(
+          `${gameId}:${userId}`,
+          200,
+          { gameId, userId, raiseBy },
+          this.hightestInQueue,
+          promiseFns
+        );
+        this.promisesToWinBid.set(gameId, [
+          ...promisesToWin,
+          {
+            promise: promiseToWinBid,
+            reject: promiseFns.reject,
+            userId,
+            raiseBy,
+          },
+        ]);
+        return promiseToWinBid;
+      }
+    } finally {
+      release();
+    }
+  }
+
+  async hightestInQueue(args: {
+    gameId: string;
+    userId: string;
+    raiseBy: number;
+  }) {
+    const mutex = this.getMutex(args.gameId);
+    const release = await mutex.acquire();
+    try {
+      const promisesToWin = this.promisesToWinBid.get(args.gameId);
+      console.log({ promisesToWin });
+      if (!promisesToWin?.length) {
+        return { auctionUpdated: this.getAuction(args.gameId) };
+      }
+      const notWithCurrentUser = promisesToWin.filter(
+        (promise) => promise.userId !== args.userId
+      );
+      if (notWithCurrentUser.length) {
+        console.log({ notWithCurrentUser });
+        notWithCurrentUser.forEach((promise) => {
+          promise.reject(args);
+          this.clearTimer(`${args.gameId}:${promise.userId}`);
+          this.setBuyerOnAuction(
+            args.gameId,
+            promise.userId,
+            promise.raiseBy,
+            false
+          );
+        });
+      }
+      const auctionUpdated = this.setBuyerOnAuction(
+        args.gameId,
+        args.userId,
+        args.raiseBy,
+        true
+      );
+      this.promisesToWinBid.delete(args.gameId);
+      console.dir({
+        auctionUpdated,
+        bidders: auctionUpdated.bidders,
+        firstBidder: auctionUpdated.bidders[0],
+        lastBidder: auctionUpdated.bidders[auctionUpdated.bidders.length - 1],
+      });
+      return { auctionUpdated };
+    } finally {
+      release();
+    }
   }
 
   async winAuction(auction: Auction & { gameId: string }) {
     const field = this.findPlayerFieldByIndex(fields, auction.fieldIndex);
-    field.ownedBy = auction.userId;
+    const lastBid = auction.bidders[auction.bidders.length - 1];
+    field.ownedBy = lastBid.userId;
     const updatedPlayer =
       await this.playerService.decrementMoneyWithUserAndGameId(
-        auction.userId,
+        lastBid.userId,
         auction.gameId,
-        auction.bid
+        lastBid.bid
       );
     this.setAuction(auction.gameId, null);
     return updatedPlayer;
@@ -434,6 +597,7 @@ export class GameService {
     if (
       !field.price ||
       field.price > player.money ||
+      field.ownedBy === player.userId ||
       this.getAuction(game.id)
     ) {
       throw new WsException('You cant buy this field');
@@ -449,11 +613,26 @@ export class GameService {
     return { updatedPlayer, field };
   }
 
+  findPlayersWhoDidntLose(game: Partial<GamePayload>) {
+    return game.players.filter((player) => !player.lost);
+  }
+
   async passTurnToNext(game: Partial<GamePayload>) {
     const dices = '';
     this.setAuction(game.id, null);
+    let { turnOfNextUserId } = this.findNextTurnUser(game);
+    game.turnOfUserId = turnOfNextUserId;
+    let playersNotLost = game.players.length;
+    while (playersNotLost !== 1) {
+      if (this.findPlayerByUserId(game).lost) {
+        turnOfNextUserId = this.findNextTurnUser(game).turnOfNextUserId;
+        game.turnOfUserId = turnOfNextUserId;
+      } else {
+        break;
+      }
+      --playersNotLost;
+    }
     const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
-    const { turnOfNextUserId } = this.findNextTurnUser(game);
     const updatedGame = await this.updateById(game.id, {
       turnOfUserId: turnOfNextUserId,
       dices,
@@ -465,20 +644,36 @@ export class GameService {
   async payForField(game: Partial<GamePayload>, playerNextField: FieldType) {
     const currentPlayer = this.findPlayerByUserId(game);
 
-    if (currentPlayer.money < playerNextField.incomeWithoutBranches) {
-      throw new WsException('Not enough money to pay for the field');
+    if (
+      currentPlayer.money <
+      playerNextField.income[playerNextField.amountOfBranches]
+    ) {
+      // We can add pledging of last owned field or smt to not make player lose immidiately
+      const updatedPlayer = await this.playerService.updateById(
+        currentPlayer.id,
+        { lost: true }
+      );
+      fields.forEach((field) => {
+        if (field.ownedBy === updatedPlayer.userId) field.ownedBy = null;
+      });
+      return { updatedGame: updatedPlayer.game, fields };
     }
 
-    const payed = await this.playerService.decrementMoneyWithUserAndGameId(
+    await this.playerService.decrementMoneyWithUserAndGameId(
       game.turnOfUserId,
       game.id,
-      playerNextField.incomeWithoutBranches
+      playerNextField.income[playerNextField.amountOfBranches]
     );
     const received = await this.playerService.incrementMoneyWithUserAndGameId(
       playerNextField.ownedBy,
       game.id,
-      playerNextField.incomeWithoutBranches
+      playerNextField.income[playerNextField.amountOfBranches]
     );
-    return { payed, received, updatedGame: received.game };
+    return { updatedGame: received.game };
+  }
+
+  hasWinner(game: Partial<GamePayload>) {
+    const notLosers = this.findPlayersWhoDidntLose(game);
+    return notLosers.length === 1;
   }
 }
