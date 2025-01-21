@@ -191,6 +191,12 @@ export class PlayerService {
     return fieldToBuyBranch;
   }
 
+  async checkFieldHasBranches(field: FieldType) {
+    if (field.amountOfBranches <= 0) {
+      throw new WsException('You do not have any branches to sell');
+    }
+  }
+
   async buyBranch(game: Partial<GamePayload>, fieldToBuyBranch: FieldType) {
     const player = await this.decrementMoneyWithUserAndGameId(
       game.turnOfUserId,
@@ -198,6 +204,16 @@ export class PlayerService {
       fieldToBuyBranch.branchPrice
     );
     fieldToBuyBranch.amountOfBranches++;
+    return player;
+  }
+
+  async sellBranch(game: Partial<GamePayload>, fieldToBuyBranch: FieldType) {
+    const player = await this.incrementMoneyWithUserAndGameId(
+      game.turnOfUserId,
+      game.id,
+      fieldToBuyBranch.sellBranchPrice
+    );
+    fieldToBuyBranch.amountOfBranches--;
     return player;
   }
 

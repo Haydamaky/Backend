@@ -50,6 +50,24 @@ export class PlayerGateway {
       .emit('playerBoughtBranch', { fields, game: player.game });
   }
 
+  @SubscribeMessage('sellBranch')
+  async sellBranch(
+    @ConnectedSocket()
+    socket: Socket & { game: Partial<GamePayload> },
+    @MessageBody('index') index: number
+  ) {
+    const game = socket.game;
+    const fieldToSellBranch = this.playerService.checkWhetherPlayerHasAllGroup(
+      game,
+      index
+    );
+    this.playerService.checkFieldHasBranches(fieldToSellBranch);
+    const player = await this.playerService.sellBranch(game, fieldToSellBranch);
+    this.server
+      .to(game.id)
+      .emit('playerSoldBranch', { fields, game: player.game });
+  }
+
   @SubscribeMessage('pledgeField')
   async pledgeField(
     @ConnectedSocket()
