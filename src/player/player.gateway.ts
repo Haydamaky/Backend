@@ -8,7 +8,7 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { HasLostGuard } from 'src/auth/guard';
+import { HasLostGuard, TurnGuard } from 'src/auth/guard';
 import { ActiveGameGuard } from 'src/auth/guard/activeGame.guard';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
@@ -29,7 +29,7 @@ import { PlayerService } from './player.service';
 })
 @UseFilters(WebsocketExceptionsFilter)
 @UsePipes(new WsValidationPipe())
-@UseGuards(WsGuard, ActiveGameGuard, HasLostGuard)
+@UseGuards(WsGuard, ActiveGameGuard, TurnGuard, HasLostGuard)
 export class PlayerGateway {
   constructor(private readonly playerService: PlayerService) {}
   @WebSocketServer() server: Server;
@@ -47,7 +47,7 @@ export class PlayerGateway {
     const player = await this.playerService.buyBranch(game, fieldToBuyBranch);
     this.server
       .to(game.id)
-      .emit('playerBoughtBranch', { fields, game: player.game });
+      .emit('updateGameData', { fields, game: player.game });
   }
 
   @SubscribeMessage('sellBranch')
@@ -65,7 +65,7 @@ export class PlayerGateway {
     const player = await this.playerService.sellBranch(game, fieldToSellBranch);
     this.server
       .to(game.id)
-      .emit('playerSoldBranch', { fields, game: player.game });
+      .emit('updateGameData', { fields, game: player.game });
   }
 
   @SubscribeMessage('pledgeField')
@@ -78,7 +78,7 @@ export class PlayerGateway {
     const player = await this.playerService.pledgeField(game, index);
     this.server
       .to(game.id)
-      .emit('playerPledgedField', { fields, game: player.game });
+      .emit('updateGameData', { fields, game: player.game });
   }
 
   @SubscribeMessage('payRedemptionForField')
@@ -89,7 +89,7 @@ export class PlayerGateway {
   ) {
     const game = socket.game;
     const player = await this.playerService.payRedemptionForField(game, index);
-    this.server.to(game.id).emit('payedRedemptionForField', {
+    this.server.to(game.id).emit('updateGameData', {
       fields,
       game: player.game,
     });
