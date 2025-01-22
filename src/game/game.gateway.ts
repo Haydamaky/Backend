@@ -131,6 +131,7 @@ export class GameGateway {
   @SubscribeMessage('getGameData')
   async getGameData(@GetGameId() gameId: string) {
     const game = await this.gameService.getGame(gameId);
+    console.log({ fields });
     return { game, fields };
   }
 

@@ -170,16 +170,17 @@ export class PlayerService {
     return fields.find((field) => field.index === indexOfField);
   }
 
-  checkWhetherPlayerHasAllGroup(game: Partial<GamePayload>, index: number) {
-    const userFields = fields.filter(
-      (field) => field.ownedBy === game.turnOfUserId
-    );
+  checkWhetherPlayerHasAllGroup(
+    game: Partial<GamePayload>,
+    index: number,
+    userId?: string
+  ) {
+    const playerUserId = userId ? userId : game.turnOfUserId;
+    const userFields = fields.filter((field) => field.ownedBy === playerUserId);
     const userFieldsIndexes = userFields.map((field) => field.index);
     if (!userFieldsIndexes.includes(index))
       throw new WsException('You dont have this field');
     const fieldToBuyBranch = this.findPlayerFieldByIndex(fields, index);
-    if (fieldToBuyBranch.amountOfBranches >= 5)
-      throw new WsException('This field has max amount of branches');
     const groupFields = fields.filter(
       (f) => f.group === fieldToBuyBranch.group
     );
@@ -191,25 +192,43 @@ export class PlayerService {
     return fieldToBuyBranch;
   }
 
-  async checkFieldHasBranches(field: FieldType) {
+  checkFieldHasMaxBranches(field: FieldType) {
+    if (field.amountOfBranches >= 5)
+      throw new WsException('This field has max amount of branches');
+  }
+
+  checkFieldHasBranches(field: FieldType) {
+    if (field.amountOfBranches >= 6)
+      throw new WsException('This field has max amount of branches');
     if (field.amountOfBranches <= 0) {
       throw new WsException('You do not have any branches to sell');
     }
   }
 
-  async buyBranch(game: Partial<GamePayload>, fieldToBuyBranch: FieldType) {
+  async buyBranch(
+    game: Partial<GamePayload>,
+    fieldToBuyBranch: FieldType,
+    userId?: string
+  ) {
+    const playerUserId = userId ? userId : game.turnOfUserId;
     const player = await this.decrementMoneyWithUserAndGameId(
-      game.turnOfUserId,
+      playerUserId,
       game.id,
       fieldToBuyBranch.branchPrice
     );
     fieldToBuyBranch.amountOfBranches++;
+
     return player;
   }
 
-  async sellBranch(game: Partial<GamePayload>, fieldToBuyBranch: FieldType) {
+  async sellBranch(
+    game: Partial<GamePayload>,
+    fieldToBuyBranch: FieldType,
+    userId?: string
+  ) {
+    const playerUserId = userId ? userId : game.turnOfUserId;
     const player = await this.incrementMoneyWithUserAndGameId(
-      game.turnOfUserId,
+      playerUserId,
       game.id,
       fieldToBuyBranch.sellBranchPrice
     );
@@ -217,10 +236,15 @@ export class PlayerService {
     return player;
   }
 
-  async pledgeField(game: Partial<GamePayload>, index: number) {
+  async pledgeField(
+    game: Partial<GamePayload>,
+    index: number,
+    userId?: string
+  ) {
+    const playerUserId = userId ? userId : game.turnOfUserId;
     const fieldToPledge = this.findPlayerFieldByIndex(fields, index);
     const player = await this.incrementMoneyWithUserAndGameId(
-      game.turnOfUserId,
+      playerUserId,
       game.id,
       fieldToPledge.branchPrice
     );
@@ -229,12 +253,17 @@ export class PlayerService {
     return player;
   }
 
-  async payRedemptionForField(game: Partial<GamePayload>, index: number) {
+  async payRedemptionForField(
+    game: Partial<GamePayload>,
+    index: number,
+    userId?: string
+  ) {
+    const playerUserId = userId ? userId : game.turnOfUserId;
     const fieldToPayRedemption = this.findPlayerFieldByIndex(fields, index);
     fieldToPayRedemption.isPledged = false;
     fieldToPayRedemption.turnsToUnpledge = null;
     const player = await this.decrementMoneyWithUserAndGameId(
-      game.turnOfUserId,
+      playerUserId,
       game.id,
       fieldToPayRedemption.redemptionPrice
     );

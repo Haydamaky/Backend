@@ -29,21 +29,25 @@ import { PlayerService } from './player.service';
 })
 @UseFilters(WebsocketExceptionsFilter)
 @UsePipes(new WsValidationPipe())
-@UseGuards(WsGuard, ActiveGameGuard, TurnGuard, HasLostGuard)
+// TurnGuard
+@UseGuards(WsGuard, ActiveGameGuard, HasLostGuard)
 export class PlayerGateway {
   constructor(private readonly playerService: PlayerService) {}
   @WebSocketServer() server: Server;
   @SubscribeMessage('buyBranch')
   async buyBranch(
     @ConnectedSocket()
-    socket: Socket & { game: Partial<GamePayload> },
+    socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
     @MessageBody('index') index: number
   ) {
     const game = socket.game;
+    const userId = socket.jwtPayload.sub;
     const fieldToBuyBranch = this.playerService.checkWhetherPlayerHasAllGroup(
       game,
-      index
+      index,
+      userId
     );
+    this.playerService.checkFieldHasMaxBranches(fieldToBuyBranch);
     const player = await this.playerService.buyBranch(game, fieldToBuyBranch);
     this.server
       .to(game.id)
@@ -53,13 +57,15 @@ export class PlayerGateway {
   @SubscribeMessage('sellBranch')
   async sellBranch(
     @ConnectedSocket()
-    socket: Socket & { game: Partial<GamePayload> },
+    socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
     @MessageBody('index') index: number
   ) {
     const game = socket.game;
+    const userId = socket.jwtPayload.sub;
     const fieldToSellBranch = this.playerService.checkWhetherPlayerHasAllGroup(
       game,
-      index
+      index,
+      userId
     );
     this.playerService.checkFieldHasBranches(fieldToSellBranch);
     const player = await this.playerService.sellBranch(game, fieldToSellBranch);
