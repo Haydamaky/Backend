@@ -88,8 +88,13 @@ enum GameStatus {
     FINISHED
 }
 
+enum GameType {
+    DEFAULT
+}
+
 model Game {
     id              String     @id @default(uuid())
+    type            GameType   @default(DEFAULT)
     createdAt       DateTime   @default(now())
     updatedAt       DateTime   @updatedAt
     playersCapacity Int        @default(4)
@@ -101,6 +106,8 @@ model Game {
     passStartBonus  Int        @default(3000)
     turnsToUnpledge Int        @default(10)
     players         Player[]   @relation("GamePlayers")
+    housesQty       Int        @default(32)
+    hotelsQty       Int        @default(12)
 
     chat Chat?
 }

@@ -1,4 +1,10 @@
-import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  UseFilters,
+  UseGuards,
+  UsePipes,
+} from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -65,7 +71,8 @@ export class PlayerGateway {
     const fieldToSellBranch = this.playerService.checkWhetherPlayerHasAllGroup(
       game,
       index,
-      userId
+      userId,
+      false
     );
     this.playerService.checkFieldHasBranches(fieldToSellBranch);
     const player = await this.playerService.sellBranch(game, fieldToSellBranch);

@@ -1,6 +1,6 @@
 import { fields } from 'src/utils/fields';
 import { FieldsType, FieldType } from '../utils/fields';
-import { Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { GamePayload, GameRepository } from './game.repository';
 import { PlayerService } from 'src/player/player.service';
 import { ChatType, Player, Prisma } from '@prisma/client';
@@ -14,6 +14,7 @@ import { Mutex } from 'async-mutex';
 export class GameService {
   constructor(
     private gameRepository: GameRepository,
+    @Inject(forwardRef(() => PlayerService))
     private playerService: PlayerService
   ) {
     this.hightestInQueue = this.hightestInQueue.bind(this);
@@ -691,6 +692,30 @@ export class GameService {
       playerNextField.income[playerNextField.amountOfBranches]
     );
     return { updatedGame: received.game };
+  }
+
+  decreaseHouses(gameId: string, quantity: number) {
+    this.gameRepository.updateById(gameId, {
+      data: { housesQty: { decrement: quantity } },
+    });
+  }
+
+  increaseHouses(gameId: string, quantity: number) {
+    this.gameRepository.updateById(gameId, {
+      data: { housesQty: { increment: quantity } },
+    });
+  }
+
+  decreaseHotels(gameId: string, quantity: number) {
+    this.gameRepository.updateById(gameId, {
+      data: { hotelsQty: { decrement: quantity } },
+    });
+  }
+
+  increaseHotels(gameId: string, quantity: number) {
+    this.gameRepository.updateById(gameId, {
+      data: { hotelsQty: { increment: quantity } },
+    });
   }
 
   hasWinner(game: Partial<GamePayload>) {

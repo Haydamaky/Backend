@@ -10,7 +10,13 @@ import {
 } from '@nestjs/websockets';
 import { GameService } from './game.service';
 import { Server, Socket } from 'socket.io';
-import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  UseFilters,
+  UseGuards,
+  UsePipes,
+} from '@nestjs/common';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
@@ -131,7 +137,6 @@ export class GameGateway {
   @SubscribeMessage('getGameData')
   async getGameData(@GetGameId() gameId: string) {
     const game = await this.gameService.getGame(gameId);
-    console.log({ fields });
     return { game, fields };
   }
 

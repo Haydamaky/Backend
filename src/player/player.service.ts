@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { PlayerPayload, PlayerRepository } from './player.repository';
 import { Prisma } from '@prisma/client';
@@ -7,10 +7,15 @@ import { GamePayload } from 'src/game/game.repository';
 import { WsException } from '@nestjs/websockets';
 import { OfferTradeDto } from './dto/offer-trade.dto';
 import { Trade } from 'src/game/types/trade.type';
+import { GameService } from 'src/game/game.service';
 
 @Injectable()
 export class PlayerService {
-  constructor(private playerRepository: PlayerRepository) {}
+  constructor(
+    @Inject(forwardRef(() => GameService))
+    private readonly gameService: GameService,
+    private playerRepository: PlayerRepository
+  ) {}
   trades: Map<string, Trade> = new Map();
   readonly COLORS = ['blue', 'yellow', 'green', 'purple', 'red'];
   create(createPlayerDto: CreatePlayerDto) {
@@ -173,7 +178,8 @@ export class PlayerService {
   checkWhetherPlayerHasAllGroup(
     game: Partial<GamePayload>,
     index: number,
-    userId?: string
+    userId?: string,
+    buying: boolean = true
   ) {
     const playerUserId = userId ? userId : game.turnOfUserId;
     const userFields = fields.filter((field) => field.ownedBy === playerUserId);
@@ -189,7 +195,26 @@ export class PlayerService {
     );
     if (groupFields.length !== userGroupFields.length)
       throw new WsException('You dont have all group fields');
+    this.checkBuyingOrSellingEvenly(groupFields, fieldToBuyBranch, buying);
     return fieldToBuyBranch;
+  }
+
+  checkBuyingOrSellingEvenly(
+    groupOfFields: FieldType[],
+    field: FieldType,
+    buying: boolean
+  ) {
+    const buyingEvenly = groupOfFields.every((groupField) => {
+      const probableDifferenceOfBranches = Math.abs(
+        groupField.amountOfBranches -
+          (field.amountOfBranches + (buying ? 1 : -1))
+      );
+      return (
+        probableDifferenceOfBranches <= 1 && probableDifferenceOfBranches >= 0
+      );
+    });
+    if (!buyingEvenly)
+      throw new WsException('You must buy/sell branches evenly in group');
   }
 
   checkFieldHasMaxBranches(field: FieldType) {
