@@ -695,26 +695,78 @@ export class GameService {
   }
 
   decreaseHouses(gameId: string, quantity: number) {
-    this.gameRepository.updateById(gameId, {
+    return this.gameRepository.updateById(gameId, {
       data: { housesQty: { decrement: quantity } },
+      include: {
+        players: {
+          include: { user: { select: { nickname: true } } },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+        chat: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
   }
 
   increaseHouses(gameId: string, quantity: number) {
-    this.gameRepository.updateById(gameId, {
+    return this.gameRepository.updateById(gameId, {
       data: { housesQty: { increment: quantity } },
+      include: {
+        players: {
+          include: { user: { select: { nickname: true } } },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+        chat: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
   }
 
   decreaseHotels(gameId: string, quantity: number) {
-    this.gameRepository.updateById(gameId, {
+    return this.gameRepository.updateById(gameId, {
       data: { hotelsQty: { decrement: quantity } },
+      include: {
+        players: {
+          include: { user: { select: { nickname: true } } },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+        chat: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
   }
 
   increaseHotels(gameId: string, quantity: number) {
-    this.gameRepository.updateById(gameId, {
+    return this.gameRepository.updateById(gameId, {
       data: { hotelsQty: { increment: quantity } },
+      include: {
+        players: {
+          include: { user: { select: { nickname: true } } },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+        chat: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
   }
 

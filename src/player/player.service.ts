@@ -195,6 +195,22 @@ export class PlayerService {
     );
     if (groupFields.length !== userGroupFields.length)
       throw new WsException('You dont have all group fields');
+    const isBuyingHotel = buying && fieldToBuyBranch.amountOfBranches === 4;
+    const isBuyingHouse = buying && fieldToBuyBranch.amountOfBranches < 4;
+    const isSellingHotel = !buying && fieldToBuyBranch.amountOfBranches === 5;
+
+    if (isBuyingHotel && game.hotelsQty <= 0) {
+      throw new WsException('You must have at least 1 hotel in the bank');
+    }
+
+    if (isBuyingHouse && game.housesQty <= 0) {
+      throw new WsException('You must have at least 1 house in the bank');
+    }
+
+    if (isSellingHotel && game.housesQty < 4) {
+      throw new WsException('You must have at least 4 houses in the bank');
+    }
+
     this.checkBuyingOrSellingEvenly(groupFields, fieldToBuyBranch, buying);
     return fieldToBuyBranch;
   }
@@ -242,8 +258,15 @@ export class PlayerService {
       fieldToBuyBranch.branchPrice
     );
     fieldToBuyBranch.amountOfBranches++;
+    let updatedGame = null;
+    if (fieldToBuyBranch.amountOfBranches === 5) {
+      await this.gameService.decreaseHotels(player.game.id, 1);
+      updatedGame = await this.gameService.increaseHouses(player.game.id, 4);
+    } else {
+      updatedGame = await this.gameService.decreaseHouses(player.game.id, 1);
+    }
 
-    return player;
+    return updatedGame;
   }
 
   async sellBranch(
@@ -258,7 +281,15 @@ export class PlayerService {
       fieldToBuyBranch.sellBranchPrice
     );
     fieldToBuyBranch.amountOfBranches--;
-    return player;
+    let updatedGame = null;
+    if (fieldToBuyBranch.amountOfBranches === 4) {
+      await this.gameService.increaseHotels(player.game.id, 1);
+      updatedGame = await this.gameService.decreaseHouses(player.game.id, 4);
+    } else {
+      updatedGame = await this.gameService.increaseHouses(player.game.id, 1);
+    }
+
+    return updatedGame;
   }
 
   async pledgeField(

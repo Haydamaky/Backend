@@ -54,10 +54,13 @@ export class PlayerGateway {
       userId
     );
     this.playerService.checkFieldHasMaxBranches(fieldToBuyBranch);
-    const player = await this.playerService.buyBranch(game, fieldToBuyBranch);
+    const updatedGame = await this.playerService.buyBranch(
+      game,
+      fieldToBuyBranch
+    );
     this.server
       .to(game.id)
-      .emit('updateGameData', { fields, game: player.game });
+      .emit('updateGameData', { fields, game: updatedGame });
   }
 
   @SubscribeMessage('sellBranch')
@@ -75,10 +78,13 @@ export class PlayerGateway {
       false
     );
     this.playerService.checkFieldHasBranches(fieldToSellBranch);
-    const player = await this.playerService.sellBranch(game, fieldToSellBranch);
+    const updatedGame = await this.playerService.sellBranch(
+      game,
+      fieldToSellBranch
+    );
     this.server
       .to(game.id)
-      .emit('updateGameData', { fields, game: player.game });
+      .emit('updateGameData', { fields, game: updatedGame });
   }
 
   @SubscribeMessage('pledgeField')
