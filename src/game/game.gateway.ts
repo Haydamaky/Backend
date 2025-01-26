@@ -224,7 +224,9 @@ export class GameGateway {
       game.id,
       game.timeOfTurn,
       updatedGame,
-      playerNextField.price ? this.putUpForAuction : this.passTurnToNext
+      playerNextField.price && !playerNextField.ownedBy
+        ? this.putUpForAuction
+        : this.passTurnToNext
     );
   }
 
@@ -363,7 +365,7 @@ export class GameGateway {
     const updatedPlayer = await this.gameService.winAuction(auction);
     this.server
       .to(auction.gameId)
-      .emit('wonAuction', { auction, updatedPlayer, fields });
+      .emit('wonAuction', { auction, game: updatedPlayer.game, fields });
     const game = await this.gameService.getGame(auction.gameId);
     this.passTurnToNext(game);
   }
@@ -378,16 +380,24 @@ export class GameGateway {
   }
 
   async buyField(game: Partial<GamePayload>) {
-    const { updatedPlayer } = await this.gameService.buyField(game);
-    this.server
-      .to(game.id)
-      .emit('boughtField', { game: updatedPlayer.game, fields });
+    await this.gameService.buyField(game);
     this.passTurnToNext(game);
+  }
+
+  @UseGuards(ActiveGameGuard, TurnGuard, HasLostGuard)
+  @SubscribeMessage('passTurn')
+  async onPassTurn(
+    @ConnectedSocket()
+    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
+  ) {
+    await this.passTurnToNext(socket.game);
   }
 
   async passTurnToNext(game: Partial<GamePayload>) {
     const { updatedGame } = await this.gameService.passTurnToNext(game);
-    this.server.to(game.id).emit('passTurnToNext', { game: updatedGame });
+    this.server
+      .to(game.id)
+      .emit('passTurnToNext', { game: updatedGame, fields });
     this.gameService.setTimer(
       game.id,
       game.timeOfTurn,

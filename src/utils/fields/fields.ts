@@ -14,7 +14,7 @@ export const fields = [
   },
 
   {
-    id: 'ea672200-5a74-4a4a-b91b-1cbf4bf56ba5',
+    id: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
     positionForGrid: 1,
     index: 2,
     name: 'Укр Пошта',
@@ -27,7 +27,7 @@ export const fields = [
     group: 'post',
     specialField: false,
     line: 'horizontal-top',
-    ownedBy: '',
+    ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
     players: [],
     color: 'yellow',
     income: [100, 150, 420, 1100, 1735, 3000],
@@ -62,7 +62,7 @@ export const fields = [
     amountOfBranches: 0,
     specialField: false,
     line: 'horizontal-top',
-    ownedBy: '',
+    ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
     players: [],
     color: 'yellow',
     income: [120, 175, 500, 1250, 1880, 3400],
@@ -85,7 +85,7 @@ export const fields = [
     amountOfBranches: 0,
     specialField: false,
     line: 'horizontal-top',
-    ownedBy: '',
+    ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
     players: [],
     color: 'yellow',
     income: [140, 200, 635, 1400, 2000, 4000],
@@ -427,7 +427,7 @@ export const fields = [
     group: 'shopping-mall',
     specialField: false,
     line: 'vertical-left',
-    ownedBy: null,
+    ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
     players: [],
     color: 'orange',
     imageUrl:
@@ -450,7 +450,7 @@ export const fields = [
     group: 'Channels',
     specialField: false,
     line: 'vertical-right',
-    ownedBy: null,
+    ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
     players: [],
     color: 'red',
     imageUrl:
@@ -473,7 +473,7 @@ export const fields = [
     group: 'shopping-mall',
     specialField: false,
     line: 'vertical-left',
-    ownedBy: null,
+    ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
     players: [],
     color: 'orange',
     imageUrl:
@@ -496,7 +496,7 @@ export const fields = [
     group: 'Channels',
     specialField: false,
     line: 'vertical-right',
-    ownedBy: null,
+    ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
     players: [],
     color: 'red',
     imageUrl:
@@ -543,7 +543,7 @@ export const fields = [
     group: 'shopping-mall',
     specialField: false,
     line: 'vertical-left',
-    ownedBy: null,
+    ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
     players: [],
     color: 'orange',
     imageUrl:

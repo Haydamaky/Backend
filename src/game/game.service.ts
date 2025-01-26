@@ -616,6 +616,9 @@ export class GameService {
   async buyField(game: Partial<GamePayload>) {
     const player = this.findPlayerByUserId(game);
     const field = this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
+    if (field.ownedBy) {
+      throw new WsException('Field is already owned');
+    }
     if (
       !field.price ||
       field.price > player.money ||
@@ -640,8 +643,26 @@ export class GameService {
   }
 
   async passTurnToNext(game: Partial<GamePayload>) {
+    if (!game.dices) {
+      throw new WsException('You have to roll dices first');
+    }
+    const currentPlayer = this.findPlayerByUserId(game);
+    const currentField = this.findPlayerFieldByIndex(
+      fields,
+      currentPlayer.currentFieldIndex
+    );
+    if (
+      !currentField.ownedBy &&
+      !this.getAuction(game.id) &&
+      currentField.price
+    ) {
+      throw new WsException(
+        'You cant pass turn with possibility to buy/put up for auction'
+      );
+    }
     const dices = '';
     this.setAuction(game.id, null);
+    this.clearTimer(game.id);
     let { turnOfNextUserId } = this.findNextTurnUser(game);
     game.turnOfUserId = turnOfNextUserId;
     let playersNotLost = game.players.length;
