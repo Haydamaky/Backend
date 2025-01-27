@@ -9,6 +9,7 @@ import { WsException } from '@nestjs/websockets';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 import { PromisesToWinBid } from './types/promisesToWinBid';
 import { Mutex } from 'async-mutex';
+import { finished } from 'stream';
 
 @Injectable()
 export class GameService {
@@ -447,7 +448,9 @@ export class GameService {
       fieldIndex: field.index,
       bidders: [bidder],
       turnEnds: '',
+      usersRefused: [game.turnOfUserId],
     });
+    return this.getAuction(game.id);
   }
 
   setAuction(gameId: string, auction: Auction) {
@@ -493,6 +496,8 @@ export class GameService {
       if (!auction) throw new WsException('Auction wasn’t started');
       if (raiseBy < this.MIN_RAISE)
         throw new WsException('Raise is not big enough');
+      if (auction.usersRefused.includes(userId))
+        throw new WsException('You refused to auction');
       if (player.money < auction.bidders[auction.bidders.length - 1].bid)
         throw new WsException('Not enough money');
       this.clearTimer(gameId);
@@ -555,6 +560,50 @@ export class GameService {
         ]);
         return promiseToWinBid;
       }
+    } finally {
+      release();
+    }
+  }
+
+  async refuseAuction(gameId: string, userId: string) {
+    const mutex = this.getMutex(gameId);
+    const release = await mutex.acquire();
+    try {
+      const player = await this.playerService.findByUserAndGameId(
+        userId,
+        gameId
+      );
+      if (!player) throw new WsException('No such player');
+      const auction = this.getAuction(gameId);
+      if (!auction) throw new WsException('Auction wasn’t started');
+      const indexOfLastOfAccepted = auction.bidders.findLastIndex(
+        (bidder) => bidder.accepted
+      );
+      if (userId === auction.bidders[indexOfLastOfAccepted].userId) {
+        throw new WsException('You are the last bidder');
+      }
+      const promisesToWin = this.promisesToWinBid.get(gameId) || [];
+      const stillCanWindBid = promisesToWin.some(
+        (promise) => promise.userId === userId
+      );
+      if (stillCanWindBid) {
+        throw new WsException('Wait for bids to process');
+      }
+      if (auction.usersRefused.includes(userId))
+        throw new WsException('You already refused to auction');
+      auction.usersRefused.push(userId);
+      if (
+        auction.usersRefused.length === player.game.players.length - 1 &&
+        auction.bidders.length > 1
+      ) {
+        this.clearTimer(gameId);
+        return { auction, hasWinner: true, finished: true, game: player.game };
+      }
+      if (auction.usersRefused.length === player.game.players.length) {
+        this.clearTimer(gameId);
+        return { auction, hasWinner: false, finished: true, game: player.game };
+      }
+      return { auction, hasWinner: false, finished: false, game: player.game };
     } finally {
       release();
     }

@@ -304,13 +304,15 @@ export class GameGateway {
   }
 
   async putUpForAuction(game: Partial<GamePayload>) {
-    await this.gameService.putUpForAuction(game);
+    const auction = await this.gameService.putUpForAuction(game);
 
     const updatedGame = await this.gameService.updateGameWithNewTurn(
       game,
       6000
     );
-    this.server.to(game.id).emit('hasPutUpForAuction', { game: updatedGame });
+    this.server
+      .to(game.id)
+      .emit('hasPutUpForAuction', { game: updatedGame, auction });
     this.gameService.setTimer(game.id, 6000, updatedGame, this.passTurnToNext);
   }
 
@@ -358,6 +360,26 @@ export class GameGateway {
       }
     } catch (err) {
       console.log({ err });
+    }
+  }
+
+  @UseGuards(ActiveGameGuard, HasLostGuard)
+  @SubscribeMessage('refuseAuction')
+  async refuseAuction(
+    @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
+    @GetGameId() gameId: string
+  ) {
+    const userId = socket.jwtPayload.sub;
+    const { auction, hasWinner, finished, game } =
+      await this.gameService.refuseAuction(gameId, userId);
+    if (finished) {
+      if (hasWinner) {
+        this.winAuction({ ...auction, gameId });
+      } else {
+        this.passTurnToNext(game);
+      }
+    } else {
+      this.server.to(gameId).emit('refusedFromAuction', { auction });
     }
   }
 
