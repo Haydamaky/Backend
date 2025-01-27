@@ -35,7 +35,6 @@ import { PlayerService } from './player.service';
 })
 @UseFilters(WebsocketExceptionsFilter)
 @UsePipes(new WsValidationPipe())
-// TurnGuard
 @UseGuards(WsGuard, ActiveGameGuard, HasLostGuard)
 export class PlayerGateway {
   constructor(private readonly playerService: PlayerService) {}
@@ -100,6 +99,7 @@ export class PlayerGateway {
       .emit('updateGameData', { fields, game: player.game });
   }
 
+  @UseGuards(TurnGuard)
   @SubscribeMessage('payRedemptionForField')
   async payRedemptionForField(
     @ConnectedSocket()

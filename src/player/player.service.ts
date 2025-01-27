@@ -211,6 +211,10 @@ export class PlayerService {
       throw new WsException('You must have at least 4 houses in the bank');
     }
 
+    if (buying && fieldToBuyBranch.isPledged) {
+      throw new WsException('You cannot buy a branch for a pledged field');
+    }
+
     this.checkBuyingOrSellingEvenly(groupFields, fieldToBuyBranch, buying);
     return fieldToBuyBranch;
   }
@@ -299,6 +303,14 @@ export class PlayerService {
   ) {
     const playerUserId = userId ? userId : game.turnOfUserId;
     const fieldToPledge = this.findPlayerFieldByIndex(fields, index);
+    if (fieldToPledge.isPledged) {
+      throw new WsException('Field is already pledged');
+    }
+    if (fieldToPledge.amountOfBranches > 0) {
+      throw new WsException(
+        'You must have some brances so you cant pledge the field'
+      );
+    }
     const player = await this.incrementMoneyWithUserAndGameId(
       playerUserId,
       game.id,
@@ -316,6 +328,9 @@ export class PlayerService {
   ) {
     const playerUserId = userId ? userId : game.turnOfUserId;
     const fieldToPayRedemption = this.findPlayerFieldByIndex(fields, index);
+    if (!fieldToPayRedemption.isPledged) {
+      throw new WsException('Field is not pledged');
+    }
     fieldToPayRedemption.isPledged = false;
     fieldToPayRedemption.turnsToUnpledge = null;
     const player = await this.decrementMoneyWithUserAndGameId(
