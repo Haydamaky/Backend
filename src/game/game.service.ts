@@ -381,7 +381,7 @@ export class GameService {
 
   async makeTurn(game: Partial<GamePayload>) {
     const dices = this.onRollDice();
-    const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
+
     const currentPlayer = this.findPlayerByUserId(game);
     const dicesArr = this.parseDicesToArr(dices);
     const { nextIndex, shouldGetMoney } = this.calculateNextIndex(
@@ -397,10 +397,7 @@ export class GameService {
         money: { increment: shouldGetMoney ? game.passStartBonus : 0 },
       }
     );
-    const updatedGame = await this.updateById(game.id, {
-      dices,
-      turnEnds,
-    });
+
     const playerField = this.findPlayerFieldByIndex(
       fields,
       currentPlayer.currentFieldIndex
@@ -408,6 +405,18 @@ export class GameService {
     this.deletePlayer(playerField.players, currentPlayer.id);
     const playerNextField = this.findPlayerFieldByIndex(fields, nextIndex);
     playerNextField.players.push(updatedPlayer);
+    let updatedGame: unknown;
+    if (playerNextField.ownedBy !== currentPlayer.userId) {
+      const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
+      updatedGame = await this.updateById(game.id, {
+        dices,
+        turnEnds,
+      });
+    } else {
+      updatedGame = await this.updateById(game.id, {
+        dices,
+      });
+    }
 
     return {
       updatedGame,
