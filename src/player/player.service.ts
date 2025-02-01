@@ -175,6 +175,13 @@ export class PlayerService {
     return fields.find((field) => field.index === indexOfField);
   }
 
+  findPlayerWithTurn(game: Partial<GamePayload>) {
+    const player = game.players.find(
+      (player) => player.userId === game.turnOfUserId
+    );
+    return player;
+  }
+
   checkWhetherPlayerHasAllGroup(
     game: Partial<GamePayload>,
     index: number,

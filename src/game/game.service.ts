@@ -9,8 +9,8 @@ import { WsException } from '@nestjs/websockets';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 import { PromisesToWinBid } from './types/promisesToWinBid';
 import { Mutex } from 'async-mutex';
-import { finished } from 'stream';
-
+import secretFields, { SecretType } from 'src/utils/fields/secretFields';
+import { SecretInfo } from './types/secretInfo.type';
 @Injectable()
 export class GameService {
   constructor(
@@ -29,6 +29,7 @@ export class GameService {
   auctions: Map<string, Auction> = new Map();
   promisesToWinBid: Map<string, PromisesToWinBid[]> = new Map();
   private readonly auctionMutexes: Map<string, Mutex> = new Map();
+  readonly secrets: Map<string, SecretInfo> = new Map();
 
   private getMutex(gameId: string): Mutex {
     if (!this.auctionMutexes.has(gameId)) {
@@ -332,10 +333,6 @@ export class GameService {
     });
   }
 
-  findPlayerByUserId(game: Partial<GamePayload>) {
-    return game.players.find((player) => player.userId === game.turnOfUserId);
-  }
-
   parseDicesToArr(dices: string) {
     const dicesStringsArr = dices.split(':');
     return dicesStringsArr.map(Number);
@@ -383,7 +380,7 @@ export class GameService {
   async makeTurn(game: Partial<GamePayload>) {
     const dices = this.onRollDice();
 
-    const currentPlayer = this.findPlayerByUserId(game);
+    const currentPlayer = this.playerService.findPlayerWithTurn(game);
     const dicesArr = this.parseDicesToArr(dices);
     const { nextIndex, shouldGetMoney } = this.calculateNextIndex(
       currentPlayer.currentFieldIndex,
@@ -406,7 +403,7 @@ export class GameService {
     this.deletePlayer(playerField.players, currentPlayer.id);
     const playerNextField = this.findPlayerFieldByIndex(fields, nextIndex);
     playerNextField.players.push(updatedPlayer);
-    let updatedGame: unknown;
+    let updatedGame: null | Partial<GamePayload> = null;
     if (playerNextField.ownedBy !== currentPlayer.userId) {
       const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
       updatedGame = await this.updateById(game.id, {
@@ -418,7 +415,6 @@ export class GameService {
         dices,
       });
     }
-
     return {
       updatedGame,
       fields,
@@ -429,8 +425,53 @@ export class GameService {
     };
   }
 
+  getRandomSecret() {
+    const randomSecretIndex = Math.floor(Math.random() * secretFields.length);
+    return secretFields[randomSecretIndex];
+  }
+
+  async parseAndSaveSecret(secret: SecretType, game: Partial<GamePayload>) {
+    if (secret.numOfPlayersInvolved === 'one') {
+      const secretInfo = {
+        amounts: secret.amounts,
+        users: [game.turnOfUserId],
+      };
+      this.secrets.set(game.id, secretInfo);
+      return secretInfo;
+    } else if (secret.numOfPlayersInvolved === 'two') {
+      const secretInfo = {
+        amounts: secret.amounts,
+        users: [game.turnOfUserId, this.getRandomPlayersUserId(game)],
+      };
+      this.secrets.set(game.id, secretInfo);
+      return secretInfo;
+    } else if (secret.numOfPlayersInvolved === 'all') {
+      const secretInfo = {
+        amounts: secret.amounts,
+        users: [
+          ...new Set([
+            game.turnOfUserId,
+            ...game.players
+              .map((player) => {
+                if (!player.lost) {
+                  return player.userId;
+                }
+              })
+              .filter((player) => player),
+          ]),
+        ] as [],
+      };
+      this.secrets.set(game.id, secretInfo);
+      return secretInfo;
+    }
+  }
+
+  getRandomPlayersUserId(game: Partial<GamePayload>) {
+    return game.players[Math.floor(Math.random() * game.players.length)].userId;
+  }
+
   async findCurrentFieldWithUserId(game: Partial<GamePayload>) {
-    const player = this.findPlayerByUserId(game);
+    const player = this.playerService.findPlayerWithTurn(game);
     return this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
   }
 
@@ -471,7 +512,6 @@ export class GameService {
     const indexOfLastOfAccepted = auction.bidders.findLastIndex(
       (bidder) => bidder.accepted
     );
-    console.log({ indexOfLastOfAccepted });
     let bid = auction.bidders[indexOfLastOfAccepted].bid;
     if (raiseBy !== 0) {
       bid += raiseBy;
@@ -510,7 +550,6 @@ export class GameService {
       const allPromisesLess = promisesToWin.every((promiseObj) => {
         promiseObj.raiseBy < raiseBy;
       });
-      console.log({ promisesToWin, allPromisesLess });
       if (allPromisesLess) {
         promisesToWin.forEach((promise) => {
           promise.reject(auction);
@@ -618,7 +657,6 @@ export class GameService {
     const release = await mutex.acquire();
     try {
       const promisesToWin = this.promisesToWinBid.get(args.gameId);
-      console.log({ promisesToWin });
       if (!promisesToWin?.length) {
         return { auctionUpdated: this.getAuction(args.gameId) };
       }
@@ -626,7 +664,6 @@ export class GameService {
         (promise) => promise.userId !== args.userId
       );
       if (notWithCurrentUser.length) {
-        console.log({ notWithCurrentUser });
         notWithCurrentUser.forEach((promise) => {
           promise.reject(args);
           this.clearTimer(`${args.gameId}:${promise.userId}`);
@@ -672,7 +709,7 @@ export class GameService {
   }
 
   async buyField(game: Partial<GamePayload>) {
-    const player = this.findPlayerByUserId(game);
+    const player = this.playerService.findPlayerWithTurn(game);
     const field = this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
     if (field.ownedBy) {
       throw new WsException('Field is already owned');
@@ -704,20 +741,6 @@ export class GameService {
     if (!game.dices) {
       throw new WsException('You have to roll dices first');
     }
-    const currentPlayer = this.findPlayerByUserId(game);
-    const currentField = this.findPlayerFieldByIndex(
-      fields,
-      currentPlayer.currentFieldIndex
-    );
-    if (
-      !currentField.ownedBy &&
-      !this.getAuction(game.id) &&
-      currentField.price
-    ) {
-      throw new WsException(
-        'You cant pass turn with possibility to buy/put up for auction'
-      );
-    }
     const dices = '';
     this.setAuction(game.id, null);
     this.clearTimer(game.id);
@@ -725,7 +748,7 @@ export class GameService {
     game.turnOfUserId = turnOfNextUserId;
     let playersNotLost = game.players.length;
     while (playersNotLost !== 1) {
-      if (this.findPlayerByUserId(game).lost) {
+      if (this.playerService.findPlayerWithTurn(game).lost) {
         turnOfNextUserId = this.findNextTurnUser(game).turnOfNextUserId;
         game.turnOfUserId = turnOfNextUserId;
       } else {
@@ -743,7 +766,7 @@ export class GameService {
   }
 
   async payForField(game: Partial<GamePayload>, playerNextField: FieldType) {
-    const currentPlayer = this.findPlayerByUserId(game);
+    const currentPlayer = this.playerService.findPlayerWithTurn(game);
 
     if (
       currentPlayer.money <
@@ -771,6 +794,35 @@ export class GameService {
       playerNextField.income[playerNextField.amountOfBranches]
     );
     return { updatedGame: received.game };
+  }
+
+  async payToBank(game: Partial<GamePayload>, userId: string, amount: number) {
+    const currentPlayer = game.players.find(
+      (player) => player.userId === userId
+    );
+    if (currentPlayer.money < amount) {
+      // We can add pledging of last owned field or smt to not make player lose immidiately
+      const updatedPlayer = await this.playerService.updateById(
+        currentPlayer.id,
+        { lost: true }
+      );
+      fields.forEach((field) => {
+        if (field.ownedBy === updatedPlayer.userId) field.ownedBy = null;
+      });
+      return { updatedGame: updatedPlayer.game, fields };
+    }
+
+    const playerWhoPayed =
+      await this.playerService.incrementMoneyWithUserAndGameId(
+        currentPlayer.userId || game.turnOfUserId,
+        game.id,
+        amount
+      );
+    return {
+      updatedGame: playerWhoPayed.game,
+      fields,
+      playerWhoPayed,
+    };
   }
 
   decreaseHouses(gameId: string, quantity: number) {
