@@ -1,3 +1,4 @@
+import { ChatService } from './../chat/chat.service';
 import { GetGameId } from './decorators/getGameCookieWs';
 import {
   WebSocketGateway,
@@ -48,7 +49,8 @@ export class GameGateway {
     private gameService: GameService,
     private playerService: PlayerService,
     private jwtService: JwtService,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private chatService: ChatService
   ) {
     this.rollDice = this.rollDice.bind(this);
     this.putUpForAuction = this.putUpForAuction.bind(this);
@@ -286,7 +288,20 @@ export class GameGateway {
         secret,
         game
       );
-      this.server.emit('secret', { text: secret.text, secretInfo });
+      if (secret.text.includes('$RANDOM_PLAYER$')) {
+        const randomPlayer = game.players.find(
+          (player) => player.userId === secretInfo.users[1]
+        );
+        secret.text = secret.text.replace(
+          '$RANDOM_PLAYER$',
+          randomPlayer?.user.nickname
+        );
+      }
+      const message = await this.chatService.onNewMessage(game.turnOfUserId, {
+        text: secret.text,
+        chatId: game.chat.id,
+      });
+      this.server.to(game.id).emit('gameChatMessage', message);
 
       if (secretInfo.users.length === 1) {
         if (secretInfo.amounts[0] < 0) {

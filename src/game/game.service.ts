@@ -441,7 +441,12 @@ export class GameService {
     } else if (secret.numOfPlayersInvolved === 'two') {
       const secretInfo = {
         amounts: secret.amounts,
-        users: [game.turnOfUserId, this.getRandomPlayersUserId(game)],
+        users: [
+          game.turnOfUserId,
+          this.getRandomPlayersUserId(
+            game.players.filter((player) => player.userId !== game.turnOfUserId)
+          ),
+        ],
       };
       this.secrets.set(game.id, secretInfo);
       return secretInfo;
@@ -466,8 +471,8 @@ export class GameService {
     }
   }
 
-  getRandomPlayersUserId(game: Partial<GamePayload>) {
-    return game.players[Math.floor(Math.random() * game.players.length)].userId;
+  getRandomPlayersUserId(players: Partial<Player[]>) {
+    return players[Math.floor(Math.random() * players.length)].userId;
   }
 
   async findCurrentFieldWithUserId(game: Partial<GamePayload>) {
