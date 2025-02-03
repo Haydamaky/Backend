@@ -442,9 +442,7 @@ export class GameService {
       const playersWithoutActive = game.players.filter(
         (player) => player.userId !== game.turnOfUserId && !player.lost
       );
-      console.log({ playersWithoutActive });
       const randomUserId = this.getRandomPlayersUserId(playersWithoutActive);
-      console.log({ randomUserId });
       const secretInfo = {
         amounts: secret.amounts,
         users: [game.turnOfUserId, randomUserId],

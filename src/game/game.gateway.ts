@@ -292,7 +292,6 @@ export class GameGateway {
         (player) => player.userId === secretInfo.users[1]
       );
       if (secret.text.includes('$RANDOM_PLAYER$')) {
-        console.log({ secretInfo });
         secret.text = secret.text.replace(
           '$RANDOM_PLAYER$',
           randomPlayer?.user.nickname
