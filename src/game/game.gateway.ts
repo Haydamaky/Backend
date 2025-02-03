@@ -288,10 +288,11 @@ export class GameGateway {
         secret,
         game
       );
+      const randomPlayer = game.players.find(
+        (player) => player.userId === secretInfo.users[1]
+      );
       if (secret.text.includes('$RANDOM_PLAYER$')) {
-        const randomPlayer = game.players.find(
-          (player) => player.userId === secretInfo.users[1]
-        );
+        console.log({ secretInfo });
         secret.text = secret.text.replace(
           '$RANDOM_PLAYER$',
           randomPlayer?.user.nickname
@@ -302,7 +303,11 @@ export class GameGateway {
         chatId: game.chat.id,
       });
       this.server.to(game.id).emit('gameChatMessage', message);
-
+      this.server.to(game.id).emit('secret', secretInfo);
+      secret.text = secret.text.replace(
+        randomPlayer?.user.nickname,
+        '$RANDOM_PLAYER$'
+      );
       if (secretInfo.users.length === 1) {
         if (secretInfo.amounts[0] < 0) {
           this.gameService.setTimer(
