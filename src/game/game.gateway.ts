@@ -361,6 +361,7 @@ export class GameGateway {
         }
       }
     }
+    this.gameService.secrets.delete(game.id);
     this.passTurnToNext(updatedPlayer.game);
     this.server.to(game.id).emit('updatePlayers', {
       game: updatedPlayer.game,
@@ -368,7 +369,7 @@ export class GameGateway {
   }
 
   async resolveTwoUsers(game: Partial<GamePayload>) {
-    const secretInfo = this.gameService.secrets.get(game.id);
+    let secretInfo = this.gameService.secrets.get(game.id);
     const firstPay = secretInfo.amounts[0] < 1;
     let updatedGameToReturn: null | Partial<GamePayload> = null;
     if (firstPay) {
@@ -418,10 +419,11 @@ export class GameGateway {
         updatedGameToReturn = updatedGame;
       }
     }
+    secretInfo = null;
     this.passTurnToNext(updatedGameToReturn);
   }
 
-  @UseGuards(ActiveGameGuard, TurnGuard, HasLostGuard)
+  @UseGuards(ActiveGameGuard, HasLostGuard)
   @SubscribeMessage('payToUser')
   async onPayToUser(
     @ConnectedSocket()
@@ -430,7 +432,7 @@ export class GameGateway {
     const game = socket.game;
     const userId = socket.jwtPayload.sub;
     const secretInfo = this.gameService.secrets.get(game.id);
-    this.payToUser({
+    return this.payToUser({
       game,
       userId,
       userToPay: secretInfo.users[0],
@@ -449,7 +451,7 @@ export class GameGateway {
     userToPay: string;
     amount: number;
   }) {
-    const secretInfo = this.gameService.secrets.get(game.id);
+    let secretInfo = this.gameService.secrets.get(game.id);
     if (!secretInfo.users.includes(userId))
       throw new WsException('You cant pay for that secret');
     const indexOfUser = secretInfo.users.indexOf(userId);
@@ -477,13 +479,22 @@ export class GameGateway {
       );
     }
     secretInfo.users.splice(indexOfUser, 1, '');
+    if (
+      secretInfo.users.every((userId, index) => {
+        if (secretInfo.amounts[index] > 0) return true;
+        return userId === '';
+      })
+    ) {
+      secretInfo = null;
+    }
     this.server.to(game.id).emit('updatePlayers', {
       game: updatedPlayer.game,
+      secretInfo,
     });
     return updatedPlayer;
   }
 
-  @UseGuards(ActiveGameGuard, TurnGuard, HasLostGuard)
+  @UseGuards(ActiveGameGuard, HasLostGuard)
   @SubscribeMessage('payToBank')
   async onPayToBank(
     @ConnectedSocket()
@@ -492,15 +503,91 @@ export class GameGateway {
     const currentField = await this.gameService.findCurrentFieldWithUserId(
       socket.game
     );
+    const secretInfo = this.gameService.secrets.get(socket.game.id);
+    if (!socket.game.dices && !currentField.toPay && !secretInfo)
+      throw new WsException(
+        'You cant pay for that field because smt is missing'
+      );
+    let amountToPay = 0;
+    console.log({ secretInfo });
+    if (secretInfo) {
+      if (!secretInfo.users.includes(socket.jwtPayload.sub)) {
+        throw new WsException(
+          'You cant pay to bank because no user in secretInfo'
+        );
+      }
+      if (secretInfo.users.length === 1) {
+        if (secretInfo.amounts[0] > 0) {
+          throw new WsException(
+            'You cant pay to bank because one user and he doesnt have to pay'
+          );
+        } else {
+          amountToPay = secretInfo.amounts[0];
+        }
+      } else if (secretInfo.users.length === 2) {
+        const index = secretInfo.users.findIndex(
+          (userId) => userId === socket.jwtPayload.sub
+        );
+        if (secretInfo.amounts[index] > 0) {
+          throw new WsException(
+            'You cant pay to bank two users and the one wants to pay dont have to'
+          );
+        } else {
+          amountToPay = secretInfo.amounts[0];
+        }
+      } else if (
+        secretInfo.users.length > 2 &&
+        socket.jwtPayload.sub !== secretInfo.users[0]
+      ) {
+        if (secretInfo.amounts.length === 2) {
+          if (secretInfo.amounts[1] > 0) {
+            throw new WsException(
+              'You cant pay to bank  more then 2 and this doesnt lya lya'
+            );
+          } else {
+            amountToPay = secretInfo.amounts[0];
+          }
+        }
 
-    if (!socket.game.dices || !currentField.toPay)
-      throw new WsException('You cant pay for that field');
-
-    this.payToBank({
-      game: socket.game,
-      userId: socket.jwtPayload.sub,
-      amount: currentField.toPay,
-    });
+        if (secretInfo.amounts.length === 1) {
+          if (secretInfo.amounts[0] > 0) {
+            throw new WsException(
+              'You cant pay to bank more than 2 one amount and dont have t'
+            );
+          } else {
+            amountToPay = secretInfo.amounts[0];
+          }
+        }
+        if (
+          secretInfo.users.every((userId, index) => {
+            if (secretInfo.amounts[index] > 0) return true;
+            return userId === '';
+          })
+        ) {
+          throw new WsException(
+            'You cant pay to bank every user is empty string'
+          );
+        }
+      }
+    }
+    if (currentField.toPay) {
+      this.payToBank({
+        game: socket.game,
+        userId: socket.jwtPayload.sub,
+        amount: currentField.toPay,
+      });
+    }
+    if (secretInfo) {
+      this.payToBank({
+        game: socket.game,
+        userId: socket.jwtPayload.sub,
+        amount: amountToPay,
+      });
+      const indexOfUser = secretInfo.users.findIndex(
+        (userId) => userId === socket.jwtPayload.sub
+      );
+      secretInfo.users[indexOfUser] = '';
+    }
   }
 
   async payToBank(argsObj: {
@@ -513,7 +600,16 @@ export class GameGateway {
       argsObj.userId,
       argsObj.amount
     );
-    this.passTurnToNext(updatedGame);
+    const secretInfo = this.gameService.secrets.get(updatedGame.id);
+    console.log({ secretInfo });
+    if (!secretInfo) {
+      await this.passTurnToNext(updatedGame);
+    } else {
+      this.server.to(updatedGame.id).emit('updatePlayers', {
+        game: updatedGame,
+        secretInfo,
+      });
+    }
   }
 
   async steppedOnPrivateField(

@@ -802,6 +802,8 @@ export class GameService {
   }
 
   async payToBank(game: Partial<GamePayload>, userId: string, amount: number) {
+    const secretInfo = this.secrets.get(game.id);
+    if (!secretInfo) this.clearTimer(game.id);
     const currentPlayer = game.players.find(
       (player) => player.userId === userId
     );
@@ -823,6 +825,31 @@ export class GameService {
         game.id,
         amount
       );
+    if (secretInfo && secretInfo.users.includes(userId)) {
+      const userIndex = secretInfo.users.findIndex(
+        (userId) => userId === playerWhoPayed.userId
+      );
+      secretInfo.users[userIndex] = '';
+    }
+    if (
+      secretInfo &&
+      secretInfo.users.every((userId, index) => {
+        if (secretInfo.users.length === 2 && userId !== '') {
+          return secretInfo.amounts[index] > 0;
+        }
+        if (secretInfo.users.length > 2 && index === 0) {
+          return true;
+        }
+        return userId === '';
+      })
+    ) {
+      this.secrets.delete(game.id);
+      return {
+        updatedGame: playerWhoPayed.game,
+        fields,
+        playerWhoPayed,
+      };
+    }
     return {
       updatedGame: playerWhoPayed.game,
       fields,
