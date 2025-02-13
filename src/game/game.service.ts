@@ -11,6 +11,7 @@ import { PromisesToWinBid } from './types/promisesToWinBid';
 import { Mutex } from 'async-mutex';
 import secretFields, { SecretType } from 'src/utils/fields/secretFields';
 import { SecretInfo } from './types/secretInfo.type';
+import { Server } from 'socket.io';
 @Injectable()
 export class GameService {
   constructor(
@@ -30,6 +31,10 @@ export class GameService {
   promisesToWinBid: Map<string, PromisesToWinBid[]> = new Map();
   private readonly auctionMutexes: Map<string, Mutex> = new Map();
   readonly secrets: Map<string, SecretInfo> = new Map();
+  private server: Server;
+  setServer(server: Server) {
+    this.server = server;
+  }
 
   private getMutex(gameId: string): Mutex {
     if (!this.auctionMutexes.has(gameId)) {
@@ -489,11 +494,13 @@ export class GameService {
     const field = this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
     if (!field.price)
       throw new WsException('You cant put this field to auction');
+    this.clearTimer(game.id);
     const bidder = { bid: field.price, userId: '', accepted: true };
+    const turnEnds = this.calculateEndOfTurn(15000);
     this.setAuction(game.id, {
       fieldIndex: field.index,
       bidders: [bidder],
-      turnEnds: '',
+      turnEnds,
       usersRefused: [game.turnOfUserId],
     });
     return this.getAuction(game.id);
@@ -521,7 +528,7 @@ export class GameService {
     if (raiseBy !== 0) {
       bid += raiseBy;
     }
-    const turnEnds = this.calculateEndOfTurn(5000);
+    const turnEnds = this.calculateEndOfTurn(15000);
     auction.bidders[auction.bidders.length] = { userId, bid, accepted };
     auction.turnEnds = turnEnds;
     this.setAuction(gameId, auction);
@@ -553,10 +560,17 @@ export class GameService {
       if (currentUserPromise.length)
         throw new WsException('Wait for bids to process');
       const allPromisesLess = promisesToWin.every((promiseObj) => {
-        promiseObj.raiseBy < raiseBy;
+        return promiseObj.raiseBy < raiseBy;
       });
+      const allPromisesEqual = promisesToWin.every((promiseObj) => {
+        return promiseObj.raiseBy === raiseBy;
+      });
+      if (!allPromisesLess && !allPromisesEqual)
+        throw new WsException('Your bid is too small');
+      console.log({ allPromisesLess, promisesToWin });
       if (allPromisesLess) {
         promisesToWin.forEach((promise) => {
+          console.log({ promise, auction });
           promise.reject(auction);
           this.clearTimer(`${gameId}:${promise.userId}`);
           this.setBuyerOnAuction(
@@ -584,7 +598,7 @@ export class GameService {
           },
         ]);
         return promiseToWinBid;
-      } else {
+      } else if (allPromisesEqual) {
         const promiseFns = { reject: null };
         const promiseToWinBid = this.setTimer(
           `${gameId}:${userId}`,
@@ -636,6 +650,7 @@ export class GameService {
       if (auction.usersRefused.includes(userId))
         throw new WsException('You already refused to auction');
       auction.usersRefused.push(userId);
+      auction.bidders.push({ accepted: false, bid: 0, userId });
       if (
         auction.usersRefused.length === player.game.players.length - 1 &&
         auction.bidders.length > 1

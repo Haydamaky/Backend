@@ -62,7 +62,11 @@ export class GameGateway {
     this.resolveTwoUsers = this.resolveTwoUsers.bind(this);
   }
 
-  @WebSocketServer() server: Server;
+  @WebSocketServer()
+  set server(server: Server) {
+    this.server = server;
+    this.gameService.setServer(server);
+  }
 
   async handleConnection(socket: Socket & { jwtPayload: JwtPayload }) {
     try {
@@ -142,7 +146,9 @@ export class GameGateway {
   @SubscribeMessage('getGameData')
   async getGameData(@GetGameId() gameId: string) {
     const game = await this.gameService.getGame(gameId);
-    return { game, fields };
+    const auction = this.gameService.auctions.get(game.id);
+    const secretInfo = this.gameService.secrets.get(game.id);
+    this.server.emit('gameData', { game, fields, auction, secretInfo });
   }
 
   @SubscribeMessage('joinGame')
@@ -694,12 +700,12 @@ export class GameGateway {
 
     const updatedGame = await this.gameService.updateGameWithNewTurn(
       game,
-      6000
+      15000
     );
     this.server
       .to(game.id)
       .emit('hasPutUpForAuction', { game: updatedGame, auction });
-    this.gameService.setTimer(game.id, 6000, updatedGame, this.passTurnToNext);
+    this.gameService.setTimer(game.id, 15000, updatedGame, this.passTurnToNext);
   }
 
   @SubscribeMessage('createGame')
@@ -737,13 +743,13 @@ export class GameGateway {
       if (auction) {
         this.gameService.setTimer(
           gameId,
-          6000,
+          15000,
           { ...auction, gameId },
           this.winAuction
         );
       }
     } catch (err) {
-      console.log({ err });
+      socket.emit('error', err);
     }
   }
 
