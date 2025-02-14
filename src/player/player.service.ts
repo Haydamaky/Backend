@@ -8,14 +8,20 @@ import { WsException } from '@nestjs/websockets';
 import { OfferTradeDto } from './dto/offer-trade.dto';
 import { Trade } from 'src/game/types/trade.type';
 import { GameService } from 'src/game/game.service';
+import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.service';
+import { ChatService } from 'src/chat/chat.service';
 
 @Injectable()
 export class PlayerService {
   constructor(
     @Inject(forwardRef(() => GameService))
     private readonly gameService: GameService,
-    private playerRepository: PlayerRepository
-  ) {}
+    private playerRepository: PlayerRepository,
+    private webSocketServerService: WebSocketServerService,
+    private chatService: ChatService
+  ) {
+    this.refuseFromTrade = this.refuseFromTrade.bind(this);
+  }
   trades: Map<string, Trade> = new Map();
   readonly COLORS = ['blue', 'yellow', 'green', 'purple', 'red'];
   create(createPlayerDto: CreatePlayerDto) {
@@ -352,8 +358,8 @@ export class PlayerService {
     if (
       data.offerFieldsIndexes.length === 0 &&
       data.wantedFieldsIndexes.length === 0 &&
-      !data.offeredMoney &&
-      !data.wantedMoney
+      data.offeredMoney <= 0 &&
+      data.wantedMoney <= 0
     ) {
       throw new WsException('You must offer something');
     }
@@ -371,7 +377,7 @@ export class PlayerService {
     }
     if (data.wantedFieldsIndexes.length > 0) {
       const otherUserFields = fields.filter(
-        (field) => field.ownedBy !== data.toUserId
+        (field) => field.ownedBy === data.toUserId
       );
       const otherUserFieldsIndexes = otherUserFields.map(
         (field) => field.index
@@ -390,8 +396,11 @@ export class PlayerService {
   getTrade(gameId: string) {
     return this.trades.get(gameId);
   }
-  async acceptTrade(game: Partial<GamePayload>, trade: Trade) {
+  async acceptTrade(game: Partial<GamePayload>, trade: Trade, userId: string) {
     if (!trade) throw new WsException('There is no trade to accept');
+    if (trade.toUserId !== userId)
+      throw new WsException('You cant accept this trade');
+    this.gameService.clearTimer(game.id);
     if (trade.offerFieldsIndexes.length > 0) {
       trade.offerFieldsIndexes.forEach((index) => {
         const field = this.findPlayerFieldByIndex(fields, index);
@@ -430,7 +439,32 @@ export class PlayerService {
       );
     }
     this.setTrade(game.id, null);
-    return { fields, updatedGame: player?.game ? player.game : null };
+    return { fields, updatedGame: player?.game ? player.game : game };
+  }
+
+  async refuseFromTrade(game: Partial<GamePayload>) {
+    const trade = this.getTrade(game.id);
+    if (!trade) throw new WsException('There is no trade to refuse');
+    this.setTrade(game.id, null);
+
+    const { updatedGame } = await this.gameService.passTurnToUser({
+      game,
+      toUserId: trade.fromUserId,
+      turnTime: game.timeOfTurn,
+    });
+    this.webSocketServerService.server
+      .to(game.id)
+      .emit('updateGameData', { game: updatedGame });
+    const toPlayer = game.players.find(
+      (player) => player.userId === trade.toUserId
+    );
+    const message = await this.chatService.onNewMessage(game.turnOfUserId, {
+      text: `${toPlayer.user.nickname} відхилив угоду!`,
+      chatId: game.chat.id,
+    });
+    this.webSocketServerService.server
+      .to(game.id)
+      .emit('gameChatMessage', message);
   }
 
   async surrender(userId: string, gameId: string) {

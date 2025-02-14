@@ -11,15 +11,17 @@ import { PromisesToWinBid } from './types/promisesToWinBid';
 import { Mutex } from 'async-mutex';
 import secretFields, { SecretType } from 'src/utils/fields/secretFields';
 import { SecretInfo } from './types/secretInfo.type';
-import { Server } from 'socket.io';
+import { EventService } from 'src/event/event.service';
 @Injectable()
 export class GameService {
   constructor(
     private gameRepository: GameRepository,
     @Inject(forwardRef(() => PlayerService))
-    private playerService: PlayerService
+    private playerService: PlayerService,
+    private eventService: EventService
   ) {
     this.hightestInQueue = this.hightestInQueue.bind(this);
+    this.passTurnToUser = this.passTurnToUser.bind(this);
   }
 
   readonly PLAYING_FIELDS_QUANTITY = 40;
@@ -31,10 +33,6 @@ export class GameService {
   promisesToWinBid: Map<string, PromisesToWinBid[]> = new Map();
   private readonly auctionMutexes: Map<string, Mutex> = new Map();
   readonly secrets: Map<string, SecretInfo> = new Map();
-  private server: Server;
-  setServer(server: Server) {
-    this.server = server;
-  }
 
   private getMutex(gameId: string): Mutex {
     if (!this.auctionMutexes.has(gameId)) {
@@ -951,5 +949,25 @@ export class GameService {
   hasWinner(game: Partial<GamePayload>) {
     const notLosers = this.findPlayersWhoDidntLose(game);
     return notLosers.length === 1;
+  }
+
+  async passTurnToUser(data: {
+    game: Partial<GamePayload>;
+    toUserId: string;
+    turnTime?: number;
+  }) {
+    this.clearTimer(data.game.id);
+    const turnEnds = this.calculateEndOfTurn(data.turnTime || 10000);
+    const updatedGame = await this.updateById(data.game.id, {
+      turnOfUserId: data.toUserId,
+      turnEnds,
+    });
+    if (!data.game.dices) {
+      this.eventService.emitGameEvent('setRollDiceTimer', updatedGame);
+    } else {
+      this.eventService.emitGameEvent('setAfterRolledDiceTimer', updatedGame);
+    }
+
+    return { updatedGame };
   }
 }

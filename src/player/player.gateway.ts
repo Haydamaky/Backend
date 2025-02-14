@@ -1,6 +1,7 @@
 import {
   forwardRef,
   Inject,
+  OnModuleInit,
   UseFilters,
   UseGuards,
   UsePipes,
@@ -8,6 +9,7 @@ import {
 import {
   ConnectedSocket,
   MessageBody,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -25,6 +27,10 @@ import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-except
 import { fields } from 'src/utils/fields';
 import { OfferTradeDto } from './dto/offer-trade.dto';
 import { PlayerService } from './player.service';
+import { EventService } from 'src/event/event.service';
+import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.service';
+import { GameService } from 'src/game/game.service';
+import { ChatService } from 'src/chat/chat.service';
 
 @WebSocketGateway({
   cors: {
@@ -36,9 +42,21 @@ import { PlayerService } from './player.service';
 @UseFilters(WebsocketExceptionsFilter)
 @UsePipes(new WsValidationPipe())
 @UseGuards(WsGuard, ActiveGameGuard, HasLostGuard)
-export class PlayerGateway {
-  constructor(private readonly playerService: PlayerService) {}
-  @WebSocketServer() server: Server;
+export class PlayerGateway implements OnGatewayInit {
+  constructor(
+    private readonly playerService: PlayerService,
+    private eventService: EventService,
+    private webSocketServerService: WebSocketServerService,
+    @Inject(forwardRef(() => GameService))
+    private readonly gameService: GameService,
+    private chatService: ChatService
+  ) {}
+  @WebSocketServer()
+  private server: Server;
+
+  afterInit(server: Server) {
+    this.webSocketServerService.setServer(server);
+  }
   @SubscribeMessage('buyBranch')
   async buyBranch(
     @ConnectedSocket()
@@ -114,6 +132,7 @@ export class PlayerGateway {
     });
   }
 
+  @UseGuards(TurnGuard)
   @SubscribeMessage('offerTrade')
   async offerTrade(
     @ConnectedSocket()
@@ -123,12 +142,23 @@ export class PlayerGateway {
   ) {
     const game = socket.game;
     const userId = socket.jwtPayload.sub;
-    this.playerService.validateTradeData(game, data);
+    if (this.gameService.getAuction(game.id))
+      throw new WsException('Cannot offer trade while auction');
+    await this.playerService.validateTradeData(game, data);
     const trade = { ...data, fromUserId: userId } as Trade;
     this.playerService.setTrade(game.id, trade);
-    this.server
-      .to(data.toUserId)
-      .emit('tradeOffered', { ...data, fromUserId: userId });
+    const fromPlayer = game.players.find(
+      (player) => player.userId === trade.fromUserId
+    );
+    const toPlayer = game.players.find(
+      (player) => player.userId === trade.toUserId
+    );
+    const message = await this.chatService.onNewMessage(game.turnOfUserId, {
+      text: `${fromPlayer.user.nickname} запропонував ${toPlayer.user.nickname} угоду!`,
+      chatId: game.chat.id,
+    });
+    this.server.to(game.id).emit('gameChatMessage', message);
+    this.eventService.emitGameEvent('offerTrade', { game, trade });
   }
 
   @SubscribeMessage('refuseFromTrade')
@@ -137,10 +167,7 @@ export class PlayerGateway {
     socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload }
   ) {
     const game = socket.game;
-    const trade = this.playerService.getTrade(game.id);
-    if (!trade) throw new WsException('There is no trade to refuse');
-    this.playerService.setTrade(game.id, null);
-    this.server.to(trade.fromUserId).emit('tradeRefused', { trade });
+    this.playerService.refuseFromTrade(game);
   }
 
   @SubscribeMessage('acceptTrade')
@@ -152,13 +179,31 @@ export class PlayerGateway {
     const trade = this.playerService.getTrade(game.id);
     const { updatedGame, fields } = await this.playerService.acceptTrade(
       game,
-      trade
+      trade,
+      socket.jwtPayload.sub
     );
     const data = { fields };
-    if (updatedGame) {
-      data['game'] = updatedGame;
+
+    const { updatedGame: secondTimeUpdatedGame } =
+      await this.gameService.passTurnToUser({
+        game: updatedGame,
+        toUserId: trade.fromUserId,
+      });
+    if (secondTimeUpdatedGame) {
+      data['game'] = secondTimeUpdatedGame;
     }
-    this.server.to(game.id).emit('tradeAccepted', data);
+    const fromPlayer = game.players.find(
+      (player) => player.userId === trade.fromUserId
+    );
+    const toPlayer = game.players.find(
+      (player) => player.userId === trade.toUserId
+    );
+    const message = await this.chatService.onNewMessage(game.turnOfUserId, {
+      text: `Угода між ${fromPlayer.user.nickname} та ${toPlayer.user.nickname} підписана!`,
+      chatId: game.chat.id,
+    });
+    this.server.to(game.id).emit('gameChatMessage', message);
+    this.server.to(game.id).emit('updateGameData', data);
   }
 
   @SubscribeMessage('surrender')

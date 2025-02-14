@@ -33,6 +33,9 @@ import { ActiveGameGuard } from 'src/auth/guard/activeGame.guard';
 import { PlayerPayload } from 'src/player/player.repository';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { OnEvent } from '@nestjs/event-emitter';
+import { Trade } from './types/trade.type';
+import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.service';
 
 @WebSocketGateway({
   cors: {
@@ -50,7 +53,8 @@ export class GameGateway {
     private playerService: PlayerService,
     private jwtService: JwtService,
     private configService: ConfigService,
-    private chatService: ChatService
+    private chatService: ChatService,
+    private webSocketServer: WebSocketServerService
   ) {
     this.rollDice = this.rollDice.bind(this);
     this.putUpForAuction = this.putUpForAuction.bind(this);
@@ -63,9 +67,10 @@ export class GameGateway {
   }
 
   @WebSocketServer()
-  set server(server: Server) {
-    this.server = server;
-    this.gameService.setServer(server);
+  private server: Server;
+
+  afterInit(server: Server) {
+    this.webSocketServer.setServer(server);
   }
 
   async handleConnection(socket: Socket & { jwtPayload: JwtPayload }) {
@@ -269,7 +274,7 @@ export class GameGateway {
     ) {
       this.gameService.setTimer(
         game.id,
-        2500,
+        12000,
         updatedGame,
         this.passTurnToNext
       );
@@ -324,7 +329,7 @@ export class GameGateway {
         } else {
           this.gameService.setTimer(
             game.id,
-            2500,
+            12000,
             { game, userId: game.turnOfUserId, amount: secretInfo.amounts[0] },
             this.payToBank
           );
@@ -515,7 +520,6 @@ export class GameGateway {
         'You cant pay for that field because smt is missing'
       );
     let amountToPay = 0;
-    console.log({ secretInfo });
     if (secretInfo) {
       if (!secretInfo.users.includes(socket.jwtPayload.sub)) {
         throw new WsException(
@@ -607,7 +611,6 @@ export class GameGateway {
       argsObj.amount
     );
     const secretInfo = this.gameService.secrets.get(updatedGame.id);
-    console.log({ secretInfo });
     if (!secretInfo) {
       await this.passTurnToNext(updatedGame);
     } else {
@@ -824,5 +827,78 @@ export class GameGateway {
       updatedGame,
       this.rollDice
     );
+  }
+  @OnEvent('offerTrade')
+  async handleOfferTrade(data: { game: Partial<GamePayload>; trade: Trade }) {
+    const { updatedGame } = await this.gameService.passTurnToUser({
+      game: data.game,
+      toUserId: data.trade.toUserId,
+    });
+    this.server.to(data.game.id).emit('updateGameData', { game: updatedGame });
+    this.server
+      .to(data.trade.toUserId)
+      .emit('tradeOffered', { trade: data.trade });
+    this.gameService.setTimer(
+      updatedGame.id,
+      10000,
+      updatedGame,
+      this.playerService.refuseFromTrade
+    );
+  }
+  @OnEvent('setRollDiceTimer')
+  async handleSetRollDiceTimer(game: Partial<GamePayload>) {
+    console.log('setting rollDice timer', { game });
+    this.gameService.setTimer(game.id, game.timeOfTurn, game, this.rollDice);
+  }
+  @OnEvent('setAfterRolledDiceTimer')
+  async handleSetAfterRolledDiceTimer(updatedGame: Partial<GamePayload>) {
+    const currentPlayer = this.playerService.findPlayerWithTurn(updatedGame);
+    const playerNextField = this.gameService.findPlayerFieldByIndex(
+      fields,
+      currentPlayer.currentFieldIndex
+    );
+    if (
+      playerNextField.price &&
+      playerNextField.ownedBy === updatedGame?.turnOfUserId
+    ) {
+      this.gameService.setTimer(
+        updatedGame.id,
+        3500,
+        updatedGame,
+        this.passTurnToNext
+      );
+    }
+    if (
+      playerNextField.ownedBy &&
+      playerNextField.ownedBy !== currentPlayer.userId
+    ) {
+      this.steppedOnPrivateField(currentPlayer, playerNextField, updatedGame);
+      return;
+    }
+    if (playerNextField.price && !playerNextField.ownedBy) {
+      this.gameService.setTimer(
+        updatedGame.id,
+        updatedGame.timeOfTurn,
+        updatedGame,
+        this.putUpForAuction
+      );
+    }
+    if (!playerNextField.price) {
+      this.processSpecialField(updatedGame, playerNextField);
+    }
+    const currentField =
+      await this.gameService.findCurrentFieldWithUserId(updatedGame);
+    if (
+      currentField?.specialField &&
+      !currentField.secret &&
+      !currentField.toPay
+    ) {
+      this.gameService.setTimer(
+        updatedGame.id,
+        12000,
+        updatedGame,
+        this.passTurnToNext
+      );
+    }
   }
 }

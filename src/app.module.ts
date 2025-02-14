@@ -10,16 +10,21 @@ import { APP_GUARD } from '@nestjs/core';
 import { ChatModule } from './chat/chat.module';
 import { GameModule } from './game/game.module';
 import { PlayerModule } from './player/player.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { WebSocketServerModule } from './webSocketServer/webSocketServer.module';
+import { WebSocketServerService } from './webSocketServer/webSocketServer.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
+    EventEmitterModule.forRoot(),
     UserModule,
     AuthModule,
     PrismaModule,
     ChatModule,
     GameModule,
     PlayerModule,
+    WebSocketServerModule,
   ],
   controllers: [AppController],
   providers: [
@@ -28,6 +33,7 @@ import { PlayerModule } from './player/player.module';
       provide: APP_GUARD,
       useClass: JwtGuard,
     },
+    WebSocketServerService,
   ],
 })
 export class AppModule {}
