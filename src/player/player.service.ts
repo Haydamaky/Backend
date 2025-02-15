@@ -329,7 +329,7 @@ export class PlayerService {
     const player = await this.incrementMoneyWithUserAndGameId(
       playerUserId,
       game.id,
-      fieldToPledge.branchPrice
+      fieldToPledge.pledgePrice
     );
     fieldToPledge.isPledged = true;
     fieldToPledge.turnsToUnpledge = game.turnsToUnpledge;
