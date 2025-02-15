@@ -99,7 +99,7 @@ export const fields = [
     id: '3fe35a3b-ec46-4bd3-bf4f-efb4c520ba0b',
     positionForGrid: 5,
     index: 6,
-    name: 'VDNH',
+    name: 'ВДНХ',
     specialField: true,
     toPay: -3000,
     line: 'horizontal-top',
