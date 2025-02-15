@@ -357,7 +357,7 @@ export class GameGateway {
           updatedPlayer = await this.payToUser({
             game,
             userId,
-            userToPay: firstUser,
+            userToPayId: firstUser,
             amount: secretInfo.amounts[1],
           });
         }
@@ -373,9 +373,9 @@ export class GameGateway {
       }
     }
     this.gameService.secrets.delete(game.id);
-    this.passTurnToNext(updatedPlayer.game);
+    this.passTurnToNext(updatedPlayer?.game || game);
     this.server.to(game.id).emit('updatePlayers', {
-      game: updatedPlayer.game,
+      game: updatedPlayer?.game,
     });
   }
 
@@ -388,7 +388,7 @@ export class GameGateway {
       if (userId) {
         const player = game.players.find((player) => player.userId === userId);
         if (this.playerService.estimateAssets(player) < secretInfo.amounts[0]) {
-          await this.loseGame(player);
+          await this.playerService.loseGame(player.userId, game.id);
           return;
         }
         const { updatedGame } = await this.gameService.payToBank(
@@ -411,7 +411,7 @@ export class GameGateway {
       if (userId) {
         const player = game.players.find((player) => player.userId === userId);
         if (this.playerService.estimateAssets(player) < secretInfo.amounts[1]) {
-          await this.loseGame(player);
+          await this.playerService.loseGame(player.userId, game.id);
           return;
         }
         const { updatedGame } = await this.gameService.payToBank(
@@ -446,7 +446,7 @@ export class GameGateway {
     return this.payToUser({
       game,
       userId,
-      userToPay: secretInfo.users[0],
+      userToPayId: secretInfo.users[0],
       amount: secretInfo.amounts[1],
     });
   }
@@ -454,12 +454,12 @@ export class GameGateway {
   async payToUser({
     game,
     userId,
-    userToPay,
+    userToPayId,
     amount,
   }: {
     game: Partial<GamePayload>;
     userId: string;
-    userToPay: string;
+    userToPayId: string;
     amount: number;
   }) {
     let secretInfo = this.gameService.secrets.get(game.id);
@@ -471,12 +471,15 @@ export class GameGateway {
     const player = game.players.find((player) => player.userId === userId);
     let updatedPlayer = null;
     if (this.playerService.estimateAssets(player) < amount) {
-      await this.loseGame(player);
-      updatedPlayer = await this.playerService.incrementMoneyWithUserAndGameId(
-        userToPay,
-        game.id,
-        this.playerService.estimateAssets(player)
+      const userToPay = game.players.find(
+        (player) => player.userId === userToPayId
       );
+      updatedPlayer = await this.playerService.incrementMoneyWithUserAndGameId(
+        userToPayId,
+        game.id,
+        this.playerService.estimateAssets(userToPay)
+      );
+      await this.playerService.loseGame(player.userId, game.id);
     } else {
       await this.playerService.incrementMoneyWithUserAndGameId(
         userId,
@@ -484,7 +487,7 @@ export class GameGateway {
         amount
       );
       updatedPlayer = await this.playerService.incrementMoneyWithUserAndGameId(
-        userToPay,
+        userToPayId,
         game.id,
         -amount
       );
@@ -638,24 +641,12 @@ export class GameGateway {
       );
       return;
     }
-    const updatedPlayer = await this.loseGame(player);
+    const { updatedPlayer } = await this.playerService.loseGame(
+      player.userId,
+      game.id
+    );
 
     await this.passTurnToNext(updatedPlayer.game);
-  }
-
-  async loseGame(player: Partial<PlayerPayload>) {
-    const updatedPlayer = await this.playerService.updateById(player.id, {
-      lost: true,
-    });
-
-    if (this.gameService.hasWinner(updatedPlayer.game)) {
-      const game = await this.gameService.updateById(updatedPlayer.game.id, {
-        status: 'FINISHED',
-      });
-      this.server.to(game.id).emit('playerWon', { game });
-      return;
-    }
-    return updatedPlayer;
   }
 
   @UseGuards(ActiveGameGuard, TurnGuard, HasLostGuard)
@@ -827,6 +818,10 @@ export class GameGateway {
       updatedGame,
       this.rollDice
     );
+  }
+  @OnEvent('passTurnToNext')
+  async handlePassTurnToNext(data: { game: Partial<GamePayload> }) {
+    this.passTurnToNext(data.game);
   }
   @OnEvent('offerTrade')
   async handleOfferTrade(data: { game: Partial<GamePayload>; trade: Trade }) {

@@ -456,17 +456,16 @@ export class GameService {
       const secretInfo = {
         amounts: secret.amounts,
         users: [
-          ...new Set([
-            game.turnOfUserId,
-            ...game.players
-              .map((player) => {
-                if (!player.lost) {
-                  return player.userId;
-                }
-              })
-              .filter((player) => player),
-          ]),
-        ] as [],
+          game.turnOfUserId,
+          ...game.players
+            .filter((player) => player.userId !== game.turnOfUserId)
+            .map((player) => {
+              if (!player.lost && player.userId !== game.turnOfUserId) {
+                return player.userId;
+              }
+              return '';
+            }),
+        ],
       };
       this.secrets.set(game.id, secretInfo);
       return secretInfo;
@@ -791,13 +790,11 @@ export class GameService {
       playerNextField.income[playerNextField.amountOfBranches]
     ) {
       // We can add pledging of last owned field or smt to not make player lose immidiately
-      const updatedPlayer = await this.playerService.updateById(
-        currentPlayer.id,
-        { lost: true }
+      const { updatedPlayer } = await this.playerService.loseGame(
+        currentPlayer.userId,
+        game.id
       );
-      fields.forEach((field) => {
-        if (field.ownedBy === updatedPlayer.userId) field.ownedBy = null;
-      });
+
       return { updatedGame: updatedPlayer.game, fields };
     }
 
@@ -822,16 +819,17 @@ export class GameService {
     );
     if (currentPlayer.money < amount) {
       // We can add pledging of last owned field or smt to not make player lose immidiately
-      const updatedPlayer = await this.playerService.updateById(
-        currentPlayer.id,
-        { lost: true }
+      const { updatedPlayer } = await this.playerService.loseGame(
+        currentPlayer.userId,
+        game.id
       );
-      fields.forEach((field) => {
-        if (field.ownedBy === updatedPlayer.userId) field.ownedBy = null;
-      });
       return { updatedGame: updatedPlayer.game, fields };
     }
-
+    console.log({
+      amount,
+      currentUser: currentPlayer.userId,
+      turnOfUserId: game.turnOfUserId,
+    });
     const playerWhoPayed =
       await this.playerService.incrementMoneyWithUserAndGameId(
         currentPlayer.userId || game.turnOfUserId,

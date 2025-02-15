@@ -10,6 +10,7 @@ import { Trade } from 'src/game/types/trade.type';
 import { GameService } from 'src/game/game.service';
 import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.service';
 import { ChatService } from 'src/chat/chat.service';
+import { EventService } from 'src/event/event.service';
 
 @Injectable()
 export class PlayerService {
@@ -18,7 +19,8 @@ export class PlayerService {
     private readonly gameService: GameService,
     private playerRepository: PlayerRepository,
     private webSocketServerService: WebSocketServerService,
-    private chatService: ChatService
+    private chatService: ChatService,
+    private eventService: EventService
   ) {
     this.refuseFromTrade = this.refuseFromTrade.bind(this);
   }
@@ -467,7 +469,8 @@ export class PlayerService {
       .emit('gameChatMessage', message);
   }
 
-  async surrender(userId: string, gameId: string) {
+  async loseGame(userId: string, gameId: string) {
+    this.gameService.clearTimer(gameId);
     const updatedPlayer = await this.update({
       where: {
         userId_gameId: {
@@ -491,8 +494,24 @@ export class PlayerService {
         },
       },
     });
+    const updatedGame = await this.gameService.updateById(gameId, {
+      dices: 'playerLost',
+    });
     fields.forEach((field) => {
       if (field.ownedBy === updatedPlayer.userId) field.ownedBy = null;
+    });
+
+    if (this.gameService.hasWinner(updatedPlayer.game)) {
+      const game = await this.gameService.updateById(updatedPlayer.game.id, {
+        status: 'FINISHED',
+      });
+      this.webSocketServerService.server
+        .to(game.id)
+        .emit('playerWon', { game });
+      return { updatedPlayer, fields };
+    }
+    this.eventService.emitGameEvent('passTurnToNext', {
+      game: updatedGame,
     });
     return { updatedPlayer, fields };
   }

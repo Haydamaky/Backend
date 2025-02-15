@@ -213,10 +213,11 @@ export class PlayerGateway implements OnGatewayInit {
   ) {
     const userId = socket.jwtPayload.sub;
     const gameId = socket.game.id;
-    const { updatedPlayer, fields } = await this.playerService.surrender(
+    const { updatedPlayer, fields } = await this.playerService.loseGame(
       userId,
       gameId
     );
+
     this.server
       .to(gameId)
       .emit('playerSurrendered', { game: updatedPlayer.game, fields });
