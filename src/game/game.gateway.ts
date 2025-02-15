@@ -243,7 +243,11 @@ export class GameGateway {
       moveToIndex: nextIndex,
       game: updatedGame,
     });
-    if (hasOwner && playerNextField.ownedBy !== currentPlayer.userId) {
+    if (
+      hasOwner &&
+      playerNextField.ownedBy !== currentPlayer.userId &&
+      !playerNextField.isPledged
+    ) {
       this.steppedOnPrivateField(currentPlayer, playerNextField, updatedGame);
       return;
     }
@@ -274,7 +278,16 @@ export class GameGateway {
     ) {
       this.gameService.setTimer(
         game.id,
-        12000,
+        3500,
+        updatedGame,
+        this.passTurnToNext
+      );
+    }
+
+    if (playerNextField.isPledged) {
+      this.gameService.setTimer(
+        game.id,
+        3500,
         updatedGame,
         this.passTurnToNext
       );
