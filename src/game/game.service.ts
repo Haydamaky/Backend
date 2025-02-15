@@ -564,10 +564,8 @@ export class GameService {
       });
       if (!allPromisesLess && !allPromisesEqual)
         throw new WsException('Your bid is too small');
-      console.log({ allPromisesLess, promisesToWin });
       if (allPromisesLess) {
         promisesToWin.forEach((promise) => {
-          console.log({ promise, auction });
           promise.reject(auction);
           this.clearTimer(`${gameId}:${promise.userId}`);
           this.setBuyerOnAuction(
@@ -649,7 +647,8 @@ export class GameService {
       auction.usersRefused.push(userId);
       auction.bidders.push({ accepted: false, bid: 0, userId });
       if (
-        auction.usersRefused.length === player.game.players.length - 1 &&
+        auction.usersRefused.length >=
+          player.game.players.filter((player) => !player.lost).length &&
         auction.bidders.length > 1
       ) {
         this.clearTimer(gameId);

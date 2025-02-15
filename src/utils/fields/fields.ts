@@ -369,7 +369,7 @@ export const fields = [
     group: 'resale',
     specialField: false,
     line: 'vertical-right',
-    ownedBy: 'f9d44d55-9059-4c4e-b37a-32000b747e2d',
+    ownedBy: '',
     players: [],
     color: 'tortoise',
     income: [280, 690, 1200, 2615, 5300, 9800],
@@ -409,7 +409,7 @@ export const fields = [
     group: 'food-producer',
     specialField: false,
     line: 'vertical-right',
-    ownedBy: 'f9d44d55-9059-4c4e-b37a-32000b747e2d',
+    ownedBy: '',
     players: [],
     color: 'pink',
     imageUrl:
@@ -573,7 +573,7 @@ export const fields = [
     group: 'Channels',
     specialField: false,
     line: 'vertical-right',
-    ownedBy: 'f9d44d55-9059-4c4e-b37a-32000b747e2d',
+    ownedBy: '',
     players: [],
     color: 'red',
     imageUrl:
@@ -609,7 +609,7 @@ export const fields = [
     group: 'restoraunt',
     specialField: false,
     line: 'horizontal-bottom',
-    ownedBy: 'f9d44d55-9059-4c4e-b37a-32000b747e2d',
+    ownedBy: '',
     players: [],
     color: 'purple',
     imageUrl:
@@ -767,7 +767,7 @@ export const fields = [
     group: 'clubs',
     specialField: false,
     line: 'horizontal-bottom',
-    ownedBy: 'f9d44d55-9059-4c4e-b37a-32000b747e2d',
+    ownedBy: '',
     players: [],
     color: 'dark-blue',
     imageUrl:
