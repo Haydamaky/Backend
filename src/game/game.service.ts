@@ -361,14 +361,6 @@ export class GameService {
     return fields.find((field) => field.index === indexOfField);
   }
 
-  deletePlayer(players: Player[], idToDelete: string) {
-    if (players.length === 0) return;
-    const indexToDelete = players.findIndex(
-      (player) => player.id === idToDelete
-    );
-    players.splice(indexToDelete, 1);
-  }
-
   decrementPledgedFields(fields: FieldsType) {
     fields.forEach((field) => {
       if (field.isPledged && field.turnsToUnpledge === 0) {
@@ -391,21 +383,12 @@ export class GameService {
       this.PLAYING_FIELDS_QUANTITY
     );
     this.decrementPledgedFields(fields);
-    const updatedPlayer = await this.playerService.updateById(
-      currentPlayer.id,
-      {
-        currentFieldIndex: nextIndex,
-        money: { increment: shouldGetMoney ? game.passStartBonus : 0 },
-      }
-    );
+    await this.playerService.updateById(currentPlayer.id, {
+      currentFieldIndex: nextIndex,
+      money: { increment: shouldGetMoney ? game.passStartBonus : 0 },
+    });
 
-    const playerField = this.findPlayerFieldByIndex(
-      fields,
-      currentPlayer.currentFieldIndex
-    );
-    this.deletePlayer(playerField.players, currentPlayer.id);
     const playerNextField = this.findPlayerFieldByIndex(fields, nextIndex);
-    playerNextField.players.push(updatedPlayer);
     let updatedGame: null | Partial<GamePayload> = null;
     if (playerNextField.ownedBy !== currentPlayer.userId) {
       const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
