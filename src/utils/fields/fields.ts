@@ -8,7 +8,6 @@ export const fields = [
     large: true,
     line: 'vertical-left',
     ownedBy: null,
-    players: [],
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/start.svg?t=2025-01-01T16%3A46%3A10.529Z',
   },
@@ -28,7 +27,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-top',
     ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
-    players: [],
     color: 'yellow',
     income: [100, 150, 420, 1100, 1735, 3000],
     isPledged: false,
@@ -45,7 +43,6 @@ export const fields = [
     secret: true,
     line: 'horizontal-top',
     ownedBy: null,
-    players: [],
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/que1.svg',
   },
@@ -64,7 +61,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-top',
     ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
-    players: [],
     color: 'yellow',
     income: [120, 175, 500, 1250, 1880, 3400],
     isPledged: false,
@@ -87,7 +83,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-top',
     ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
-    players: [],
     color: 'yellow',
     income: [140, 200, 635, 1400, 2000, 4000],
     isPledged: false,
@@ -104,7 +99,6 @@ export const fields = [
     toPay: -3000,
     line: 'horizontal-top',
     ownedBy: null,
-    players: [],
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/vdng.svg?t=2024-12-26T13%3A55%3A02.015Z',
   },
@@ -123,7 +117,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-top',
     ownedBy: '',
-    players: [],
     color: 'blue',
     income: [180, 250, 715, 1500, 2275, 4850],
     isPledged: false,
@@ -146,7 +139,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-top',
     ownedBy: '',
-    players: [],
     color: 'blue',
     income: [200, 275, 760, 1710, 2400, 6660],
     isPledged: false,
@@ -163,7 +155,6 @@ export const fields = [
     secret: true,
     line: 'horizontal-top',
     ownedBy: null,
-    players: [],
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/que1.svg',
   },
@@ -182,7 +173,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-top',
     ownedBy: '',
-    players: [],
     color: 'blue',
     income: [220, 300, 820, 2100, 4575, 7700],
     isPledged: false,
@@ -200,7 +190,6 @@ export const fields = [
     large: true,
     line: 'vertical-right',
     ownedBy: null,
-    players: [],
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/prison.svg?t=2025-01-01T16%3A45%3A15.880Z',
   },
@@ -219,7 +208,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-left',
     ownedBy: '',
-    players: [],
     color: 'gray',
     income: [800, 2500, 5765, 10000, 19110, 28000],
     isPledged: false,
@@ -242,7 +230,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-right',
     ownedBy: null,
-    players: [],
     color: 'tortoise',
     income: [240, 610, 900, 2300, 4815, 8200],
     isPledged: false,
@@ -259,7 +246,6 @@ export const fields = [
     secret: true,
     line: 'vertical-left',
     ownedBy: null,
-    players: [],
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/que.svg',
   },
@@ -278,7 +264,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-right',
     ownedBy: null,
-    players: [],
     color: 'tortoise',
     income: [260, 640, 1000, 2475, 5100, 9100],
     isPledged: false,
@@ -301,7 +286,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-left',
     ownedBy: '',
-    players: [],
     color: 'gray',
     income: [725, 2230, 5195, 8720, 17400, 25375],
     isPledged: false,
@@ -324,7 +308,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-right',
     ownedBy: '',
-    players: [],
     color: 'pink',
     income: [180, 500, 735, 1300, 3100, 6300],
     isPledged: false,
@@ -347,7 +330,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-left',
     ownedBy: '',
-    players: [],
     color: 'gray',
     income: [700, 2100, 4690, 8000, 16195, 24500],
     isPledged: false,
@@ -370,7 +352,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-right',
     ownedBy: '',
-    players: [],
     color: 'tortoise',
     income: [280, 690, 1200, 2615, 5300, 9800],
     isPledged: false,
@@ -387,7 +368,6 @@ export const fields = [
     toPay: -1000,
     line: 'vertical-left',
     ownedBy: null,
-    players: [],
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/uah.svg?t=2025-01-01T16%3A46%3A25.452Z',
   },
@@ -410,7 +390,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-right',
     ownedBy: '',
-    players: [],
     color: 'pink',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/olkom.svg?t=2024-12-26T13%3A48%3A24.061Z',
@@ -433,7 +412,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-left',
     ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
-    players: [],
     color: 'orange',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/respublika.svg',
@@ -456,7 +434,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-right',
     ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
-    players: [],
     color: 'red',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/ictv.svg?t=2024-12-26T13%3A46%3A49.709Z',
@@ -479,7 +456,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-left',
     ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
-    players: [],
     color: 'orange',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/ocean_plaza.svg?t=2024-12-26T13%3A48%3A12.630Z',
@@ -502,7 +478,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-right',
     ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
-    players: [],
     color: 'red',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/1+1New.svg?t=2024-12-26T13%3A29%3A23.885Z',
@@ -516,7 +491,6 @@ export const fields = [
     secret: true,
     line: 'vertical-right',
     ownedBy: null,
-    players: [],
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/que.svg',
   },
@@ -529,7 +503,6 @@ export const fields = [
     secret: true,
     line: 'vertical-left',
     ownedBy: null,
-    players: [],
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/que.svg',
   },
@@ -551,7 +524,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-left',
     ownedBy: 'c06d9f24-2a11-463d-b3d5-8adf7aba6216',
-    players: [],
     color: 'orange',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/lavina.svg?t=2024-12-26T13%3A47%3A03.067Z',
@@ -574,7 +546,6 @@ export const fields = [
     specialField: false,
     line: 'vertical-right',
     ownedBy: '',
-    players: [],
     color: 'red',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/qtv.svg',
@@ -588,7 +559,6 @@ export const fields = [
     specialField: true,
     line: 'vertical-left',
     ownedBy: null,
-    players: [],
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/police.svg?t=2025-01-01T16%3A44%3A22.021Z',
   },
@@ -610,7 +580,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-bottom',
     ownedBy: '',
-    players: [],
     color: 'purple',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/ninja_sushi.svg?t=2024-12-26T13%3A47%3A46.647Z',
@@ -634,7 +603,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-bottom',
     ownedBy: 'f9d44d55-9059-4c4e-b37a-32000b747e2d',
-    players: [],
     color: 'purple',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/lviv_croiss.svg?t=2024-12-26T13%3A47%3A16.247Z',
@@ -658,7 +626,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-bottom',
     ownedBy: 'f9d44d55-9059-4c4e-b37a-32000b747e2d',
-    players: [],
     color: 'green',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/4a_games.svg?t=2024-12-26T13%3A44%3A48.919Z',
@@ -682,7 +649,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-bottom',
     ownedBy: null,
-    players: [],
     color: 'purple',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/puzata_hata.svg?t=2024-12-26T13%3A49%3A01.820Z',
@@ -706,7 +672,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-bottom',
     ownedBy: 'f9d44d55-9059-4c4e-b37a-32000b747e2d',
-    players: [],
     color: 'green',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/GSC%20Game.svg?t=2025-01-01T16%3A43%3A37.096Z',
@@ -730,7 +695,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-bottom',
     ownedBy: 'f9d44d55-9059-4c4e-b37a-32000b747e2d',
-    players: [],
     color: 'dark-blue',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/dunamo.svg?t=2024-12-26T13%3A45%3A57.199Z',
@@ -745,7 +709,6 @@ export const fields = [
     secret: true,
     line: 'horizontal-bottom',
     ownedBy: null,
-    players: [],
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/que1.svg',
   },
@@ -768,7 +731,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-bottom',
     ownedBy: '',
-    players: [],
     color: 'dark-blue',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/shahtar.svg',
@@ -792,7 +754,6 @@ export const fields = [
     specialField: false,
     line: 'horizontal-bottom',
     ownedBy: null,
-    players: [],
     color: 'dark-blue',
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/polissya.svg?t=2024-12-26T13%3A48%3A34.584Z',
@@ -807,7 +768,6 @@ export const fields = [
     specialField: true,
     line: 'vertical-right',
     ownedBy: '',
-    players: [],
     imageUrl:
       'https://dfwunfrhdvqnydwwytsw.supabase.co/storage/v1/object/public/MonopolyFields/casino.svg?t=2025-01-01T16%3A42%3A15.301Z',
   },
