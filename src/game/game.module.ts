@@ -9,6 +9,8 @@ import { PlayerModule } from 'src/player/player.module';
 import { ChatModule } from 'src/chat/chat.module';
 import { EventModule } from 'src/event/event.module';
 import { WebSocketServerModule } from 'src/webSocketServer/webSocketServer.module';
+import { MongooseModule } from '@nestjs/mongoose';
+import { Field, FieldSchema } from 'src/schema/Field.schema';
 
 @Module({
   imports: [
@@ -19,6 +21,12 @@ import { WebSocketServerModule } from 'src/webSocketServer/webSocketServer.modul
     forwardRef(() => PlayerModule),
     EventModule,
     WebSocketServerModule,
+    MongooseModule.forFeature([
+      {
+        name: Field.name,
+        schema: FieldSchema,
+      },
+    ]),
   ],
   providers: [GameGateway, GameService, GameRepository],
   exports: [GameService],

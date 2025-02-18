@@ -1,5 +1,4 @@
-import { fields } from 'src/utils/fields';
-import { FieldsType, FieldType } from '../utils/fields';
+import { DEFAULT_FIELDS } from 'src/utils/fields';
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { GamePayload, GameRepository } from './game.repository';
 import { PlayerService } from 'src/player/player.service';
@@ -12,13 +11,17 @@ import { Mutex } from 'async-mutex';
 import secretFields, { SecretType } from 'src/utils/fields/secretFields';
 import { SecretInfo } from './types/secretInfo.type';
 import { EventService } from 'src/event/event.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Field, FieldDocument } from 'src/schema/Field.schema';
+import { Model } from 'mongoose';
 @Injectable()
 export class GameService {
   constructor(
     private gameRepository: GameRepository,
     @Inject(forwardRef(() => PlayerService))
     private playerService: PlayerService,
-    private eventService: EventService
+    private eventService: EventService,
+    @InjectModel(Field.name) private fieldModel: Model<Field>
   ) {
     this.hightestInQueue = this.hightestInQueue.bind(this);
     this.passTurnToUser = this.passTurnToUser.bind(this);
@@ -74,7 +77,7 @@ export class GameService {
 
     if (activePlayer) return null;
 
-    return this.gameRepository.create({
+    const newGame = await this.gameRepository.create({
       data: {
         playersCapacity: 4, // TODO change players capacity to dynamic number
         players: {
@@ -105,6 +108,17 @@ export class GameService {
         },
       },
     });
+    const gameFields = DEFAULT_FIELDS.map((field) => ({
+      ...field,
+      gameId: newGame.id,
+    }));
+
+    const res = await this.fieldModel.insertMany(gameFields);
+    return newGame;
+  }
+
+  async getGameFields(gameId: string) {
+    return await this.fieldModel.find({ gameId });
   }
 
   async getGame(gameId: string) {
@@ -278,6 +292,7 @@ export class GameService {
       game.turnOfUserId,
       game.id
     );
+    const fields = await this.getGameFields(game.id);
     return this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
   }
 
@@ -357,11 +372,11 @@ export class GameService {
     return resObj;
   }
 
-  findPlayerFieldByIndex(fields: FieldsType, indexOfField: number) {
+  findPlayerFieldByIndex(fields: FieldDocument[], indexOfField: number) {
     return fields.find((field) => field.index === indexOfField);
   }
 
-  decrementPledgedFields(fields: FieldsType) {
+  async decrementPledgedFields(fields: FieldDocument[]) {
     fields.forEach((field) => {
       if (field.isPledged && field.turnsToUnpledge === 0) {
         field.isPledged = false;
@@ -370,6 +385,34 @@ export class GameService {
         field.turnsToUnpledge--;
       }
     });
+    await this.updateFields(fields, [
+      'isPledged',
+      'ownedBy',
+      'turnsToUnpledge',
+    ]);
+  }
+
+  async updateFields<T extends FieldDocument>(
+    fields: T[],
+    propertiesToUpdate: string[]
+  ): Promise<void> {
+    const updates = fields.map((field) => {
+      const updateFields: any = {};
+
+      for (const property of propertiesToUpdate) {
+        if (field[property] !== undefined) {
+          updateFields[property] = field[property];
+        }
+      }
+
+      return {
+        updateOne: {
+          filter: { _id: field._id },
+          update: { $set: updateFields },
+        },
+      };
+    });
+    await this.fieldModel.bulkWrite(updates);
   }
 
   async makeTurn(game: Partial<GamePayload>) {
@@ -377,6 +420,7 @@ export class GameService {
 
     const currentPlayer = this.playerService.findPlayerWithTurn(game);
     const dicesArr = this.parseDicesToArr(dices);
+    const fields = await this.getGameFields(game.id);
     const { nextIndex, shouldGetMoney } = this.calculateNextIndex(
       currentPlayer.currentFieldIndex,
       dicesArr,
@@ -462,6 +506,7 @@ export class GameService {
 
   async findCurrentFieldWithUserId(game: Partial<GamePayload>) {
     const player = this.playerService.findPlayerWithTurn(game);
+    const fields = await this.getGameFields(game.id);
     return this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
   }
 
@@ -470,6 +515,7 @@ export class GameService {
       game.turnOfUserId,
       game.id
     );
+    const fields = await this.getGameFields(game.id);
     if (!player) throw new WsException('No such player');
     const field = this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
     if (!field.price)
@@ -694,6 +740,7 @@ export class GameService {
   }
 
   async winAuction(auction: Auction & { gameId: string }) {
+    const fields = await this.getGameFields(auction.gameId);
     const field = this.findPlayerFieldByIndex(fields, auction.fieldIndex);
     const lastBid = auction.bidders[auction.bidders.length - 1];
     field.ownedBy = lastBid.userId;
@@ -703,12 +750,14 @@ export class GameService {
         auction.gameId,
         lastBid.bid
       );
+    await this.updateFields(fields, ['ownedBy']);
     this.setAuction(auction.gameId, null);
-    return updatedPlayer;
+    return { updatedPlayer, fields };
   }
 
   async buyField(game: Partial<GamePayload>) {
     const player = this.playerService.findPlayerWithTurn(game);
+    const fields = await this.getGameFields(game.id);
     const field = this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
     if (field.ownedBy) {
       throw new WsException('Field is already owned');
@@ -723,6 +772,7 @@ export class GameService {
     }
     this.clearTimer(game.id);
     field.ownedBy = game.turnOfUserId;
+    await this.updateFields(fields, ['ownedBy']);
     const updatedPlayer =
       await this.playerService.decrementMoneyWithUserAndGameId(
         game.turnOfUserId,
@@ -764,17 +814,22 @@ export class GameService {
     return { updatedGame, turnEnds, turnOfNextUserId, dices };
   }
 
-  async payForField(game: Partial<GamePayload>, playerNextField: FieldType) {
+  async payForField(
+    game: Partial<GamePayload>,
+    playerNextField: FieldDocument
+  ) {
     const currentPlayer = this.playerService.findPlayerWithTurn(game);
 
     if (
       currentPlayer.money <
       playerNextField.income[playerNextField.amountOfBranches]
     ) {
+      const fields = await this.getGameFields(game.id);
       // We can add pledging of last owned field or smt to not make player lose immidiately
       const { updatedPlayer } = await this.playerService.loseGame(
         currentPlayer.userId,
-        game.id
+        game.id,
+        fields
       );
 
       return { updatedGame: updatedPlayer.game, fields };
@@ -799,19 +854,17 @@ export class GameService {
     const currentPlayer = game.players.find(
       (player) => player.userId === userId
     );
+    const fields = await this.getGameFields(game.id);
     if (currentPlayer.money < amount) {
       // We can add pledging of last owned field or smt to not make player lose immidiately
-      const { updatedPlayer } = await this.playerService.loseGame(
-        currentPlayer.userId,
-        game.id
-      );
-      return { updatedGame: updatedPlayer.game, fields };
+      const { updatedPlayer, updatedFields } =
+        await this.playerService.loseGame(
+          currentPlayer.userId,
+          game.id,
+          fields
+        );
+      return { updatedGame: updatedPlayer.game, fields: updatedFields };
     }
-    console.log({
-      amount,
-      currentUser: currentPlayer.userId,
-      turnOfUserId: game.turnOfUserId,
-    });
     const playerWhoPayed =
       await this.playerService.incrementMoneyWithUserAndGameId(
         currentPlayer.userId || game.turnOfUserId,

@@ -1,7 +1,6 @@
 import {
   forwardRef,
   Inject,
-  OnModuleInit,
   UseFilters,
   UseGuards,
   UsePipes,
@@ -20,17 +19,16 @@ import { HasLostGuard, TurnGuard } from 'src/auth/guard';
 import { ActiveGameGuard } from 'src/auth/guard/activeGame.guard';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
+import { ChatService } from 'src/chat/chat.service';
+import { EventService } from 'src/event/event.service';
 import { GamePayload } from 'src/game/game.repository';
+import { GameService } from 'src/game/game.service';
 import { Trade } from 'src/game/types/trade.type';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
-import { fields } from 'src/utils/fields';
+import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.service';
 import { OfferTradeDto } from './dto/offer-trade.dto';
 import { PlayerService } from './player.service';
-import { EventService } from 'src/event/event.service';
-import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.service';
-import { GameService } from 'src/game/game.service';
-import { ChatService } from 'src/chat/chat.service';
 
 @WebSocketGateway({
   cors: {
@@ -65,16 +63,19 @@ export class PlayerGateway implements OnGatewayInit {
   ) {
     const game = socket.game;
     const userId = socket.jwtPayload.sub;
-    const fieldToBuyBranch = this.playerService.checkWhetherPlayerHasAllGroup(
-      game,
-      index,
-      userId
-    );
+    const fieldToBuyBranch =
+      await this.playerService.checkWhetherPlayerHasAllGroup(
+        game,
+        index,
+        userId
+      );
     this.playerService.checkFieldHasMaxBranches(fieldToBuyBranch);
     const updatedGame = await this.playerService.buyBranch(
       game,
-      fieldToBuyBranch
+      fieldToBuyBranch,
+      socket.jwtPayload.sub
     );
+    const fields = await this.gameService.getGameFields(game.id);
     this.server
       .to(game.id)
       .emit('updateGameData', { fields, game: updatedGame });
@@ -88,16 +89,19 @@ export class PlayerGateway implements OnGatewayInit {
   ) {
     const game = socket.game;
     const userId = socket.jwtPayload.sub;
-    const fieldToSellBranch = this.playerService.checkWhetherPlayerHasAllGroup(
-      game,
-      index,
-      userId,
-      false
-    );
+    const fields = await this.gameService.getGameFields(game.id);
+    const fieldToSellBranch =
+      await this.playerService.checkWhetherPlayerHasAllGroup(
+        game,
+        index,
+        userId,
+        false
+      );
     this.playerService.checkFieldHasBranches(fieldToSellBranch);
     const updatedGame = await this.playerService.sellBranch(
       game,
-      fieldToSellBranch
+      fieldToSellBranch,
+      socket.jwtPayload.sub
     );
     this.server
       .to(game.id)
@@ -111,7 +115,10 @@ export class PlayerGateway implements OnGatewayInit {
     @MessageBody('index') index: number
   ) {
     const game = socket.game;
-    const player = await this.playerService.pledgeField(game, index);
+    const { player, fields } = await this.playerService.pledgeField(
+      game,
+      index
+    );
     this.server
       .to(game.id)
       .emit('updateGameData', { fields, game: player.game });
@@ -125,7 +132,10 @@ export class PlayerGateway implements OnGatewayInit {
     @MessageBody('index') index: number
   ) {
     const game = socket.game;
-    const player = await this.playerService.payRedemptionForField(game, index);
+    const { player, fields } = await this.playerService.payRedemptionForField(
+      game,
+      index
+    );
     this.server.to(game.id).emit('updateGameData', {
       fields,
       game: player.game,
@@ -213,13 +223,16 @@ export class PlayerGateway implements OnGatewayInit {
   ) {
     const userId = socket.jwtPayload.sub;
     const gameId = socket.game.id;
-    const { updatedPlayer, fields } = await this.playerService.loseGame(
+    const fields = await this.gameService.getGameFields(socket.game.id);
+    const { updatedPlayer, updatedFields } = await this.playerService.loseGame(
       userId,
-      gameId
+      gameId,
+      fields
     );
 
-    this.server
-      .to(gameId)
-      .emit('playerSurrendered', { game: updatedPlayer.game, fields });
+    this.server.to(gameId).emit('playerSurrendered', {
+      game: updatedPlayer.game,
+      fields: updatedFields,
+    });
   }
 }
