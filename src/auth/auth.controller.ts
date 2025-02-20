@@ -39,15 +39,17 @@ export class AuthController {
   ) {}
   static readonly ACCESS_COOKIES_ATTRIBUTES: AccessCookieAttributes = {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'none',
+    secure: true,
+    domain: 'plankton-app-sfddt.ondigitalocean.app',
   };
 
   static readonly REFRESH_COOKIES_ATTRIBUTES: RefreshCookieAttributes = {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'none',
+    secure: true,
     path: '/',
-    domain:
-      'https://monopoly-front-2bsz61nx7-tarasblatnois-projects.vercel.app',
+    domain: 'plankton-app-sfddt.ondigitalocean.app',
   };
 
   get NODE_ENV(): string {
@@ -66,7 +68,6 @@ export class AuthController {
   ) {
     const cookieOptions = {
       ...options,
-      secure: false,
     };
     res.cookie(name, value, cookieOptions);
   }
@@ -102,6 +103,7 @@ export class AuthController {
     const { tokens, user } = await this.authService.signin(dto);
     const { access_token: accessToken, refresh_token: refreshToken } = tokens;
     this.setTokens(res, accessToken, refreshToken);
+    console.log({ res: res.cookie });
     return res
       .status(HttpStatus.OK)
       .send({ status: 'success', message: 'Logged in successfully', user });
