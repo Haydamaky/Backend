@@ -71,6 +71,9 @@ export class AuthService {
     if (!user) {
       throw new ForbiddenException('Credentials are incorrect');
     }
+    if (!user.isEmailConfirmed) {
+      throw new ForbiddenException('Email is not confirmed');
+    }
     //check password
     const pwMatches = await argon2.verify(user.hash, dto.password);
 
@@ -169,7 +172,10 @@ export class AuthService {
       throw new BadRequestException('Invalid token');
     }
 
-    const user = await this.userRepository.findByEmail(decodedToken.email);
+    const user = await this.userRepository.update({
+      where: { email: decodedToken.email },
+      data: { isEmailConfirmed: true },
+    });
 
     const tokens = await this.signTokens(user.id, user.email);
     await this.updateRtHash(user.id, tokens.refresh_token);

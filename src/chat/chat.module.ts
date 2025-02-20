@@ -9,5 +9,6 @@ import { ChatRepository } from './chat.repository';
 @Module({
   imports: [JwtModule, ConfigModule, MessageModule],
   providers: [ChatGateway, ChatService, ChatRepository],
+  exports: [ChatService],
 })
 export class ChatModule {}

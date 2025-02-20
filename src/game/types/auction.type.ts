@@ -8,4 +8,5 @@ export interface Auction {
   fieldIndex: number;
   bidders: Bidder[];
   turnEnds: string;
+  usersRefused: string[];
 }
