@@ -66,4 +66,9 @@ export class ChatGateway implements OnModuleInit {
   onChatData(@MessageBody() data: { chatId: string }) {
     return this.chatService.onChatData(data.chatId);
   }
+
+  @SubscribeMessage('mutualChatData')
+  onMutualChatData() {
+    return this.chatService.onMutualChatData();
+  }
 }

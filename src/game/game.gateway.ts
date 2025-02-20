@@ -155,7 +155,6 @@ export class GameGateway {
     socket: Socket & { jwtPayload: JwtPayload },
     data: { id: string }
   ) {
-    console.log('joinGame');
     const { game, shouldStart } = await this.gameService.onJoinGame(
       data.id,
       socket.jwtPayload.sub
@@ -170,8 +169,7 @@ export class GameGateway {
           gameId: game.id,
         });
         this.server.to(game.id).emit('startGame', {
-          gameId: game.id,
-          turnOfUserId: game.turnOfUserId,
+          game,
           chatId: game.chat.id,
         });
         this.gameService.setTimer(
@@ -724,13 +722,10 @@ export class GameGateway {
   }
 
   @SubscribeMessage('createGame')
-  async createGame(
-    @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload }
-  ) {
+  async createGame(socket: Socket & { jwtPayload: JwtPayload }) {
     const createdGameWithPlayer = await this.gameService.createGame(
-      socket.jwtPayload
+      socket.jwtPayload.sub
     );
-
     if (!createdGameWithPlayer)
       return socket.emit('error', {
         message:

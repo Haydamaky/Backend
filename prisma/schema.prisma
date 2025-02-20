@@ -101,7 +101,7 @@ model Game {
     status          GameStatus @default(LOBBY)
     turnOfUserId    String?
     turnEnds        String?
-    dices           String?
+    dices           String?    @default("")
     timeOfTurn      Int        @default(20000)
     passStartBonus  Int        @default(3000)
     turnsToUnpledge Int        @default(10)

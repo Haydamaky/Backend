@@ -63,26 +63,25 @@ export class GameService {
     });
   }
 
-  async createGame(creator: JwtPayload) {
+  async createGame(userId: string) {
     const activePlayer = await this.gameRepository.findFirst({
       where: {
         OR: [{ status: 'LOBBY' }, { status: 'ACTIVE' }],
         players: {
           some: {
-            userId: creator.sub,
+            userId,
           },
         },
       },
     });
 
     if (activePlayer) return null;
-
     const newGame = await this.gameRepository.create({
       data: {
         playersCapacity: 4, // TODO change players capacity to dynamic number
         players: {
           create: {
-            userId: creator.sub,
+            userId,
             color: this.playerService.COLORS[0],
           },
         },
@@ -113,7 +112,7 @@ export class GameService {
       gameId: newGame.id,
     }));
 
-    const res = await this.fieldModel.insertMany(gameFields);
+    await this.fieldModel.insertMany(gameFields);
     return newGame;
   }
 
@@ -175,10 +174,15 @@ export class GameService {
       const randomPlayerIndex = Math.floor(
         Math.random() * gameWithCreatedPlayer.players.length
       );
+      const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
       const startedGame = await this.gameRepository.updateById(gameId, {
         data: {
           status: 'ACTIVE',
-          turnOfUserId: gameWithCreatedPlayer.players[randomPlayerIndex].userId,
+          turnOfUserId:
+            gameWithCreatedPlayer.players[
+              gameWithCreatedPlayer.players.length - 1
+            ].userId,
+          turnEnds,
           chat: {
             create: {
               type: ChatType.GAME,

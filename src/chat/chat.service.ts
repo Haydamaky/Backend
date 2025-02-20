@@ -45,4 +45,22 @@ export class ChatService {
       },
     });
   }
+
+  async onMutualChatData() {
+    return await this.chatRepository.findFirst({
+      where: { type: 'MUTUAL' },
+      include: {
+        messages: {
+          include: {
+            sender: {
+              select: {
+                id: true,
+                nickname: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
 }
