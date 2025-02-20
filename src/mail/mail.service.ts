@@ -20,7 +20,7 @@ export class MailService {
   }
 
   async sendForgotPasswordEmail(email: string, token: string) {
-    const forgotPasswordUrl = `${this.configService.get('DOMAIN_NAME')}/auth/reset-password/${token}`;
+    const forgotPasswordUrl = `${this.configService.get('FRONTEND_URL')}/auth/reset-password/${token}`;
     await this.mailerService.sendMail({
       to: email,
       subject: 'Reset Your password',
