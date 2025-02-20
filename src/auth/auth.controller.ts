@@ -46,7 +46,8 @@ export class AuthController {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    domain: 'localhost',
+    domain:
+      'https://monopoly-front-2bsz61nx7-tarasblatnois-projects.vercel.app',
   };
 
   get NODE_ENV(): string {

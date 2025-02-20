@@ -32,7 +32,8 @@ import { FieldDocument } from 'src/schema/Field.schema';
 
 @WebSocketGateway({
   cors: {
-    origin: 'http://localhost:3001',
+    origin:
+      'https://monopoly-front-2bsz61nx7-tarasblatnois-projects.vercel.app',
     methods: ['GET', 'POST'],
     credentials: true,
   },
