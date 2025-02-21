@@ -32,11 +32,7 @@ import { PlayerService } from './player.service';
 
 @WebSocketGateway({
   cors: {
-    origin: [
-      'https://monopoly-front.vercel.app',
-      'http://localhost:3000',
-      'http://localhost:3001',
-    ],
+    origin: 'https://monopoly-front.vercel.app',
     methods: ['GET', 'POST'],
     credentials: true,
   },

@@ -16,11 +16,7 @@ import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 
 @WebSocketGateway({
   cors: {
-    origin: [
-      'https://monopoly-front.vercel.app',
-      'http://localhost:3000',
-      'http://localhost:3001',
-    ],
+    origin: 'https://monopoly-front.vercel.app',
     methods: ['GET', 'POST'],
     credentials: true,
   },

@@ -7,11 +7,7 @@ import * as cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors({
-    origin: [
-      'https://monopoly-front.vercel.app',
-      'http://localhost:3000',
-      'http://localhost:3001',
-    ],
+    origin: 'https://monopoly-front.vercel.app',
     credentials: true,
   });
   app.useGlobalPipes(
