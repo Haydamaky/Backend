@@ -140,6 +140,7 @@ export class GameService {
   }
 
   async onJoinGame(gameId: string, userId: string) {
+    console.log({ gameId }, 'JoinGame');
     const game = await this.gameRepository.findFirst({
       where: { id: gameId },
       include: {

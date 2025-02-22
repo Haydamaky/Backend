@@ -168,6 +168,7 @@ export class GameGateway {
         this.server.emit('clearStartedGame', {
           gameId: game.id,
         });
+        console.log({ game }, 'Before start game');
         this.server.to(game.id).emit('startGame', {
           game,
           chatId: game.chat.id,
@@ -726,6 +727,7 @@ export class GameGateway {
     const createdGameWithPlayer = await this.gameService.createGame(
       socket.jwtPayload.sub
     );
+    console.log({ createdGameWithPlayer });
     if (!createdGameWithPlayer)
       return socket.emit('error', {
         message:

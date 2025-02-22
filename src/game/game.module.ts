@@ -11,8 +11,10 @@ import { EventModule } from 'src/event/event.module';
 import { WebSocketServerModule } from 'src/webSocketServer/webSocketServer.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Field, FieldSchema } from 'src/schema/Field.schema';
+import { GameController } from './game.controller';
 
 @Module({
+  controllers: [GameController],
   imports: [
     UserModule,
     JwtModule,
