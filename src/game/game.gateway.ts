@@ -230,7 +230,7 @@ export class GameGateway {
     ) {
       this.gameService.setTimer(
         game.id,
-        3500,
+        2500,
         updatedGame,
         this.passTurnToNext
       );
@@ -251,12 +251,25 @@ export class GameGateway {
       return;
     }
     if (playerNextField.price && !playerNextField.ownedBy) {
-      this.gameService.setTimer(
-        game.id,
-        game.timeOfTurn,
-        updatedGame,
-        this.putUpForAuction
-      );
+      if (
+        updatedGame.players.some(
+          (player) => player.money > playerNextField.price
+        )
+      ) {
+        this.gameService.setTimer(
+          game.id,
+          game.timeOfTurn,
+          updatedGame,
+          this.putUpForAuction
+        );
+      } else {
+        this.gameService.setTimer(
+          game.id,
+          2500,
+          updatedGame,
+          this.passTurnToNext
+        );
+      }
     }
 
     if (!playerNextField.price) {
@@ -277,7 +290,7 @@ export class GameGateway {
     ) {
       this.gameService.setTimer(
         game.id,
-        3500,
+        2500,
         updatedGame,
         this.passTurnToNext
       );
@@ -286,7 +299,7 @@ export class GameGateway {
     if (playerNextField.isPledged) {
       this.gameService.setTimer(
         game.id,
-        3500,
+        2500,
         updatedGame,
         this.passTurnToNext
       );
@@ -880,7 +893,7 @@ export class GameGateway {
     ) {
       this.gameService.setTimer(
         updatedGame.id,
-        3500,
+        2500,
         updatedGame,
         this.passTurnToNext
       );
