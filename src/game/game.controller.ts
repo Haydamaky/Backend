@@ -4,7 +4,6 @@ import { Body, Controller, HttpStatus, Post, Res } from '@nestjs/common';
 export class GameController {
   @Post('/set-cookie')
   setGameSession(@Body() dto, @Res() res) {
-    console.log({ dto });
     res.cookie('gameId', dto.gameId, {
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000,

@@ -96,7 +96,6 @@ export class AuthController {
     const { tokens, user } = await this.authService.signin(dto);
     const { access_token: accessToken, refresh_token: refreshToken } = tokens;
     this.setTokens(res, accessToken, refreshToken);
-    console.log({ res: res.cookie });
     return res
       .status(HttpStatus.OK)
       .send({ status: 'success', message: 'Logged in successfully', user });

@@ -140,7 +140,6 @@ export class GameService {
   }
 
   async onJoinGame(gameId: string, userId: string) {
-    console.log({ gameId }, 'JoinGame');
     const game = await this.gameRepository.findFirst({
       where: { id: gameId },
       include: {
@@ -552,9 +551,9 @@ export class GameService {
     accepted: boolean
   ) {
     const auction = this.getAuction(gameId);
-    const indexOfLastOfAccepted = auction.bidders.findLastIndex(
-      (bidder) => bidder.accepted
-    );
+    const indexOfLastOfAccepted = auction.bidders.findLastIndex((bidder) => {
+      return bidder.accepted && bidder.bid;
+    });
     let bid = auction.bidders[indexOfLastOfAccepted].bid;
     if (raiseBy !== 0) {
       bid += raiseBy;
