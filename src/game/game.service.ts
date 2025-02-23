@@ -669,9 +669,9 @@ export class GameService {
       if (!player) throw new WsException('No such player');
       const auction = this.getAuction(gameId);
       if (!auction) throw new WsException('Auction wasn’t started');
-      const indexOfLastOfAccepted = auction.bidders.findLastIndex(
-        (bidder) => bidder.accepted
-      );
+      const indexOfLastOfAccepted = auction.bidders.findLastIndex((bidder) => {
+        return bidder.accepted && bidder.bid;
+      });
       if (userId === auction.bidders[indexOfLastOfAccepted].userId) {
         throw new WsException('You are the last bidder');
       }
@@ -738,12 +738,6 @@ export class GameService {
         true
       );
       this.promisesToWinBid.delete(args.gameId);
-      console.dir({
-        auctionUpdated,
-        bidders: auctionUpdated.bidders,
-        firstBidder: auctionUpdated.bidders[0],
-        lastBidder: auctionUpdated.bidders[auctionUpdated.bidders.length - 1],
-      });
       return { auctionUpdated };
     } finally {
       release();
@@ -753,7 +747,12 @@ export class GameService {
   async winAuction(auction: Auction & { gameId: string }) {
     const fields = await this.getGameFields(auction.gameId);
     const field = this.findPlayerFieldByIndex(fields, auction.fieldIndex);
-    const lastBid = auction.bidders[auction.bidders.length - 1];
+    const lastBid =
+      auction.bidders[
+        auction.bidders.findLastIndex((bidder) => {
+          return bidder.accepted && bidder.bid;
+        })
+      ];
     field.ownedBy = lastBid.userId;
     const updatedPlayer =
       await this.playerService.decrementMoneyWithUserAndGameId(
