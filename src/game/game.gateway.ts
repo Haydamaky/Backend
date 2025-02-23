@@ -730,7 +730,7 @@ export class GameGateway {
     const createdGameWithPlayer = await this.gameService.createGame(
       socket.jwtPayload.sub
     );
-    console.log({ createdGameWithPlayer });
+    socket.join(createdGameWithPlayer.id);
     if (!createdGameWithPlayer)
       return socket.emit('error', {
         message:

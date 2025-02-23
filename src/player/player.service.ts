@@ -274,6 +274,10 @@ export class PlayerService {
     fieldToBuyBranch: FieldDocument,
     userId: string
   ) {
+    const playerToPay = game.players.find((player) => player.userId === userId);
+    if (playerToPay.money < fieldToBuyBranch.branchPrice) {
+      throw new WsException('You dont have enough money to buy branch');
+    }
     const player = await this.decrementMoneyWithUserAndGameId(
       userId,
       game.id,
