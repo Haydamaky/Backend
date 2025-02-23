@@ -352,11 +352,12 @@ export class GameGateway {
             this.payToBank
           );
         } else {
-          this.payToBank({
-            game,
-            userId: game.turnOfUserId,
-            amount: secretInfo.amounts[0],
-          });
+          this.gameService.setTimer(
+            game.id,
+            3500,
+            { game, userId: game.turnOfUserId, amount: secretInfo.amounts[0] },
+            this.payToBank
+          );
         }
       } else if (secretInfo.users.length === 2) {
         this.gameService.setTimer(
