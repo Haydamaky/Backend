@@ -33,32 +33,25 @@ import { JwtPayloadWithRt } from './types/jwtPayloadWithRt.type';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private authService: AuthService,
-    private configService: ConfigService
-  ) {}
+  constructor(private authService: AuthService) {}
   static readonly ACCESS_COOKIES_ATTRIBUTES: AccessCookieAttributes = {
     httpOnly: true,
-    sameSite: 'none',
-    secure: true,
-    domain: 'plankton-app-sfddt.ondigitalocean.app',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    ...(process.env.NODE_ENV === 'production' && {
+      domain: process.env.DOMAIN_NAME_PROD,
+    }),
   };
 
   static readonly REFRESH_COOKIES_ATTRIBUTES: RefreshCookieAttributes = {
     httpOnly: true,
-    sameSite: 'none',
-    secure: true,
     path: '/',
-    domain: 'plankton-app-sfddt.ondigitalocean.app',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    ...(process.env.NODE_ENV === 'production' && {
+      domain: process.env.DOMAIN_NAME_PROD,
+    }),
   };
-
-  get NODE_ENV(): string {
-    return this.configService.get<string>('NODE_ENV');
-  }
-
-  get FRONTEND_URL(): string {
-    return this.configService.get<string>('FRONTEND_URL');
-  }
 
   setCookie(
     res: Response,

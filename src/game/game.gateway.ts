@@ -32,7 +32,10 @@ import { FieldDocument } from 'src/schema/Field.schema';
 
 @WebSocketGateway({
   cors: {
-    origin: 'https://monopoly-front.vercel.app',
+    origin:
+      process.env.NODE_ENV === 'development'
+        ? process.env.FRONTEND_URL_DEV
+        : process.env.FRONTEND_URL_PROD,
     methods: ['GET', 'POST'],
     credentials: true,
   },

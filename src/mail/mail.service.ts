@@ -10,7 +10,11 @@ export class MailService {
   ) {}
 
   async sendVerificationEmail(email: string, token: string) {
-    const confirmationUrl = `${this.configService.get('FRONTEND_URL')}/auth/confirm-email/${token}`;
+    const confirmationUrl = `${
+      process.env.NODE_ENV === 'development'
+        ? process.env.FRONTEND_URL_DEV
+        : process.env.FRONTEND_URL_PROD
+    }/auth/confirm-email/${token}`;
     await this.mailerService.sendMail({
       to: email,
       subject: 'Confirm Your Email',
@@ -20,7 +24,11 @@ export class MailService {
   }
 
   async sendForgotPasswordEmail(email: string, token: string) {
-    const forgotPasswordUrl = `${this.configService.get('FRONTEND_URL')}/auth/reset-password/${token}`;
+    const forgotPasswordUrl = `${
+      process.env.NODE_ENV === 'development'
+        ? process.env.FRONTEND_URL_DEV
+        : process.env.FRONTEND_URL_PROD
+    }/auth/reset-password/${token}`;
     await this.mailerService.sendMail({
       to: email,
       subject: 'Reset Your password',

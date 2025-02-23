@@ -7,10 +7,12 @@ export class GameController {
     console.log({ dto });
     res.cookie('gameId', dto.gameId, {
       httpOnly: true,
-      sameSite: 'none',
-      secure: true,
-      domain: 'plankton-app-sfddt.ondigitalocean.app',
       maxAge: 24 * 60 * 60 * 1000,
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      ...(process.env.NODE_ENV === 'production' && {
+        domain: process.env.DOMAIN_NAME_PROD,
+      }),
     });
     return res.status(HttpStatus.OK).send({ success: true });
   }
