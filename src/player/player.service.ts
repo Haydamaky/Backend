@@ -525,10 +525,16 @@ export class PlayerService {
       dices: 'playerLost',
     });
     fields.forEach((field) => {
-      if (field.ownedBy === updatedPlayer.userId) field.ownedBy = null;
+      if (field.ownedBy === updatedPlayer.userId) {
+        field.ownedBy = null;
+        field.amountOfBranches = 0;
+        field.isPledged = false;
+        field.turnsToUnpledge = null;
+      }
     });
     await this.gameService.updateFields(fields, ['ownedBy']);
     if (this.gameService.hasWinner(updatedPlayer.game)) {
+      this.gameService.clearTimer(updatedPlayer.game.id);
       const game = await this.gameService.updateById(updatedPlayer.game.id, {
         status: 'FINISHED',
       });
