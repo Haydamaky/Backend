@@ -741,12 +741,15 @@ export class GameGateway {
     const createdGameWithPlayer = await this.gameService.createGame(
       socket.jwtPayload.sub
     );
-    socket.join(createdGameWithPlayer.id);
-    if (!createdGameWithPlayer)
+
+    if (!createdGameWithPlayer) {
       return socket.emit('error', {
         message:
           'Ви вже знаходитесь в кімнаті, покиньте її щоб приєднатись до іншої',
       });
+    } else {
+      socket.join(createdGameWithPlayer.id);
+    }
 
     return this.server.emit('newGameCreated', createdGameWithPlayer);
   }
