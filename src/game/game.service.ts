@@ -580,7 +580,14 @@ export class GameService {
         throw new WsException('Raise is not big enough');
       if (auction.usersRefused.includes(userId))
         throw new WsException('You refused to auction');
-      if (player.money < auction.bidders[auction.bidders.length - 1].bid)
+      if (
+        player.money <
+        auction.bidders[
+          auction.bidders.findLastIndex((bidder) => {
+            return bidder.accepted && bidder.bid;
+          })
+        ].bid
+      )
         throw new WsException('Not enough money');
       this.clearTimer(gameId);
       const promisesToWin = this.promisesToWinBid.get(gameId) || [];
