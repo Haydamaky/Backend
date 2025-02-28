@@ -689,7 +689,9 @@ export class GameService {
       if (
         auction.usersRefused.length >=
           player.game.players.filter((player) => !player.lost).length &&
-        auction.bidders.length > 1
+        auction.bidders.findLastIndex((bidder) => {
+          return bidder.accepted && bidder.bid;
+        }) > -1
       ) {
         this.clearTimer(gameId);
         return { auction, hasWinner: true, finished: true, game: player.game };
