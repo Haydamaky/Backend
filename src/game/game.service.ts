@@ -1,19 +1,18 @@
-import { DEFAULT_FIELDS } from 'src/utils/fields';
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
-import { GamePayload, GameRepository } from './game.repository';
-import { PlayerService } from 'src/player/player.service';
-import { ChatType, Player, Prisma } from '@prisma/client';
-import { Auction } from './types/auction.type';
-import { WsException } from '@nestjs/websockets';
-import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
-import { PromisesToWinBid } from './types/promisesToWinBid';
-import { Mutex } from 'async-mutex';
-import secretFields, { SecretType } from 'src/utils/fields/secretFields';
-import { SecretInfo } from './types/secretInfo.type';
-import { EventService } from 'src/event/event.service';
 import { InjectModel } from '@nestjs/mongoose';
-import { Field, FieldDocument } from 'src/schema/Field.schema';
+import { WsException } from '@nestjs/websockets';
+import { ChatType, Player, Prisma } from '@prisma/client';
+import { Mutex } from 'async-mutex';
 import { Model } from 'mongoose';
+import { EventService } from 'src/event/event.service';
+import { PlayerService } from 'src/player/player.service';
+import { Field, FieldDocument } from 'src/schema/Field.schema';
+import { DEFAULT_FIELDS } from 'src/utils/fields';
+import secretFields, { SecretType } from 'src/utils/fields/secretFields';
+import { GamePayload, GameRepository } from './game.repository';
+import { Auction } from './types/auction.type';
+import { PromisesToWinBid } from './types/promisesToWinBid';
+import { SecretInfo } from './types/secretInfo.type';
 @Injectable()
 export class GameService {
   constructor(
