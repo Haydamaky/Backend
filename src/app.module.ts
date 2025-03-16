@@ -14,6 +14,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { WebSocketServerModule } from './webSocketServer/webSocketServer.module';
 import { WebSocketServerService } from './webSocketServer/webSocketServer.service';
 import { MongooseModule } from '@nestjs/mongoose';
+import { AuctionModule } from './auction/auction.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { MongooseModule } from '@nestjs/mongoose';
         uri: configService.get<string>('DATABASE_MONGO_URL'),
       }),
     }),
+    AuctionModule,
   ],
   controllers: [AppController],
   providers: [
