@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { GamePayload } from 'src/game/game.repository';
 import { GameService } from 'src/game/game.service';
@@ -8,10 +8,17 @@ import { PlayerService } from 'src/player/player.service';
 @Injectable()
 export class AuctionService {
   constructor(
+    @Inject(forwardRef(() => GameService))
     private gameService: GameService,
+    @Inject(forwardRef(() => PlayerService))
     private playerService: PlayerService
-  ) {}
+  ) {
+    this.hightestInQueue = this.hightestInQueue.bind(this);
+    this.winAuction = this.winAuction.bind(this);
+    this.setBuyerOnAuction = this.setBuyerOnAuction.bind(this);
+  }
   BID_TIME: number = 10000;
+  MIN_RAISE: number = 100;
   auctions: Map<string, Auction> = new Map();
   async putUpForAuction(game: Partial<GamePayload>) {
     const player = await this.playerService.findByUserAndGameId(
@@ -47,9 +54,11 @@ export class AuctionService {
   }
 
   findLastAcceptedBid(auction: Auction) {
-    return auction.bidders.findLast((bidder) => {
-      return bidder.accepted && bidder.bid;
-    });
+    return (
+      auction.bidders.findLast((bidder) => {
+        return bidder.accepted && bidder.bid;
+      }) || auction.bidders[0]
+    );
   }
 
   async raisePrice(
@@ -63,12 +72,13 @@ export class AuctionService {
     if (player.lost) throw new WsException('You lost the game');
     const auction = this.getAuction(gameId);
     if (!auction) throw new WsException('Auction wasn’t started');
-    if (raiseBy < this.gameService.MIN_RAISE)
+    if (raiseBy < this.MIN_RAISE)
       throw new WsException('Raise is not big enough');
     if (auction.usersRefused.includes(userId))
       throw new WsException('You refused to auction');
     const lastBid = auction.bidders[auction.bidders.length - 1].bid;
     const lastAcceptedBid = this.findLastAcceptedBid(auction);
+    console.log({ lastAcceptedBid, bidAmount });
     if (bidAmount !== lastAcceptedBid.bid)
       throw new WsException('Bid amount is not correct');
     if (player.money <= lastBid) throw new WsException('Not enough money');
@@ -79,15 +89,9 @@ export class AuctionService {
     try {
       const { auctionUpdated } = await this.gameService.setTimer(
         gameId,
-        200,
+        2000,
         { gameId, userId, raiseBy },
         this.hightestInQueue
-      );
-      this.gameService.setTimer(
-        gameId,
-        15000,
-        { ...auction, gameId },
-        this.winAuction
       );
       return auctionUpdated;
     } catch (e) {
