@@ -29,6 +29,7 @@ import { GameService } from './game.service';
 import { Auction } from './types/auction.type';
 import { Trade } from './types/trade.type';
 import { FieldDocument } from 'src/schema/Field.schema';
+import { AuctionService } from 'src/auction/auction.service';
 
 @WebSocketGateway({
   cors: {
@@ -50,7 +51,8 @@ export class GameGateway {
     private jwtService: JwtService,
     private configService: ConfigService,
     private chatService: ChatService,
-    private webSocketServer: WebSocketServerService
+    private webSocketServer: WebSocketServerService,
+    private auctionService: AuctionService
   ) {
     this.rollDice = this.rollDice.bind(this);
     this.putUpForAuction = this.putUpForAuction.bind(this);
@@ -147,7 +149,7 @@ export class GameGateway {
   @SubscribeMessage('getGameData')
   async getGameData(@GetGameId() gameId: string) {
     const game = await this.gameService.getGame(gameId);
-    const auction = this.gameService.auctions.get(game.id);
+    const auction = this.auctionService.auctions.get(game.id);
     const secretInfo = this.gameService.secrets.get(game.id);
     const fields = await this.gameService.getGameFields(game.id);
     this.server.emit('gameData', { game, fields, auction, secretInfo });
@@ -725,7 +727,7 @@ export class GameGateway {
   }
 
   async putUpForAuction(game: Partial<GamePayload>) {
-    const auction = await this.gameService.putUpForAuction(game);
+    const auction = await this.auctionService.putUpForAuction(game);
 
     const updatedGame = await this.gameService.updateGameWithNewTurn(
       game,
@@ -760,14 +762,16 @@ export class GameGateway {
   async raisePrice(
     @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
     @GetGameId() gameId: string,
-    @MessageBody('raiseBy') raiseBy: number
+    @MessageBody('raiseBy') raiseBy: number,
+    @MessageBody('bidAmount') bidAmount: number
   ) {
     const userId = socket.jwtPayload.sub;
     try {
-      const { auctionUpdated: auction } = await this.gameService.raisePrice(
+      const auction = await this.auctionService.raisePrice(
         gameId,
         userId,
-        raiseBy
+        raiseBy,
+        bidAmount
       );
       this.server.to(gameId).emit('raisedPrice', { auction });
       if (auction) {
@@ -791,7 +795,7 @@ export class GameGateway {
   ) {
     const userId = socket.jwtPayload.sub;
     const { auction, hasWinner, finished, game } =
-      await this.gameService.refuseAuction(gameId, userId);
+      await this.auctionService.refuseAuction(gameId, userId);
     if (finished) {
       if (hasWinner) {
         this.winAuction({ ...auction, gameId });
@@ -805,7 +809,7 @@ export class GameGateway {
 
   async winAuction(auction: Auction & { gameId: string }) {
     const { updatedPlayer, fields } =
-      await this.gameService.winAuction(auction);
+      await this.auctionService.winAuction(auction);
     this.server
       .to(auction.gameId)
       .emit('wonAuction', { auction, game: updatedPlayer.game, fields });

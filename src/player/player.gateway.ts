@@ -29,6 +29,7 @@ import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-except
 import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.service';
 import { OfferTradeDto } from './dto/offer-trade.dto';
 import { PlayerService } from './player.service';
+import { AuctionService } from 'src/auction/auction.service';
 
 @WebSocketGateway({
   cors: {
@@ -50,7 +51,9 @@ export class PlayerGateway implements OnGatewayInit {
     private webSocketServerService: WebSocketServerService,
     @Inject(forwardRef(() => GameService))
     private readonly gameService: GameService,
-    private chatService: ChatService
+    private chatService: ChatService,
+    @Inject(forwardRef(() => AuctionService))
+    private auctionService: AuctionService
   ) {}
   @WebSocketServer()
   private server: Server;
@@ -155,7 +158,7 @@ export class PlayerGateway implements OnGatewayInit {
   ) {
     const game = socket.game;
     const userId = socket.jwtPayload.sub;
-    if (this.gameService.getAuction(game.id))
+    if (this.auctionService.getAuction(game.id))
       throw new WsException('Cannot offer trade while auction');
     await this.playerService.validateTradeData(game, data);
     const trade = { ...data, fromUserId: userId } as Trade;

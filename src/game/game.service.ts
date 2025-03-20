@@ -2,7 +2,6 @@ import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { WsException } from '@nestjs/websockets';
 import { ChatType, Player, Prisma } from '@prisma/client';
-import { Mutex } from 'async-mutex';
 import { Model } from 'mongoose';
 import { EventService } from 'src/event/event.service';
 import { PlayerService } from 'src/player/player.service';
@@ -10,9 +9,8 @@ import { Field, FieldDocument } from 'src/schema/Field.schema';
 import { DEFAULT_FIELDS } from 'src/utils/fields';
 import secretFields, { SecretType } from 'src/utils/fields/secretFields';
 import { GamePayload, GameRepository } from './game.repository';
-import { Auction } from './types/auction.type';
-import { PromisesToWinBid } from './types/promisesToWinBid';
 import { SecretInfo } from './types/secretInfo.type';
+import { AuctionService } from 'src/auction/auction.service';
 @Injectable()
 export class GameService {
   constructor(
@@ -20,28 +18,20 @@ export class GameService {
     @Inject(forwardRef(() => PlayerService))
     private playerService: PlayerService,
     private eventService: EventService,
-    @InjectModel(Field.name) private fieldModel: Model<Field>
+    @Inject(forwardRef(() => AuctionService))
+    private auctionService: AuctionService,
+    @InjectModel(Field.name)
+    private fieldModel: Model<Field>
   ) {
-    this.hightestInQueue = this.hightestInQueue.bind(this);
     this.passTurnToUser = this.passTurnToUser.bind(this);
   }
 
   readonly PLAYING_FIELDS_QUANTITY = 40;
-  private readonly MIN_RAISE = 100;
 
-  private readonly logger = new Logger(GameService.name);
-  timers: Map<string, NodeJS.Timeout> = new Map();
-  auctions: Map<string, Auction> = new Map();
-  promisesToWinBid: Map<string, PromisesToWinBid[]> = new Map();
-  private readonly auctionMutexes: Map<string, Mutex> = new Map();
+  readonly logger = new Logger(GameService.name);
+  timers: Map<string, { timer: NodeJS.Timeout; reject: () => void }> =
+    new Map();
   readonly secrets: Map<string, SecretInfo> = new Map();
-
-  private getMutex(gameId: string): Mutex {
-    if (!this.auctionMutexes.has(gameId)) {
-      this.auctionMutexes.set(gameId, new Mutex());
-    }
-    return this.auctionMutexes.get(gameId)!;
-  }
 
   async getVisibleGames() {
     return this.gameRepository.findMany({
@@ -278,7 +268,7 @@ export class GameService {
           reject(err);
         }
       }, time);
-      this.timers.set(id, timer);
+      this.timers.set(id, { timer, reject });
 
       this.logger.log(`Timer with id:${id} was set for ${time / 1000} seconds`);
     });
@@ -325,8 +315,8 @@ export class GameService {
 
   clearTimer(gameId: string) {
     if (this.timers.has(gameId)) {
-      const timer = this.timers.get(gameId);
-      clearTimeout(timer);
+      const timerObj = this.timers.get(gameId);
+      clearTimeout(timerObj.timer);
       this.timers.delete(gameId);
       this.logger.log(`Cleared timer for game ${gameId}.`);
     }
@@ -513,259 +503,6 @@ export class GameService {
     return this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
   }
 
-  async putUpForAuction(game: Partial<GamePayload>) {
-    const player = await this.playerService.findByUserAndGameId(
-      game.turnOfUserId,
-      game.id
-    );
-    const fields = await this.getGameFields(game.id);
-    if (!player) throw new WsException('No such player');
-    const field = this.findPlayerFieldByIndex(fields, player.currentFieldIndex);
-    if (!field.price)
-      throw new WsException('You cant put this field to auction');
-    this.clearTimer(game.id);
-    const bidder = { bid: field.price, userId: '', accepted: true };
-    const turnEnds = this.calculateEndOfTurn(15000);
-    this.setAuction(game.id, {
-      fieldIndex: field.index,
-      bidders: [bidder],
-      turnEnds,
-      usersRefused: [game.turnOfUserId],
-    });
-    return this.getAuction(game.id);
-  }
-
-  setAuction(gameId: string, auction: Auction) {
-    this.auctions.set(gameId, auction);
-  }
-
-  getAuction(gameId: string) {
-    return this.auctions.get(gameId);
-  }
-
-  setBuyerOnAuction(
-    gameId: string,
-    userId: string,
-    raiseBy: number,
-    accepted: boolean
-  ) {
-    const auction = this.getAuction(gameId);
-    const indexOfLastOfAccepted = auction.bidders.findLastIndex((bidder) => {
-      return bidder.accepted && bidder.bid;
-    });
-    let bid = auction.bidders[indexOfLastOfAccepted].bid;
-    if (raiseBy !== 0) {
-      bid += raiseBy;
-    }
-    const turnEnds = this.calculateEndOfTurn(15000);
-    auction.bidders[auction.bidders.length] = { userId, bid, accepted };
-    auction.turnEnds = turnEnds;
-    this.setAuction(gameId, auction);
-    return auction;
-  }
-
-  async raisePrice(gameId: string, userId: string, raiseBy: number) {
-    const mutex = this.getMutex(gameId);
-    const release = await mutex.acquire();
-    try {
-      const player = await this.playerService.findByUserAndGameId(
-        userId,
-        gameId
-      );
-      if (!player) throw new WsException('No such player');
-      const auction = this.getAuction(gameId);
-      if (!auction) throw new WsException('Auction wasn’t started');
-      if (raiseBy < this.MIN_RAISE)
-        throw new WsException('Raise is not big enough');
-      if (auction.usersRefused.includes(userId))
-        throw new WsException('You refused to auction');
-      if (
-        player.money <
-        auction.bidders[
-          auction.bidders.findLastIndex((bidder) => {
-            return bidder.accepted && bidder.bid;
-          })
-        ].bid
-      )
-        throw new WsException('Not enough money');
-      this.clearTimer(gameId);
-      const promisesToWin = this.promisesToWinBid.get(gameId) || [];
-      const currentUserPromise = promisesToWin.filter(
-        (promise) => promise.userId === userId
-      );
-      if (currentUserPromise.length)
-        throw new WsException('Wait for bids to process');
-      const allPromisesLess = promisesToWin.every((promiseObj) => {
-        return promiseObj.raiseBy < raiseBy;
-      });
-      const allPromisesEqual = promisesToWin.every((promiseObj) => {
-        return promiseObj.raiseBy === raiseBy;
-      });
-      if (!allPromisesLess && !allPromisesEqual)
-        throw new WsException('Your bid is too small');
-      if (allPromisesLess) {
-        promisesToWin.forEach((promise) => {
-          promise.reject(auction);
-          this.clearTimer(`${gameId}:${promise.userId}`);
-          this.setBuyerOnAuction(
-            gameId,
-            promise.userId,
-            promise.raiseBy,
-            false
-          );
-        });
-        const promiseFns = { reject: null };
-        const promiseToWinBid = this.setTimer(
-          `${gameId}:${userId}`,
-          200,
-          { gameId, userId, raiseBy },
-          this.hightestInQueue,
-          promiseFns
-        );
-
-        this.promisesToWinBid.set(gameId, [
-          {
-            promise: promiseToWinBid,
-            reject: promiseFns.reject,
-            userId,
-            raiseBy,
-          },
-        ]);
-        return promiseToWinBid;
-      } else if (allPromisesEqual) {
-        const promiseFns = { reject: null };
-        const promiseToWinBid = this.setTimer(
-          `${gameId}:${userId}`,
-          200,
-          { gameId, userId, raiseBy },
-          this.hightestInQueue,
-          promiseFns
-        );
-        this.promisesToWinBid.set(gameId, [
-          ...promisesToWin,
-          {
-            promise: promiseToWinBid,
-            reject: promiseFns.reject,
-            userId,
-            raiseBy,
-          },
-        ]);
-        return promiseToWinBid;
-      }
-    } finally {
-      release();
-    }
-  }
-
-  async refuseAuction(gameId: string, userId: string) {
-    const mutex = this.getMutex(gameId);
-    const release = await mutex.acquire();
-    try {
-      const player = await this.playerService.findByUserAndGameId(
-        userId,
-        gameId
-      );
-      if (!player) throw new WsException('No such player');
-      const auction = this.getAuction(gameId);
-      if (!auction) throw new WsException('Auction wasn’t started');
-      const indexOfLastOfAccepted = auction.bidders.findLastIndex((bidder) => {
-        return bidder.accepted && bidder.bid;
-      });
-      if (userId === auction.bidders[indexOfLastOfAccepted].userId) {
-        throw new WsException('You are the last bidder');
-      }
-      const promisesToWin = this.promisesToWinBid.get(gameId) || [];
-      const stillCanWindBid = promisesToWin.some(
-        (promise) => promise.userId === userId
-      );
-      if (stillCanWindBid) {
-        throw new WsException('Wait for bids to process');
-      }
-      if (auction.usersRefused.includes(userId))
-        throw new WsException('You already refused to auction');
-      auction.usersRefused.push(userId);
-      auction.bidders.push({ accepted: false, bid: 0, userId });
-      if (
-        auction.usersRefused.length >=
-          player.game.players.filter((player) => !player.lost).length &&
-        auction.bidders.findLastIndex((bidder) => {
-          return bidder.accepted && bidder.bid;
-        }) > -1
-      ) {
-        this.clearTimer(gameId);
-        return { auction, hasWinner: true, finished: true, game: player.game };
-      }
-      if (auction.usersRefused.length === player.game.players.length) {
-        this.clearTimer(gameId);
-        return { auction, hasWinner: false, finished: true, game: player.game };
-      }
-      return { auction, hasWinner: false, finished: false, game: player.game };
-    } finally {
-      release();
-    }
-  }
-
-  async hightestInQueue(args: {
-    gameId: string;
-    userId: string;
-    raiseBy: number;
-  }) {
-    const mutex = this.getMutex(args.gameId);
-    const release = await mutex.acquire();
-    try {
-      const promisesToWin = this.promisesToWinBid.get(args.gameId);
-      if (!promisesToWin?.length) {
-        return { auctionUpdated: this.getAuction(args.gameId) };
-      }
-      const notWithCurrentUser = promisesToWin.filter(
-        (promise) => promise.userId !== args.userId
-      );
-      if (notWithCurrentUser.length) {
-        notWithCurrentUser.forEach((promise) => {
-          promise.reject(args);
-          this.clearTimer(`${args.gameId}:${promise.userId}`);
-          this.setBuyerOnAuction(
-            args.gameId,
-            promise.userId,
-            promise.raiseBy,
-            false
-          );
-        });
-      }
-      const auctionUpdated = this.setBuyerOnAuction(
-        args.gameId,
-        args.userId,
-        args.raiseBy,
-        true
-      );
-      this.promisesToWinBid.delete(args.gameId);
-      return { auctionUpdated };
-    } finally {
-      release();
-    }
-  }
-
-  async winAuction(auction: Auction & { gameId: string }) {
-    const fields = await this.getGameFields(auction.gameId);
-    const field = this.findPlayerFieldByIndex(fields, auction.fieldIndex);
-    const lastBid =
-      auction.bidders[
-        auction.bidders.findLastIndex((bidder) => {
-          return bidder.accepted && bidder.bid;
-        })
-      ];
-    field.ownedBy = lastBid.userId;
-    const updatedPlayer =
-      await this.playerService.decrementMoneyWithUserAndGameId(
-        lastBid.userId,
-        auction.gameId,
-        lastBid.bid
-      );
-    await this.updateFields(fields, ['ownedBy']);
-    this.setAuction(auction.gameId, null);
-    return { updatedPlayer, fields };
-  }
-
   async buyField(game: Partial<GamePayload>) {
     const player = this.playerService.findPlayerWithTurn(game);
     const fields = await this.getGameFields(game.id);
@@ -777,7 +514,7 @@ export class GameService {
       !field.price ||
       field.price > player.money ||
       field.ownedBy === player.userId ||
-      this.getAuction(game.id)
+      this.auctionService.getAuction(game.id)
     ) {
       throw new WsException('You cant buy this field');
     }
@@ -802,7 +539,7 @@ export class GameService {
       throw new WsException('You have to roll dices first');
     }
     const dices = '';
-    this.setAuction(game.id, null);
+    this.auctionService.setAuction(game.id, null);
     this.clearTimer(game.id);
     let { turnOfNextUserId } = this.findNextTurnUser(game);
     game.turnOfUserId = turnOfNextUserId;

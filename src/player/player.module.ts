@@ -11,6 +11,7 @@ import { WebSocketServerModule } from 'src/webSocketServer/webSocketServer.modul
 import { ChatModule } from 'src/chat/chat.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Field, FieldSchema } from 'src/schema/Field.schema';
+import { AuctionModule } from 'src/auction/auction.module';
 @Module({
   imports: [
     forwardRef(() => GameModule),
@@ -20,6 +21,7 @@ import { Field, FieldSchema } from 'src/schema/Field.schema';
     EventModule,
     WebSocketServerModule,
     ChatModule,
+    forwardRef(() => AuctionModule),
     MongooseModule.forFeature([
       {
         name: Field.name,

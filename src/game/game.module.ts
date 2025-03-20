@@ -12,6 +12,7 @@ import { WebSocketServerModule } from 'src/webSocketServer/webSocketServer.modul
 import { MongooseModule } from '@nestjs/mongoose';
 import { Field, FieldSchema } from 'src/schema/Field.schema';
 import { GameController } from './game.controller';
+import { AuctionModule } from 'src/auction/auction.module';
 
 @Module({
   controllers: [GameController],
@@ -23,6 +24,7 @@ import { GameController } from './game.controller';
     forwardRef(() => PlayerModule),
     EventModule,
     WebSocketServerModule,
+    forwardRef(() => AuctionModule),
     MongooseModule.forFeature([
       {
         name: Field.name,
