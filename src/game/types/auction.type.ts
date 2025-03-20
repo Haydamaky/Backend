@@ -1,4 +1,4 @@
-interface Bidder {
+export interface Bidder {
   accepted: boolean;
   userId: string;
   bid: number;
