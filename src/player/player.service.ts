@@ -13,6 +13,7 @@ import { EventService } from 'src/event/event.service';
 import { Field, FieldDocument } from 'src/schema/Field.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { TimerService } from 'src/timer/timers.service';
 
 @Injectable()
 export class PlayerService {
@@ -23,7 +24,8 @@ export class PlayerService {
     private webSocketServerService: WebSocketServerService,
     private chatService: ChatService,
     private eventService: EventService,
-    @InjectModel(Field.name) private fieldModel: Model<Field>
+    @InjectModel(Field.name) private fieldModel: Model<Field>,
+    private timerService: TimerService
   ) {
     this.refuseFromTrade = this.refuseFromTrade.bind(this);
   }
@@ -425,7 +427,7 @@ export class PlayerService {
     if (!trade) throw new WsException('There is no trade to accept');
     if (trade.toUserId !== userId)
       throw new WsException('You cant accept this trade');
-    this.gameService.clearTimer(game.id);
+    this.timerService.clear(game.id);
     const fields = await this.gameService.getGameFields(game.id);
     if (trade.offerFieldsIndexes.length > 0) {
       trade.offerFieldsIndexes.forEach((index) => {
@@ -497,7 +499,7 @@ export class PlayerService {
   }
 
   async loseGame(userId: string, gameId: string, fields: FieldDocument[]) {
-    this.gameService.clearTimer(gameId);
+    this.timerService.clear(gameId);
     const updatedPlayer = await this.update({
       where: {
         userId_gameId: {
@@ -534,7 +536,7 @@ export class PlayerService {
     });
     await this.gameService.updateFields(fields, ['ownedBy']);
     if (this.gameService.hasWinner(updatedPlayer.game)) {
-      this.gameService.clearTimer(updatedPlayer.game.id);
+      this.timerService.clear(updatedPlayer.game.id);
       const game = await this.gameService.updateById(updatedPlayer.game.id, {
         status: 'FINISHED',
       });

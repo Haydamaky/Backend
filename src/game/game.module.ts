@@ -13,6 +13,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Field, FieldSchema } from 'src/schema/Field.schema';
 import { GameController } from './game.controller';
 import { AuctionModule } from 'src/auction/auction.module';
+import { TimerModule } from 'src/timer/timers.module';
 
 @Module({
   controllers: [GameController],
@@ -31,6 +32,7 @@ import { AuctionModule } from 'src/auction/auction.module';
         schema: FieldSchema,
       },
     ]),
+    TimerModule,
   ],
   providers: [GameGateway, GameService, GameRepository],
   exports: [GameService],

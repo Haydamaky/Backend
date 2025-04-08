@@ -1,8 +1,9 @@
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { WsException } from '@nestjs/websockets';
 import { ChatType, Player, Prisma } from '@prisma/client';
 import { Model } from 'mongoose';
+import { AuctionService } from 'src/auction/auction.service';
 import { EventService } from 'src/event/event.service';
 import { PlayerService } from 'src/player/player.service';
 import { Field, FieldDocument } from 'src/schema/Field.schema';
@@ -10,7 +11,7 @@ import { DEFAULT_FIELDS } from 'src/utils/fields';
 import secretFields, { SecretType } from 'src/utils/fields/secretFields';
 import { GamePayload, GameRepository } from './game.repository';
 import { SecretInfo } from './types/secretInfo.type';
-import { AuctionService } from 'src/auction/auction.service';
+import { TimerService } from 'src/timer/timers.service';
 @Injectable()
 export class GameService {
   constructor(
@@ -21,16 +22,13 @@ export class GameService {
     @Inject(forwardRef(() => AuctionService))
     private auctionService: AuctionService,
     @InjectModel(Field.name)
-    private fieldModel: Model<Field>
+    private fieldModel: Model<Field>,
+    private timerService: TimerService
   ) {
     this.passTurnToUser = this.passTurnToUser.bind(this);
   }
 
   readonly PLAYING_FIELDS_QUANTITY = 40;
-
-  readonly logger = new Logger(GameService.name);
-  timers: Map<string, { timer: NodeJS.Timeout; reject: (err: any) => void }> =
-    new Map();
   readonly secrets: Map<string, SecretInfo> = new Map();
 
   async getVisibleGames() {
@@ -160,10 +158,7 @@ export class GameService {
       gameWithCreatedPlayer.playersCapacity ===
       gameWithCreatedPlayer.players.length
     ) {
-      const randomPlayerIndex = Math.floor(
-        Math.random() * gameWithCreatedPlayer.players.length
-      );
-      const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
+      const turnEnds = this.timerService.calculateFutureTime(game.timeOfTurn);
       const startedGame = await this.gameRepository.updateById(gameId, {
         data: {
           status: 'ACTIVE',
@@ -248,38 +243,6 @@ export class GameService {
     return `${firstDice}:${secondDice}`;
   }
 
-  setTimer<T, R>(
-    id: string,
-    time: number,
-    args: T,
-    callback: (args: T) => Promise<R> | R
-  ): Promise<R> | null {
-    this.clearTimer(id);
-    return new Promise<R>((resolve, reject) => {
-      const timer = setTimeout(async () => {
-        try {
-          const res: R = await callback(args);
-          resolve(res);
-        } catch (err: unknown) {
-          const error = err instanceof Error ? err : new Error(String(err));
-          console.log('In Timer');
-          console.log(error.message);
-          reject(error);
-        }
-      }, time);
-      this.timers.set(id, { timer, reject });
-      this.logger.log(`Timer with id:${id} was set for ${time / 1000} seconds`);
-    }).catch(() => {
-      return null;
-    });
-  }
-
-  calculateEndOfTurn(timeOfTurn: number) {
-    let turnEnds = Date.now();
-    turnEnds += timeOfTurn;
-    return turnEnds.toString();
-  }
-
   async findCurrentFieldFromGame(game: Partial<GamePayload>) {
     const player = await this.playerService.findByUserAndGameId(
       game.turnOfUserId,
@@ -293,7 +256,7 @@ export class GameService {
     game: Partial<GamePayload>,
     timeOfTurn: number | null = null
   ) {
-    const turnEnds = this.calculateEndOfTurn(
+    const turnEnds = this.timerService.calculateFutureTime(
       timeOfTurn ? timeOfTurn : game.timeOfTurn
     );
     return this.updateById(game.id, {
@@ -311,16 +274,6 @@ export class GameService {
     }
     const turnOfNextUserId = game.players[nextIndex].userId;
     return { turnOfNextUserId };
-  }
-
-  clearTimer(gameId: string) {
-    if (this.timers.has(gameId)) {
-      const timerObj = this.timers.get(gameId);
-      timerObj.reject('Timer cleared');
-      clearTimeout(timerObj.timer);
-      this.timers.delete(gameId);
-      this.logger.log(`Cleared timer for game ${gameId}.`);
-    }
   }
 
   async updateById(
@@ -429,7 +382,7 @@ export class GameService {
     const playerNextField = this.findPlayerFieldByIndex(fields, nextIndex);
     let updatedGame: null | Partial<GamePayload> = null;
     if (playerNextField.ownedBy !== currentPlayer.userId) {
-      const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
+      const turnEnds = this.timerService.calculateFutureTime(game.timeOfTurn);
       updatedGame = await this.updateById(game.id, {
         dices,
         turnEnds,
@@ -519,7 +472,7 @@ export class GameService {
     ) {
       throw new WsException('You cant buy this field');
     }
-    this.clearTimer(game.id);
+    this.timerService.clear(game.id);
     field.ownedBy = game.turnOfUserId;
     await this.updateFields(fields, ['ownedBy']);
     const updatedPlayer =
@@ -541,7 +494,7 @@ export class GameService {
     }
     const dices = '';
     this.auctionService.setAuction(game.id, null);
-    this.clearTimer(game.id);
+    this.timerService.clear(game.id);
     let { turnOfNextUserId } = this.findNextTurnUser(game);
     game.turnOfUserId = turnOfNextUserId;
     let playersNotLost = game.players.length;
@@ -554,7 +507,7 @@ export class GameService {
       }
       --playersNotLost;
     }
-    const turnEnds = this.calculateEndOfTurn(game.timeOfTurn);
+    const turnEnds = this.timerService.calculateFutureTime(game.timeOfTurn);
     const updatedGame = await this.updateById(game.id, {
       turnOfUserId: turnOfNextUserId,
       dices,
@@ -599,7 +552,7 @@ export class GameService {
 
   async payToBank(game: Partial<GamePayload>, userId: string, amount: number) {
     const secretInfo = this.secrets.get(game.id);
-    if (!secretInfo) this.clearTimer(game.id);
+    if (!secretInfo) this.timerService.clear(game.id);
     const currentPlayer = game.players.find(
       (player) => player.userId === userId
     );
@@ -738,8 +691,10 @@ export class GameService {
     toUserId: string;
     turnTime?: number;
   }) {
-    this.clearTimer(data.game.id);
-    const turnEnds = this.calculateEndOfTurn(data.turnTime || 10000);
+    this.timerService.clear(data.game.id);
+    const turnEnds = this.timerService.calculateFutureTime(
+      data.turnTime || 10000
+    );
     const updatedGame = await this.updateById(data.game.id, {
       turnOfUserId: data.toUserId,
       turnEnds,

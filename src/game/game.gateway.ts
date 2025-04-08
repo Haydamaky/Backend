@@ -30,6 +30,7 @@ import { Auction } from './types/auction.type';
 import { Trade } from './types/trade.type';
 import { FieldDocument } from 'src/schema/Field.schema';
 import { AuctionService } from 'src/auction/auction.service';
+import { TimerService } from 'src/timer/timers.service';
 
 @WebSocketGateway({
   cors: {
@@ -52,7 +53,8 @@ export class GameGateway {
     private configService: ConfigService,
     private chatService: ChatService,
     private webSocketServer: WebSocketServerService,
-    private auctionService: AuctionService
+    private auctionService: AuctionService,
+    private timerService: TimerService
   ) {
     this.rollDice = this.rollDice.bind(this);
     this.putUpForAuction = this.putUpForAuction.bind(this);
@@ -81,7 +83,7 @@ export class GameGateway {
       socket.join(userId);
       const game = await this.gameService.getGame(gameId);
       if (!game || game.status !== 'ACTIVE') return;
-      const timers = this.gameService.timers;
+      const timers = this.timerService.timers;
       if (timers.has(gameId)) {
         this.rejoinGame(socket, gameId);
         return;
@@ -99,7 +101,7 @@ export class GameGateway {
         timerCallback = this.rollDice;
       }
 
-      this.gameService.setTimer(
+      this.timerService.set(
         gameId,
         updatedGame.timeOfTurn,
         updatedGame,
@@ -177,12 +179,7 @@ export class GameGateway {
           game,
           chatId: game.chat.id,
         });
-        this.gameService.setTimer(
-          game.id,
-          game.timeOfTurn,
-          game,
-          this.rollDice
-        );
+        this.timerService.set(game.id, game.timeOfTurn, game, this.rollDice);
       }
     }
   }
@@ -213,7 +210,7 @@ export class GameGateway {
   ) {
     if (socket.game.dices)
       throw new WsException('You have already rolled dices');
-    this.gameService.clearTimer(socket.game.id);
+    this.timerService.clear(socket.game.id);
     await this.rollDice(socket.game);
   }
 
@@ -230,12 +227,7 @@ export class GameGateway {
       playerNextField.price &&
       playerNextField.ownedBy === updatedGame?.turnOfUserId
     ) {
-      this.gameService.setTimer(
-        game.id,
-        2500,
-        updatedGame,
-        this.passTurnToNext
-      );
+      this.timerService.set(game.id, 2500, updatedGame, this.passTurnToNext);
     }
     this.server.to(game.id).emit('rolledDice', {
       fields,
@@ -258,24 +250,19 @@ export class GameGateway {
           (player) => player.money > playerNextField.price
         )
       ) {
-        this.gameService.setTimer(
+        this.timerService.set(
           game.id,
           game.timeOfTurn,
           updatedGame,
           this.putUpForAuction
         );
       } else {
-        this.gameService.setTimer(
-          game.id,
-          2500,
-          updatedGame,
-          this.passTurnToNext
-        );
+        this.timerService.set(game.id, 2500, updatedGame, this.passTurnToNext);
       }
     }
 
     if (!playerNextField.price) {
-      // this.gameService.setTimer(
+      // this.timerService.set(
       //   game.id,
       //   game.timeOfTurn,
       //   updatedGame,
@@ -290,21 +277,11 @@ export class GameGateway {
       !currentField.secret &&
       !currentField.toPay
     ) {
-      this.gameService.setTimer(
-        game.id,
-        2500,
-        updatedGame,
-        this.passTurnToNext
-      );
+      this.timerService.set(game.id, 2500, updatedGame, this.passTurnToNext);
     }
 
     if (playerNextField.isPledged) {
-      this.gameService.setTimer(
-        game.id,
-        2500,
-        updatedGame,
-        this.passTurnToNext
-      );
+      this.timerService.set(game.id, 2500, updatedGame, this.passTurnToNext);
     }
   }
 
@@ -313,7 +290,7 @@ export class GameGateway {
     playerNextField: FieldDocument
   ) {
     if (playerNextField.toPay) {
-      this.gameService.setTimer(
+      this.timerService.set(
         game.id,
         game.timeOfTurn,
         { game, userId: game.turnOfUserId, amount: playerNextField.toPay },
@@ -347,14 +324,14 @@ export class GameGateway {
       );
       if (secretInfo.users.length === 1) {
         if (secretInfo.amounts[0] < 0) {
-          this.gameService.setTimer(
+          this.timerService.set(
             game.id,
             game.timeOfTurn,
             { game, userId: game.turnOfUserId, amount: secretInfo.amounts[0] },
             this.payToBank
           );
         } else {
-          this.gameService.setTimer(
+          this.timerService.set(
             game.id,
             3500,
             { game, userId: game.turnOfUserId, amount: secretInfo.amounts[0] },
@@ -362,14 +339,14 @@ export class GameGateway {
           );
         }
       } else if (secretInfo.users.length === 2) {
-        this.gameService.setTimer(
+        this.timerService.set(
           game.id,
           game.timeOfTurn,
           game,
           this.resolveTwoUsers
         );
       } else if (secretInfo.users.length > 2) {
-        this.gameService.setTimer(game.id, game.timeOfTurn, game, this.payAll);
+        this.timerService.set(game.id, game.timeOfTurn, game, this.payAll);
       }
     }
   }
@@ -669,7 +646,7 @@ export class GameGateway {
       this.playerService.estimateAssets(player, fields) >=
       field.income[field.amountOfBranches]
     ) {
-      this.gameService.setTimer(
+      this.timerService.set(
         game.id,
         game.timeOfTurn,
         { game, field: field },
@@ -697,7 +674,7 @@ export class GameGateway {
     );
     if (!socket.game.dices || !currentField.ownedBy)
       throw new WsException('You cant pay for that field');
-    this.gameService.clearTimer(socket.game.id);
+    this.timerService.clear(socket.game.id);
     await this.payForField({ game: socket.game, field: currentField });
   }
 
@@ -736,7 +713,7 @@ export class GameGateway {
     this.server
       .to(game.id)
       .emit('hasPutUpForAuction', { game: updatedGame, auction });
-    this.gameService.setTimer(game.id, 15000, updatedGame, this.passTurnToNext);
+    this.timerService.set(game.id, 15000, updatedGame, this.passTurnToNext);
   }
 
   @SubscribeMessage('createGame')
@@ -775,7 +752,7 @@ export class GameGateway {
 
     if (auction) {
       this.server.to(gameId).emit('raisedPrice', { auction });
-      this.gameService.setTimer(
+      this.timerService.set(
         gameId,
         15000,
         { ...auction, gameId },
@@ -856,12 +833,7 @@ export class GameGateway {
     this.server
       .to(game.id)
       .emit('passTurnToNext', { game: updatedGame, fields });
-    this.gameService.setTimer(
-      game.id,
-      game.timeOfTurn,
-      updatedGame,
-      this.rollDice
-    );
+    this.timerService.set(game.id, game.timeOfTurn, updatedGame, this.rollDice);
   }
   @OnEvent('passTurnToNext')
   async handlePassTurnToNext(data: { game: Partial<GamePayload> }) {
@@ -877,7 +849,7 @@ export class GameGateway {
     this.server
       .to(data.trade.toUserId)
       .emit('tradeOffered', { trade: data.trade });
-    this.gameService.setTimer(
+    this.timerService.set(
       updatedGame.id,
       10000,
       updatedGame,
@@ -886,7 +858,7 @@ export class GameGateway {
   }
   @OnEvent('setRollDiceTimer')
   async handleSetRollDiceTimer(game: Partial<GamePayload>) {
-    this.gameService.setTimer(game.id, game.timeOfTurn, game, this.rollDice);
+    this.timerService.set(game.id, game.timeOfTurn, game, this.rollDice);
   }
   @OnEvent('setAfterRolledDiceTimer')
   async handleSetAfterRolledDiceTimer(updatedGame: Partial<GamePayload>) {
@@ -900,7 +872,7 @@ export class GameGateway {
       playerNextField.price &&
       playerNextField.ownedBy === updatedGame?.turnOfUserId
     ) {
-      this.gameService.setTimer(
+      this.timerService.set(
         updatedGame.id,
         2500,
         updatedGame,
@@ -915,7 +887,7 @@ export class GameGateway {
       return;
     }
     if (playerNextField.price && !playerNextField.ownedBy) {
-      this.gameService.setTimer(
+      this.timerService.set(
         updatedGame.id,
         updatedGame.timeOfTurn,
         updatedGame,
@@ -932,7 +904,7 @@ export class GameGateway {
       !currentField.secret &&
       !currentField.toPay
     ) {
-      this.gameService.setTimer(
+      this.timerService.set(
         updatedGame.id,
         12000,
         updatedGame,

@@ -3,6 +3,7 @@ import { WsException } from '@nestjs/websockets';
 import { GamePayload } from 'src/game/game.repository';
 import { GameService } from 'src/game/game.service';
 import { Auction } from 'src/game/types/auction.type';
+import { TimerService } from 'src/timer/timers.service';
 import { PlayerPayload } from 'src/player/player.repository';
 import { PlayerService } from 'src/player/player.service';
 
@@ -12,7 +13,8 @@ export class AuctionService {
     @Inject(forwardRef(() => GameService))
     private gameService: GameService,
     @Inject(forwardRef(() => PlayerService))
-    private playerService: PlayerService
+    private playerService: PlayerService,
+    private timerService: TimerService
   ) {
     this.hightestInQueue = this.hightestInQueue.bind(this);
     this.winAuction = this.winAuction.bind(this);
@@ -27,9 +29,9 @@ export class AuctionService {
       game.id,
       player.currentFieldIndex
     );
-    this.gameService.clearTimer(game.id);
+    this.timerService.clear(game.id);
     const bidder = this.createInitialBidder(field.price);
-    const turnEnds = this.gameService.calculateEndOfTurn(this.BID_TIME);
+    const turnEnds = this.timerService.calculateFutureTime(this.BID_TIME);
     this.setAuction(game.id, {
       fieldIndex: field.index,
       bidders: [bidder],
@@ -119,9 +121,9 @@ export class AuctionService {
       bidAmount,
       lastBidder.bid
     );
-    this.gameService.clearTimer(gameId);
+    this.timerService.clear(gameId);
     this.setBidderOnAuction(gameId, userId, raiseBy, false);
-    return this.gameService.setTimer(
+    return this.timerService.set(
       gameId,
       2000,
       { gameId, userId, raiseBy },
@@ -136,9 +138,9 @@ export class AuctionService {
     accepted: boolean
   ) {
     const auction = this.getAuction(gameId);
-    const biddder = this.findLastAcceptedBidder(auction);
+    const biddder = this.findLastAcceptedBidder(auction) || auction.bidders[0];
     const newBid = biddder.bid + raiseBy;
-    const turnEnds = this.gameService.calculateEndOfTurn(this.BID_TIME);
+    const turnEnds = this.timerService.calculateFutureTime(this.BID_TIME);
     auction.bidders[auction.bidders.length] = {
       userId,
       bid: newBid,
@@ -179,7 +181,7 @@ export class AuctionService {
     const isAuctionComplete =
       auction.usersRefused.length >= activePlayers.length;
     if (isAuctionComplete) {
-      this.gameService.clearTimer(gameId);
+      this.timerService.clear(gameId);
       const hasWinner = !!this.findLastAcceptedBidder(auction);
       return {
         auction,
