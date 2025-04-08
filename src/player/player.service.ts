@@ -548,4 +548,9 @@ export class PlayerService {
     });
     return { updatedPlayer, updatedFields: fields };
   }
+
+  validatePlayerMoney(player: Partial<PlayerPayload>, moneyNeeded: number) {
+    if (!player) throw new WsException('No such player');
+    if (player.money <= moneyNeeded) throw new WsException('Not enough money');
+  }
 }
