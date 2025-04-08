@@ -12,6 +12,7 @@ import { ChatModule } from 'src/chat/chat.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Field, FieldSchema } from 'src/schema/Field.schema';
 import { AuctionModule } from 'src/auction/auction.module';
+import { TimerModule } from 'src/timer/timers.module';
 @Module({
   imports: [
     forwardRef(() => GameModule),
@@ -28,6 +29,7 @@ import { AuctionModule } from 'src/auction/auction.module';
         schema: FieldSchema,
       },
     ]),
+    TimerModule,
   ],
   providers: [PlayerGateway, PlayerService, PlayerRepository],
   exports: [PlayerService],
