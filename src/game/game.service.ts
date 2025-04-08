@@ -29,7 +29,7 @@ export class GameService {
   readonly PLAYING_FIELDS_QUANTITY = 40;
 
   readonly logger = new Logger(GameService.name);
-  timers: Map<string, { timer: NodeJS.Timeout; reject: () => void }> =
+  timers: Map<string, { timer: NodeJS.Timeout; reject: (err: any) => void }> =
     new Map();
   readonly secrets: Map<string, SecretInfo> = new Map();
 
@@ -252,25 +252,25 @@ export class GameService {
     id: string,
     time: number,
     args: T,
-    callback: (args: T) => Promise<R>,
-    promiseFns?: Record<string, any>
-  ): Promise<R> {
+    callback: (args: T) => Promise<R> | R
+  ): Promise<R> | null {
     this.clearTimer(id);
     return new Promise<R>((resolve, reject) => {
-      if (promiseFns) promiseFns.reject = reject;
       const timer = setTimeout(async () => {
         try {
           const res: R = await callback(args);
           resolve(res);
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const error = err instanceof Error ? err : new Error(String(err));
           console.log('In Timer');
-          console.log(err.message);
-          reject(err);
+          console.log(error.message);
+          reject(error);
         }
       }, time);
       this.timers.set(id, { timer, reject });
-
       this.logger.log(`Timer with id:${id} was set for ${time / 1000} seconds`);
+    }).catch(() => {
+      return null;
     });
   }
 
@@ -316,6 +316,7 @@ export class GameService {
   clearTimer(gameId: string) {
     if (this.timers.has(gameId)) {
       const timerObj = this.timers.get(gameId);
+      timerObj.reject('Timer cleared');
       clearTimeout(timerObj.timer);
       this.timers.delete(gameId);
       this.logger.log(`Cleared timer for game ${gameId}.`);
