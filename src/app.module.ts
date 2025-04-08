@@ -15,6 +15,7 @@ import { WebSocketServerModule } from './webSocketServer/webSocketServer.module'
 import { WebSocketServerService } from './webSocketServer/webSocketServer.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuctionModule } from './auction/auction.module';
+import { SecretModule } from './secret/secret.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { AuctionModule } from './auction/auction.module';
       }),
     }),
     AuctionModule,
+    SecretModule,
   ],
   controllers: [AppController],
   providers: [
