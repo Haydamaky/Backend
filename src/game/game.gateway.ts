@@ -766,24 +766,25 @@ export class GameGateway {
     @MessageBody('bidAmount') bidAmount: number
   ) {
     const userId = socket.jwtPayload.sub;
-    try {
-      const auction = await this.auctionService.raisePrice(
-        gameId,
-        userId,
-        raiseBy,
-        bidAmount
-      );
+    const auction = await this.auctionService.raisePrice(
+      gameId,
+      userId,
+      raiseBy,
+      bidAmount
+    );
+
+    if (auction) {
       this.server.to(gameId).emit('raisedPrice', { auction });
-      if (auction) {
-        this.gameService.setTimer(
-          gameId,
-          15000,
-          { ...auction, gameId },
-          this.winAuction
-        );
-      }
-    } catch (err) {
-      socket.emit('error', err);
+      this.gameService.setTimer(
+        gameId,
+        15000,
+        { ...auction, gameId },
+        this.winAuction
+      );
+    } else {
+      this.server.to(userId).emit('error', {
+        message: 'Хтось одночасно поставив з вами і перебив вашу ставку',
+      });
     }
   }
 
