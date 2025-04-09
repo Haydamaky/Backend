@@ -14,6 +14,7 @@ import { Field, FieldSchema } from 'src/schema/Field.schema';
 import { GameController } from './game.controller';
 import { AuctionModule } from 'src/auction/auction.module';
 import { TimerModule } from 'src/timer/timers.module';
+import { SecretModule } from 'src/secret/secret.module';
 
 @Module({
   controllers: [GameController],
@@ -33,6 +34,7 @@ import { TimerModule } from 'src/timer/timers.module';
       },
     ]),
     TimerModule,
+    SecretModule,
   ],
   providers: [GameGateway, GameService, GameRepository],
   exports: [GameService],

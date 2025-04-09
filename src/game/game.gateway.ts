@@ -31,6 +31,7 @@ import { Trade } from './types/trade.type';
 import { FieldDocument } from 'src/schema/Field.schema';
 import { AuctionService } from 'src/auction/auction.service';
 import { TimerService } from 'src/timer/timers.service';
+import { SecretService } from 'src/secret/secret.service';
 
 @WebSocketGateway({
   cors: {
@@ -54,7 +55,8 @@ export class GameGateway {
     private chatService: ChatService,
     private webSocketServer: WebSocketServerService,
     private auctionService: AuctionService,
-    private timerService: TimerService
+    private timerService: TimerService,
+    private secretService: SecretService
   ) {
     this.rollDice = this.rollDice.bind(this);
     this.putUpForAuction = this.putUpForAuction.bind(this);
@@ -152,7 +154,7 @@ export class GameGateway {
   async getGameData(@GetGameId() gameId: string) {
     const game = await this.gameService.getGame(gameId);
     const auction = this.auctionService.auctions.get(game.id);
-    const secretInfo = this.gameService.secrets.get(game.id);
+    const secretInfo = this.secretService.secrets.get(game.id);
     const fields = await this.gameService.getGameFields(game.id);
     this.server.emit('gameData', { game, fields, auction, secretInfo });
   }
@@ -299,7 +301,7 @@ export class GameGateway {
     }
     if (playerNextField.secret) {
       const secret = this.gameService.getRandomSecret();
-      const secretInfo = await this.gameService.parseAndSaveSecret(
+      const secretInfo = await this.secretService.parseAndSaveSecret(
         secret,
         game
       );
@@ -352,7 +354,7 @@ export class GameGateway {
   }
 
   async payAll(game: Partial<GamePayload>) {
-    const secretInfo = this.gameService.secrets.get(game.id);
+    const secretInfo = this.secretService.secrets.get(game.id);
     let updatedPlayer = null;
     for (const userId of secretInfo.users) {
       const firstUser = secretInfo.users[0];
@@ -376,7 +378,7 @@ export class GameGateway {
         }
       }
     }
-    this.gameService.secrets.delete(game.id);
+    this.secretService.secrets.delete(game.id);
     this.passTurnToNext(updatedPlayer?.game || game);
     this.server.to(game.id).emit('updatePlayers', {
       game: updatedPlayer?.game,
@@ -384,7 +386,7 @@ export class GameGateway {
   }
 
   async resolveTwoUsers(game: Partial<GamePayload>) {
-    let secretInfo = this.gameService.secrets.get(game.id);
+    let secretInfo = this.secretService.secrets.get(game.id);
     const firstPay = secretInfo.amounts[0] < 1;
     let updatedGameToReturn: null | Partial<GamePayload> = null;
     const fields = await this.gameService.getGameFields(game.id);
@@ -453,7 +455,7 @@ export class GameGateway {
   ) {
     const game = socket.game;
     const userId = socket.jwtPayload.sub;
-    const secretInfo = this.gameService.secrets.get(game.id);
+    const secretInfo = this.secretService.secrets.get(game.id);
     return this.payToUser({
       game,
       userId,
@@ -473,7 +475,7 @@ export class GameGateway {
     userToPayId: string;
     amount: number;
   }) {
-    let secretInfo = this.gameService.secrets.get(game.id);
+    let secretInfo = this.secretService.secrets.get(game.id);
     if (!secretInfo.users.includes(userId))
       throw new WsException('You cant pay for that secret');
     const indexOfUser = secretInfo.users.indexOf(userId);
@@ -529,7 +531,7 @@ export class GameGateway {
     const currentField = await this.gameService.findCurrentFieldWithUserId(
       socket.game
     );
-    const secretInfo = this.gameService.secrets.get(socket.game.id);
+    const secretInfo = this.secretService.secrets.get(socket.game.id);
     if (!socket.game.dices && !currentField.toPay && !secretInfo)
       throw new WsException(
         'You cant pay for that field because smt is missing'
@@ -625,7 +627,7 @@ export class GameGateway {
       argsObj.userId,
       argsObj.amount
     );
-    const secretInfo = this.gameService.secrets.get(updatedGame.id);
+    const secretInfo = this.secretService.secrets.get(updatedGame.id);
     if (!secretInfo) {
       await this.passTurnToNext(updatedGame);
     } else {
