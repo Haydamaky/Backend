@@ -7,11 +7,11 @@ import { AuctionService } from 'src/auction/auction.service';
 import { EventService } from 'src/event/event.service';
 import { PlayerService } from 'src/player/player.service';
 import { Field, FieldDocument } from 'src/schema/Field.schema';
-import { DEFAULT_FIELDS } from 'src/utils/fields';
-import secretFields, { SecretType } from 'src/utils/fields/secretFields';
-import { GamePayload, GameRepository } from './game.repository';
-import { SecretInfo } from './types/secretInfo.type';
 import { TimerService } from 'src/timer/timers.service';
+import { DEFAULT_FIELDS } from 'src/utils/fields';
+import secretFields from 'src/utils/fields/secretFields';
+import { GamePayload, GameRepository } from './game.repository';
+import { SecretService } from 'src/secret/secret.service';
 @Injectable()
 export class GameService {
   constructor(
@@ -23,13 +23,13 @@ export class GameService {
     private auctionService: AuctionService,
     @InjectModel(Field.name)
     private fieldModel: Model<Field>,
-    private timerService: TimerService
+    private timerService: TimerService,
+    private secretService: SecretService
   ) {
     this.passTurnToUser = this.passTurnToUser.bind(this);
   }
 
   readonly PLAYING_FIELDS_QUANTITY = 40;
-  readonly secrets: Map<string, SecretInfo> = new Map();
 
   async getVisibleGames() {
     return this.gameRepository.findMany({
@@ -407,45 +407,6 @@ export class GameService {
     return secretFields[randomSecretIndex];
   }
 
-  async parseAndSaveSecret(secret: SecretType, game: Partial<GamePayload>) {
-    if (secret.numOfPlayersInvolved === 'one') {
-      const secretInfo = {
-        amounts: secret.amounts,
-        users: [game.turnOfUserId],
-      };
-      this.secrets.set(game.id, secretInfo);
-      return secretInfo;
-    } else if (secret.numOfPlayersInvolved === 'two') {
-      const playersWithoutActive = game.players.filter(
-        (player) => player.userId !== game.turnOfUserId && !player.lost
-      );
-      const randomUserId = this.getRandomPlayersUserId(playersWithoutActive);
-      const secretInfo = {
-        amounts: secret.amounts,
-        users: [game.turnOfUserId, randomUserId],
-      };
-      this.secrets.set(game.id, secretInfo);
-      return secretInfo;
-    } else if (secret.numOfPlayersInvolved === 'all') {
-      const secretInfo = {
-        amounts: secret.amounts,
-        users: [
-          game.turnOfUserId,
-          ...game.players
-            .filter((player) => player.userId !== game.turnOfUserId)
-            .map((player) => {
-              if (!player.lost && player.userId !== game.turnOfUserId) {
-                return player.userId;
-              }
-              return '';
-            }),
-        ],
-      };
-      this.secrets.set(game.id, secretInfo);
-      return secretInfo;
-    }
-  }
-
   getRandomPlayersUserId(players: Partial<Player[]>) {
     const randomIndex = Math.floor(Math.random() * players.length);
     return players[randomIndex].userId;
@@ -551,7 +512,7 @@ export class GameService {
   }
 
   async payToBank(game: Partial<GamePayload>, userId: string, amount: number) {
-    const secretInfo = this.secrets.get(game.id);
+    const secretInfo = this.secretService.secrets.get(game.id);
     if (!secretInfo) this.timerService.clear(game.id);
     const currentPlayer = game.players.find(
       (player) => player.userId === userId
@@ -591,7 +552,7 @@ export class GameService {
         return userId === '';
       })
     ) {
-      this.secrets.delete(game.id);
+      this.secretService.secrets.delete(game.id);
       return {
         updatedGame: playerWhoPayed.game,
         fields,
