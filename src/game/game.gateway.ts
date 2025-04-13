@@ -32,6 +32,7 @@ import { FieldDocument } from 'src/schema/Field.schema';
 import { AuctionService } from 'src/auction/auction.service';
 import { TimerService } from 'src/timer/timers.service';
 import { SecretService } from 'src/secret/secret.service';
+import { FieldService } from 'src/field/field.service';
 
 @WebSocketGateway({
   cors: {
@@ -56,7 +57,8 @@ export class GameGateway {
     private webSocketServer: WebSocketServerService,
     private auctionService: AuctionService,
     private timerService: TimerService,
-    private secretService: SecretService
+    private secretService: SecretService,
+    private fieldService: FieldService
   ) {
     this.rollDice = this.rollDice.bind(this);
     this.putUpForAuction = this.putUpForAuction.bind(this);
@@ -168,22 +170,30 @@ export class GameGateway {
       data.id,
       socket.jwtPayload.sub
     );
-    if (game) {
-      this.leaveAllRoomsExceptInitial(socket);
-      socket.join(data.id);
-      this.server.emit('onParticipateGame', game);
-      if (shouldStart) {
-        // We can setTimeout here for some countdown on frontend
-        this.server.emit('clearStartedGame', {
-          gameId: game.id,
-        });
-        this.server.to(game.id).emit('startGame', {
-          game,
-          chatId: game.chat.id,
-        });
-        this.timerService.set(game.id, game.timeOfTurn, game, this.rollDice);
-      }
+    if (!game) {
+      this.server
+        .to(socket.id)
+        .emit('error', { message: 'Could not join game' });
+      return;
     }
+    this.leaveAllRoomsExceptInitial(socket);
+    socket.join(data.id);
+    this.server.emit('onParticipateGame', game);
+    if (shouldStart) {
+      this.startGame(game);
+    }
+  }
+
+  private startGame(game: Partial<GamePayload>) {
+    // We can setTimeout here for some countdown on frontend
+    this.server.emit('clearStartedGame', {
+      gameId: game.id,
+    });
+    this.server.to(game.id).emit('startGame', {
+      game,
+      chatId: game.chat.id,
+    });
+    this.timerService.set(game.id, game.timeOfTurn, game, this.rollDice);
   }
 
   @SubscribeMessage('leaveGame')
@@ -217,27 +227,18 @@ export class GameGateway {
   }
 
   async rollDice(game: Partial<GamePayload>) {
-    const {
-      updatedGame,
-      nextIndex,
-      playerNextField,
-      hasOwner,
-      currentPlayer,
+    const { updatedGame, playerNextField, hasOwner, currentPlayer, fields } =
+      await this.gameService.makeTurn(game);
+    this.server.to(game.id).emit('rolledDice', {
       fields,
-    } = await this.gameService.makeTurn(game);
+      game: updatedGame,
+    });
     if (
       playerNextField.price &&
-      playerNextField.ownedBy === updatedGame?.turnOfUserId
+      playerNextField.ownedBy === currentPlayer.userId
     ) {
       this.timerService.set(game.id, 2500, updatedGame, this.passTurnToNext);
     }
-    this.server.to(game.id).emit('rolledDice', {
-      fields,
-      playerNextField,
-      hasOwner,
-      moveToIndex: nextIndex,
-      game: updatedGame,
-    });
     if (
       hasOwner &&
       playerNextField.ownedBy !== currentPlayer.userId &&
@@ -264,12 +265,6 @@ export class GameGateway {
     }
 
     if (!playerNextField.price) {
-      // this.timerService.set(
-      //   game.id,
-      //   game.timeOfTurn,
-      //   updatedGame,
-      //   this.passTurnToNext
-      // );
       this.processSpecialField(updatedGame, playerNextField);
     }
     const currentField =
