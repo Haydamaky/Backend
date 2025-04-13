@@ -16,7 +16,6 @@ import { WebSocketServerService } from './webSocketServer/webSocketServer.servic
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuctionModule } from './auction/auction.module';
 import { SecretModule } from './secret/secret.module';
-import { FieldModule } from './field/field.module';
 
 @Module({
   imports: [
@@ -38,7 +37,6 @@ import { FieldModule } from './field/field.module';
     }),
     AuctionModule,
     SecretModule,
-    FieldModule,
   ],
   controllers: [AppController],
   providers: [
