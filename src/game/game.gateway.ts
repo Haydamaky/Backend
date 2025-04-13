@@ -32,7 +32,7 @@ import { FieldDocument } from 'src/schema/Field.schema';
 import { AuctionService } from 'src/auction/auction.service';
 import { TimerService } from 'src/timer/timers.service';
 import { SecretService } from 'src/secret/secret.service';
-import { FieldService } from 'src/field/field.service';
+import { FieldValidator } from 'src/field/FieldValidator';
 
 @WebSocketGateway({
   cors: {
@@ -57,8 +57,7 @@ export class GameGateway {
     private webSocketServer: WebSocketServerService,
     private auctionService: AuctionService,
     private timerService: TimerService,
-    private secretService: SecretService,
-    private fieldService: FieldService
+    private secretService: SecretService
   ) {
     this.rollDice = this.rollDice.bind(this);
     this.putUpForAuction = this.putUpForAuction.bind(this);
@@ -233,26 +232,20 @@ export class GameGateway {
       fields,
       game: updatedGame,
     });
-    if (
-      playerNextField.price &&
-      playerNextField.ownedBy === currentPlayer.userId
-    ) {
+    const fieldValidator = new FieldValidator(
+      playerNextField,
+      updatedGame,
+      this.playerService
+    );
+    if (fieldValidator.isOwnedByCurrentUser()) {
       this.timerService.set(game.id, 2500, updatedGame, this.passTurnToNext);
     }
-    if (
-      hasOwner &&
-      playerNextField.ownedBy !== currentPlayer.userId &&
-      !playerNextField.isPledged
-    ) {
+    if (fieldValidator.isOwnedByOtherAndNotPledged()) {
       this.steppedOnPrivateField(currentPlayer, playerNextField, updatedGame);
       return;
     }
-    if (playerNextField.price && !playerNextField.ownedBy) {
-      if (
-        updatedGame.players.some(
-          (player) => player.money > playerNextField.price
-        )
-      ) {
+    if (fieldValidator.isNotOwned()) {
+      if (fieldValidator.isAffordableForSomeone()) {
         this.timerService.set(
           game.id,
           game.timeOfTurn,
@@ -264,20 +257,10 @@ export class GameGateway {
       }
     }
 
-    if (!playerNextField.price) {
+    if (fieldValidator.isSpecialField()) {
       this.processSpecialField(updatedGame, playerNextField);
     }
-    const currentField =
-      await this.gameService.findCurrentFieldWithUserId(updatedGame);
-    if (
-      currentField?.specialField &&
-      !currentField.secret &&
-      !currentField.toPay
-    ) {
-      this.timerService.set(game.id, 2500, updatedGame, this.passTurnToNext);
-    }
-
-    if (playerNextField.isPledged) {
+    if (fieldValidator.isSkipable()) {
       this.timerService.set(game.id, 2500, updatedGame, this.passTurnToNext);
     }
   }
