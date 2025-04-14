@@ -12,6 +12,7 @@ import { DEFAULT_FIELDS } from 'src/utils/fields';
 import secretFields from 'src/utils/fields/secretFields';
 import { GamePayload, GameRepository } from './game.repository';
 import { SecretService } from 'src/secret/secret.service';
+import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
 @Injectable()
 export class GameService {
   constructor(
@@ -392,12 +393,17 @@ export class GameService {
         dices,
       });
     }
+    const fieldAnalyzer = new FieldAnalyzer(
+      playerNextField,
+      updatedGame,
+      this.playerService
+    );
     return {
       updatedGame,
       fields,
       nextIndex,
       playerNextField,
-      hasOwner: playerNextField?.ownedBy,
+      fieldAnalyzer,
       currentPlayer,
     };
   }

@@ -4,11 +4,11 @@ import { PlayerService } from 'src/player/player.service';
 import { FieldDocument } from 'src/schema/Field.schema';
 
 export class FieldAnalyzer {
-  private currentPlayer: Partial<PlayerPayload>;
+  readonly currentPlayer: Partial<PlayerPayload>;
 
   constructor(
-    private field: FieldDocument,
-    private game: Partial<GamePayload>,
+    readonly field: FieldDocument,
+    readonly game: Partial<GamePayload>,
     private playerService: PlayerService
   ) {
     this.currentPlayer = this.playerService.findPlayerWithTurn(game);

@@ -33,6 +33,10 @@ import { AuctionService } from 'src/auction/auction.service';
 import { TimerService } from 'src/timer/timers.service';
 import { SecretService } from 'src/secret/secret.service';
 import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
+import { PassTurnStrategy } from './strategies/passTurn.strategy';
+import { ProcessSpecialStrategy } from './strategies/processSpecial.strategy';
+import { SteppedOnPrivateStrategy } from './strategies/steppedOnPrivate.strategy';
+import { PutUpForAuctionStrategy } from './strategies/putUpForAuction.strategy';
 
 @WebSocketGateway({
   cors: {
@@ -226,43 +230,41 @@ export class GameGateway {
   }
 
   async rollDice(game: Partial<GamePayload>) {
-    const { updatedGame, playerNextField, currentPlayer, fields } =
-      await this.gameService.makeTurn(game);
+    const { fieldAnalyzer, fields } = await this.gameService.makeTurn(game);
     this.server.to(game.id).emit('rolledDice', {
       fields,
-      game: updatedGame,
+      game: fieldAnalyzer.game,
     });
-    const fieldAnalyzer = new FieldAnalyzer(
-      playerNextField,
-      updatedGame,
-      this.playerService
-    );
-    if (fieldAnalyzer.isOwnedByCurrentUser()) {
-      this.timerService.set(game.id, 2500, updatedGame, this.passTurnToNext);
-    }
-    if (fieldAnalyzer.isOwnedByOtherAndNotPledged()) {
-      this.steppedOnPrivateField(currentPlayer, playerNextField, updatedGame);
-      return;
-    }
-    if (fieldAnalyzer.isNotOwned()) {
-      if (fieldAnalyzer.isAffordableForSomeone()) {
+    const strategies = [
+      new PassTurnStrategy(fieldAnalyzer, () => {
+        this.timerService.set(
+          game.id,
+          2500,
+          fieldAnalyzer.game,
+          this.passTurnToNext
+        );
+      }),
+      new ProcessSpecialStrategy(fieldAnalyzer, () => {
+        this.processSpecialField(fieldAnalyzer.game, fieldAnalyzer.field);
+      }),
+      new SteppedOnPrivateStrategy(fieldAnalyzer, () => {
+        this.steppedOnPrivateField(
+          fieldAnalyzer.currentPlayer,
+          fieldAnalyzer.field,
+          fieldAnalyzer.game
+        );
+      }),
+      new PutUpForAuctionStrategy(fieldAnalyzer, () => {
         this.timerService.set(
           game.id,
           game.timeOfTurn,
-          updatedGame,
+          fieldAnalyzer.game,
           this.putUpForAuction
         );
-      } else {
-        this.timerService.set(game.id, 2500, updatedGame, this.passTurnToNext);
-      }
-    }
-
-    if (fieldAnalyzer.isSpecialField()) {
-      this.processSpecialField(updatedGame, playerNextField);
-    }
-    if (fieldAnalyzer.isSkipable()) {
-      this.timerService.set(game.id, 2500, updatedGame, this.passTurnToNext);
-    }
+      }),
+    ];
+    const strategy = strategies.find((s) => s.matches());
+    strategy.execute();
   }
 
   async processSpecialField(
