@@ -3,7 +3,7 @@ import { PlayerPayload } from 'src/player/player.repository';
 import { PlayerService } from 'src/player/player.service';
 import { FieldDocument } from 'src/schema/Field.schema';
 
-export class FieldValidator {
+export class FieldAnalyzer {
   private currentPlayer: Partial<PlayerPayload>;
 
   constructor(

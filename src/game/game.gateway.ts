@@ -32,7 +32,7 @@ import { FieldDocument } from 'src/schema/Field.schema';
 import { AuctionService } from 'src/auction/auction.service';
 import { TimerService } from 'src/timer/timers.service';
 import { SecretService } from 'src/secret/secret.service';
-import { FieldValidator } from 'src/field/FieldValidator';
+import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
 
 @WebSocketGateway({
   cors: {
@@ -226,26 +226,26 @@ export class GameGateway {
   }
 
   async rollDice(game: Partial<GamePayload>) {
-    const { updatedGame, playerNextField, hasOwner, currentPlayer, fields } =
+    const { updatedGame, playerNextField, currentPlayer, fields } =
       await this.gameService.makeTurn(game);
     this.server.to(game.id).emit('rolledDice', {
       fields,
       game: updatedGame,
     });
-    const fieldValidator = new FieldValidator(
+    const fieldAnalyzer = new FieldAnalyzer(
       playerNextField,
       updatedGame,
       this.playerService
     );
-    if (fieldValidator.isOwnedByCurrentUser()) {
+    if (fieldAnalyzer.isOwnedByCurrentUser()) {
       this.timerService.set(game.id, 2500, updatedGame, this.passTurnToNext);
     }
-    if (fieldValidator.isOwnedByOtherAndNotPledged()) {
+    if (fieldAnalyzer.isOwnedByOtherAndNotPledged()) {
       this.steppedOnPrivateField(currentPlayer, playerNextField, updatedGame);
       return;
     }
-    if (fieldValidator.isNotOwned()) {
-      if (fieldValidator.isAffordableForSomeone()) {
+    if (fieldAnalyzer.isNotOwned()) {
+      if (fieldAnalyzer.isAffordableForSomeone()) {
         this.timerService.set(
           game.id,
           game.timeOfTurn,
@@ -257,10 +257,10 @@ export class GameGateway {
       }
     }
 
-    if (fieldValidator.isSpecialField()) {
+    if (fieldAnalyzer.isSpecialField()) {
       this.processSpecialField(updatedGame, playerNextField);
     }
-    if (fieldValidator.isSkipable()) {
+    if (fieldAnalyzer.isSkipable()) {
       this.timerService.set(game.id, 2500, updatedGame, this.passTurnToNext);
     }
   }
