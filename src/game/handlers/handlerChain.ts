@@ -2,8 +2,8 @@ import { IHandler } from './IHandler';
 
 export class HandlerChain {
   private handlers: IHandler[] = [];
-  addHandler(handler: IHandler): void {
-    this.handlers.push(handler);
+  addHandlers(...handlers: IHandler[]): void {
+    this.handlers.push(...handlers);
   }
 
   process(): void {
