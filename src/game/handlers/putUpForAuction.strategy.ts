@@ -1,5 +1,5 @@
 import { BaseHandler } from './base.strategy';
-export abstract class PutUpForAuctionHanlder extends BaseHandler {
+export class PutUpForAuctionHandler extends BaseHandler {
   canHandle() {
     return (
       this.fieldAnalyzer.isNotOwned() &&

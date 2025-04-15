@@ -1,5 +1,5 @@
 import { BaseHandler } from './base.strategy';
-export abstract class PassTurnHandler extends BaseHandler {
+export class PassTurnHandler extends BaseHandler {
   canHandle() {
     return (
       this.fieldAnalyzer.isOwnedByCurrentUser() ||

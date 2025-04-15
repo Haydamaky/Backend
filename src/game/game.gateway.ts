@@ -32,6 +32,11 @@ import { FieldDocument } from 'src/schema/Field.schema';
 import { AuctionService } from 'src/auction/auction.service';
 import { TimerService } from 'src/timer/timers.service';
 import { SecretService } from 'src/secret/secret.service';
+import { PassTurnHandler } from './handlers/passTurn.handler';
+import { ProcessSpecialHandler } from './handlers/processSpecial.strategy';
+import { SteppedOnPrivateHandler } from './handlers/steppedOnPrivate.strategy';
+import { PutUpForAuctionHandler } from './handlers/putUpForAuction.strategy';
+import { HandlerChain } from './handlers/handlerChain';
 
 @WebSocketGateway({
   cors: {
@@ -230,36 +235,42 @@ export class GameGateway {
       fields,
       game: fieldAnalyzer.game,
     });
-    const strategies = [
-      new PassTurnStrategy(fieldAnalyzer, () => {
+    const chain = new HandlerChain();
+    chain.addHandler(
+      new PassTurnHandler(fieldAnalyzer, () => {
         this.timerService.set(
           game.id,
           2500,
           fieldAnalyzer.game,
           this.passTurnToNext
         );
-      }),
-      new ProcessSpecialStrategy(fieldAnalyzer, () => {
+      })
+    );
+    chain.addHandler(
+      new ProcessSpecialHandler(fieldAnalyzer, () => {
         this.processSpecialField(fieldAnalyzer.game, fieldAnalyzer.field);
-      }),
-      new SteppedOnPrivateStrategy(fieldAnalyzer, () => {
+      })
+    );
+    chain.addHandler(
+      new SteppedOnPrivateHandler(fieldAnalyzer, () => {
         this.steppedOnPrivateField(
           fieldAnalyzer.currentPlayer,
           fieldAnalyzer.field,
           fieldAnalyzer.game
         );
-      }),
-      new PutUpForAuctionStrategy(fieldAnalyzer, () => {
+      })
+    );
+    chain.addHandler(
+      new PutUpForAuctionHandler(fieldAnalyzer, () => {
         this.timerService.set(
           game.id,
           game.timeOfTurn,
           fieldAnalyzer.game,
           this.putUpForAuction
         );
-      }),
-    ];
-    const strategy = strategies.find((s) => s.matches());
-    strategy.execute();
+      })
+    );
+    chain.process();
   }
 
   async processSpecialField(
