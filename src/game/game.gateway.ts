@@ -32,11 +32,6 @@ import { FieldDocument } from 'src/schema/Field.schema';
 import { AuctionService } from 'src/auction/auction.service';
 import { TimerService } from 'src/timer/timers.service';
 import { SecretService } from 'src/secret/secret.service';
-import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
-import { PassTurnStrategy } from './strategies/passTurn.strategy';
-import { ProcessSpecialStrategy } from './strategies/processSpecial.strategy';
-import { SteppedOnPrivateStrategy } from './strategies/steppedOnPrivate.strategy';
-import { PutUpForAuctionStrategy } from './strategies/putUpForAuction.strategy';
 
 @WebSocketGateway({
   cors: {

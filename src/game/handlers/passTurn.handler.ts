@@ -1,7 +1,6 @@
-import { BaseFieldStrategy } from './base.strategy';
-
-export class PassTurnStrategy extends BaseFieldStrategy {
-  matches(): boolean {
+import { BaseHandler } from './base.strategy';
+export abstract class PassTurnHandler extends BaseHandler {
+  canHandle() {
     return (
       this.fieldAnalyzer.isOwnedByCurrentUser() ||
       (this.fieldAnalyzer.isNotOwned() &&

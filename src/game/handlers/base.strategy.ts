@@ -1,14 +1,14 @@
 import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
-import { FieldStrategy } from './fieldStrategy.interface';
+import { IHandler } from './IHandler';
 
-export abstract class BaseFieldStrategy implements FieldStrategy {
+export abstract class BaseHandler implements IHandler {
   constructor(
     protected fieldAnalyzer: FieldAnalyzer,
     private handler: () => void
   ) {}
 
-  abstract matches(): boolean;
-  execute() {
+  abstract canHandle(): boolean;
+  handle() {
     this.handler();
   }
 }
