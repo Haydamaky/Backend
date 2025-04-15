@@ -37,6 +37,7 @@ import { ProcessSpecialHandler } from './handlers/processSpecial.strategy';
 import { SteppedOnPrivateHandler } from './handlers/steppedOnPrivate.strategy';
 import { PutUpForAuctionHandler } from './handlers/putUpForAuction.strategy';
 import { HandlerChain } from './handlers/handlerChain';
+import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
 
 @WebSocketGateway({
   cors: {
@@ -236,7 +237,7 @@ export class GameGateway {
       game: fieldAnalyzer.game,
     });
     const chain = new HandlerChain();
-    chain.addHandler(
+    chain.addHandlers(
       new PassTurnHandler(fieldAnalyzer, () => {
         this.timerService.set(
           game.id,
@@ -244,23 +245,13 @@ export class GameGateway {
           fieldAnalyzer.game,
           this.passTurnToNext
         );
-      })
-    );
-    chain.addHandler(
+      }),
       new ProcessSpecialHandler(fieldAnalyzer, () => {
         this.processSpecialField(fieldAnalyzer.game, fieldAnalyzer.field);
-      })
-    );
-    chain.addHandler(
+      }),
       new SteppedOnPrivateHandler(fieldAnalyzer, () => {
-        this.steppedOnPrivateField(
-          fieldAnalyzer.currentPlayer,
-          fieldAnalyzer.field,
-          fieldAnalyzer.game
-        );
-      })
-    );
-    chain.addHandler(
+        this.steppedOnPrivateField(fieldAnalyzer);
+      }),
       new PutUpForAuctionHandler(fieldAnalyzer, () => {
         this.timerService.set(
           game.id,
@@ -624,14 +615,10 @@ export class GameGateway {
     }
   }
 
-  async steppedOnPrivateField(
-    player: Partial<PlayerPayload>,
-    field: FieldDocument,
-    game: Partial<GamePayload>
-  ) {
+  async steppedOnPrivateField({ currentPlayer, field, game }: FieldAnalyzer) {
     const fields = await this.gameService.getGameFields(game.id);
     if (
-      this.playerService.estimateAssets(player, fields) >=
+      this.playerService.estimateAssets(currentPlayer, fields) >=
       field.income[field.amountOfBranches]
     ) {
       this.timerService.set(
@@ -643,7 +630,7 @@ export class GameGateway {
       return;
     }
     const { updatedPlayer } = await this.playerService.loseGame(
-      player.userId,
+      currentPlayer.userId,
       game.id,
       fields
     );
@@ -856,6 +843,11 @@ export class GameGateway {
       fields,
       currentPlayer.currentFieldIndex
     );
+    const fieldAnalyzer = new FieldAnalyzer(
+      playerNextField,
+      updatedGame,
+      this.playerService
+    );
     if (
       playerNextField.price &&
       playerNextField.ownedBy === updatedGame?.turnOfUserId
@@ -871,7 +863,7 @@ export class GameGateway {
       playerNextField.ownedBy &&
       playerNextField.ownedBy !== currentPlayer.userId
     ) {
-      this.steppedOnPrivateField(currentPlayer, playerNextField, updatedGame);
+      this.steppedOnPrivateField(fieldAnalyzer);
       return;
     }
     if (playerNextField.price && !playerNextField.ownedBy) {
