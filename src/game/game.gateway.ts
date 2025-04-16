@@ -33,9 +33,9 @@ import { AuctionService } from 'src/auction/auction.service';
 import { TimerService } from 'src/timer/timers.service';
 import { SecretService } from 'src/secret/secret.service';
 import { PassTurnHandler } from './handlers/passTurn.handler';
-import { ProcessSpecialHandler } from './handlers/processSpecial.strategy';
-import { SteppedOnPrivateHandler } from './handlers/steppedOnPrivate.strategy';
-import { PutUpForAuctionHandler } from './handlers/putUpForAuction.strategy';
+import { ProcessSpecialHandler } from './handlers/processSpecial.handler';
+import { SteppedOnPrivateHandler } from './handlers/steppedOnPrivate.handler';
+import { PutUpForAuctionHandler } from './handlers/putUpForAuction.handler';
 import { HandlerChain } from './handlers/handlerChain';
 import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
 
@@ -277,30 +277,10 @@ export class GameGateway {
       );
     }
     if (playerNextField.secret) {
-      const secret = this.gameService.getRandomSecret();
-      const secretInfo = await this.secretService.parseAndSaveSecret(
-        secret,
-        game
-      );
-      const randomPlayer = game.players.find(
-        (player) => player.userId === secretInfo.users[1]
-      );
-      if (secret.text.includes('$RANDOM_PLAYER$')) {
-        secret.text = secret.text.replace(
-          '$RANDOM_PLAYER$',
-          randomPlayer?.user.nickname
-        );
-      }
-      const message = await this.chatService.onNewMessage(game.turnOfUserId, {
-        text: secret.text,
-        chatId: game.chat.id,
-      });
+      const { message, secretInfo } =
+        await this.secretService.handleSecretWithMessage(game);
       this.server.to(game.id).emit('gameChatMessage', message);
       this.server.to(game.id).emit('secret', secretInfo);
-      secret.text = secret.text.replace(
-        randomPlayer?.user.nickname,
-        '$RANDOM_PLAYER$'
-      );
       if (secretInfo.users.length === 1) {
         if (secretInfo.amounts[0] < 0) {
           this.timerService.set(
@@ -312,7 +292,7 @@ export class GameGateway {
         } else {
           this.timerService.set(
             game.id,
-            3500,
+            2000,
             { game, userId: game.turnOfUserId, amount: secretInfo.amounts[0] },
             this.payToBank
           );

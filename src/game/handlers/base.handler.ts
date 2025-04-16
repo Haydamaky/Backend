@@ -1,9 +1,8 @@
-import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
 import { IHandler } from './IHandler';
 
-export abstract class BaseHandler implements IHandler {
+export abstract class BaseHandler<T> implements IHandler {
   constructor(
-    protected fieldAnalyzer: FieldAnalyzer,
+    protected analyzer: T,
     private handler: () => void
   ) {}
 

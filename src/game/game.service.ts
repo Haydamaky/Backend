@@ -13,6 +13,7 @@ import secretFields from 'src/utils/fields/secretFields';
 import { GamePayload, GameRepository } from './game.repository';
 import { SecretService } from 'src/secret/secret.service';
 import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
+import { PlayerPayload } from 'src/player/player.repository';
 @Injectable()
 export class GameService {
   constructor(
@@ -408,14 +409,9 @@ export class GameService {
     };
   }
 
-  getRandomSecret() {
-    const randomSecretIndex = Math.floor(Math.random() * secretFields.length);
-    return secretFields[randomSecretIndex];
-  }
-
-  getRandomPlayersUserId(players: Partial<Player[]>) {
+  choseRandomPlayer(players: Partial<PlayerPayload[]>) {
     const randomIndex = Math.floor(Math.random() * players.length);
-    return players[randomIndex].userId;
+    return players[randomIndex];
   }
 
   async findCurrentFieldWithUserId(game: Partial<GamePayload>) {
