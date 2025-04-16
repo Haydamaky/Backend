@@ -79,8 +79,4 @@ export class SecretService {
     });
     return { message, secretInfo };
   }
-
-  isOneUserHaveToPay(secretInfo: SecretInfo) {
-    return secretInfo.users.length === 1 && secretInfo.amounts[0] < 0;
-  }
 }

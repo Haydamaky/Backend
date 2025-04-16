@@ -38,6 +38,7 @@ import { SteppedOnPrivateHandler } from './handlers/steppedOnPrivate.handler';
 import { PutUpForAuctionHandler } from './handlers/putUpForAuction.handler';
 import { HandlerChain } from './handlers/handlerChain';
 import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
+import { SecretAnalyzer } from 'src/secret/secretAnalyzer';
 
 @WebSocketGateway({
   cors: {
@@ -69,7 +70,7 @@ export class GameGateway {
     this.passTurnToNext = this.passTurnToNext.bind(this);
     this.winAuction = this.winAuction.bind(this);
     this.payForField = this.payForField.bind(this);
-    this.payToBank = this.payToBank.bind(this);
+    this.transferWithBank = this.transferWithBank.bind(this);
     this.payAll = this.payAll.bind(this);
     this.resolveTwoUsers = this.resolveTwoUsers.bind(this);
   }
@@ -269,45 +270,79 @@ export class GameGateway {
     playerNextField: FieldDocument
   ) {
     if (playerNextField.toPay) {
+      await this.handlePaymentField(game, playerNextField);
+    }
+
+    if (playerNextField.secret) {
+      await this.handleSecretField(game);
+    }
+  }
+
+  private async handlePaymentField(
+    game: Partial<GamePayload>,
+    field: FieldDocument
+  ) {
+    this.timerService.set(
+      game.id,
+      game.timeOfTurn,
+      { game, userId: game.turnOfUserId, amount: field.toPay },
+      this.transferWithBank
+    );
+  }
+
+  private async handleSecretField(game: Partial<GamePayload>) {
+    const { message, secretInfo } =
+      await this.secretService.handleSecretWithMessage(game);
+
+    this.server.to(game.id).emit('gameChatMessage', message);
+    this.server.to(game.id).emit('secret', secretInfo);
+
+    await this.processSecretByUserCount(game, secretInfo.users.length);
+  }
+
+  private async processSecretByUserCount(
+    game: Partial<GamePayload>,
+    userCount: number
+  ) {
+    if (userCount === 1) {
+      return this.oneUserTransfer(game);
+    }
+
+    if (userCount === 2) {
+      return this.twoUsersTransfer(game);
+    }
+
+    if (userCount > 2) {
+      return this.multipleUsersTransfer(game);
+    }
+  }
+
+  async oneUserTransfer(game: Partial<GamePayload>) {
+    const secretInfo = this.secretService.secrets.get(game.id);
+    const secretAnalyzer = new SecretAnalyzer(secretInfo);
+    if (secretAnalyzer.isOneUserHaveToPay()) {
       this.timerService.set(
         game.id,
         game.timeOfTurn,
-        { game, userId: game.turnOfUserId, amount: playerNextField.toPay },
-        this.payToBank
+        { game, userId: game.turnOfUserId, amount: secretInfo.amounts[0] },
+        this.transferWithBank
+      );
+    } else {
+      this.timerService.set(
+        game.id,
+        2000,
+        { game, userId: game.turnOfUserId, amount: secretInfo.amounts[0] },
+        this.transferWithBank
       );
     }
-    if (playerNextField.secret) {
-      const { message, secretInfo } =
-        await this.secretService.handleSecretWithMessage(game);
-      this.server.to(game.id).emit('gameChatMessage', message);
-      this.server.to(game.id).emit('secret', secretInfo);
-      if (secretInfo.users.length === 1) {
-        if (secretInfo.amounts[0] < 0) {
-          this.timerService.set(
-            game.id,
-            game.timeOfTurn,
-            { game, userId: game.turnOfUserId, amount: secretInfo.amounts[0] },
-            this.payToBank
-          );
-        } else {
-          this.timerService.set(
-            game.id,
-            2000,
-            { game, userId: game.turnOfUserId, amount: secretInfo.amounts[0] },
-            this.payToBank
-          );
-        }
-      } else if (secretInfo.users.length === 2) {
-        this.timerService.set(
-          game.id,
-          game.timeOfTurn,
-          game,
-          this.resolveTwoUsers
-        );
-      } else if (secretInfo.users.length > 2) {
-        this.timerService.set(game.id, game.timeOfTurn, game, this.payAll);
-      }
-    }
+  }
+
+  private async twoUsersTransfer(game: Partial<GamePayload>) {
+    this.timerService.set(game.id, game.timeOfTurn, game, this.resolveTwoUsers);
+  }
+
+  private async multipleUsersTransfer(game: Partial<GamePayload>) {
+    this.timerService.set(game.id, game.timeOfTurn, game, this.payAll);
   }
 
   async payAll(game: Partial<GamePayload>) {
@@ -326,7 +361,7 @@ export class GameGateway {
         }
 
         if (secretInfo.amounts.length === 1) {
-          const { playerWhoPayed } = await this.gameService.payToBank(
+          const { playerWhoPayed } = await this.gameService.transferWithBank(
             game,
             userId,
             secretInfo.amounts[0]
@@ -358,7 +393,7 @@ export class GameGateway {
           await this.playerService.loseGame(player.userId, game.id, fields);
           return;
         }
-        const { updatedGame } = await this.gameService.payToBank(
+        const { updatedGame } = await this.gameService.transferWithBank(
           game,
           userId,
           secretInfo.amounts[0]
@@ -366,7 +401,7 @@ export class GameGateway {
         updatedGameToReturn = updatedGame;
       }
       if (secretInfo.users[1]) {
-        const { updatedGame } = await this.gameService.payToBank(
+        const { updatedGame } = await this.gameService.transferWithBank(
           game,
           secretInfo.users[1],
           secretInfo.amounts[1]
@@ -384,7 +419,7 @@ export class GameGateway {
           await this.playerService.loseGame(player.userId, game.id, fields);
           return;
         }
-        const { updatedGame } = await this.gameService.payToBank(
+        const { updatedGame } = await this.gameService.transferWithBank(
           game,
           userId,
           secretInfo.amounts[1]
@@ -392,7 +427,7 @@ export class GameGateway {
         updatedGameToReturn = updatedGame;
       }
       if (secretInfo.users[0]) {
-        const { updatedGame } = await this.gameService.payToBank(
+        const { updatedGame } = await this.gameService.transferWithBank(
           game,
           secretInfo.users[0],
           secretInfo.amounts[0]
@@ -457,10 +492,10 @@ export class GameGateway {
         game.id,
         amount
       );
-      updatedPlayer = await this.playerService.incrementMoneyWithUserAndGameId(
+      updatedPlayer = await this.playerService.decrementMoneyWithUserAndGameId(
         userToPayId,
         game.id,
-        -amount
+        amount
       );
     }
     secretInfo.users.splice(indexOfUser, 1, '');
@@ -480,8 +515,8 @@ export class GameGateway {
   }
 
   @UseGuards(ActiveGameGuard, HasLostGuard)
-  @SubscribeMessage('payToBank')
-  async onPayToBank(
+  @SubscribeMessage('transferWithBank')
+  async ontransferWithBank(
     @ConnectedSocket()
     socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
   ) {
@@ -555,14 +590,14 @@ export class GameGateway {
       }
     }
     if (currentField.toPay) {
-      this.payToBank({
+      this.transferWithBank({
         game: socket.game,
         userId: socket.jwtPayload.sub,
         amount: currentField.toPay,
       });
     }
     if (secretInfo) {
-      this.payToBank({
+      this.transferWithBank({
         game: socket.game,
         userId: socket.jwtPayload.sub,
         amount: amountToPay,
@@ -574,12 +609,12 @@ export class GameGateway {
     }
   }
 
-  async payToBank(argsObj: {
+  async transferWithBank(argsObj: {
     game: Partial<GamePayload>;
     amount: number;
     userId: string;
   }) {
-    const { updatedGame } = await this.gameService.payToBank(
+    const { updatedGame } = await this.gameService.transferWithBank(
       argsObj.game,
       argsObj.userId,
       argsObj.amount

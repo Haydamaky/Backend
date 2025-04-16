@@ -513,7 +513,11 @@ export class GameService {
     return { updatedGame: received.game };
   }
 
-  async payToBank(game: Partial<GamePayload>, userId: string, amount: number) {
+  async transferWithBank(
+    game: Partial<GamePayload>,
+    userId: string,
+    amount: number
+  ) {
     const secretInfo = this.secretService.secrets.get(game.id);
     if (!secretInfo) this.timerService.clear(game.id);
     const currentPlayer = game.players.find(
