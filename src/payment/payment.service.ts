@@ -83,7 +83,7 @@ export class PaymentService {
         }
 
         if (secretInfo.amounts.length === 1) {
-          const { playerWhoPayed } = await this.gameService.transferWithBank(
+          const { playerWhoPayed } = await this.transferWithBank(
             game,
             userId,
             secretInfo.amounts[0]

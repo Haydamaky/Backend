@@ -355,65 +355,8 @@ export class GameGateway {
   }
 
   async resolveTwoUsers(game: Partial<GamePayload>) {
-    let secretInfo = this.secretService.secrets.get(game.id);
-    const firstPay = secretInfo.amounts[0] < 1;
-    let updatedGameToReturn: null | Partial<GamePayload> = null;
-    const fields = await this.fieldService.getGameFields(game.id);
-    if (firstPay) {
-      const userId = secretInfo.users[0];
-      if (userId) {
-        const player = game.players.find((player) => player.userId === userId);
-        if (
-          this.playerService.estimateAssets(player, fields) <
-          secretInfo.amounts[0]
-        ) {
-          await this.playerService.loseGame(player.userId, game.id, fields);
-          return;
-        }
-        const { updatedGame } = await this.gameService.transferWithBank(
-          game,
-          userId,
-          secretInfo.amounts[0]
-        );
-        updatedGameToReturn = updatedGame;
-      }
-      if (secretInfo.users[1]) {
-        const { updatedGame } = await this.gameService.transferWithBank(
-          game,
-          secretInfo.users[1],
-          secretInfo.amounts[1]
-        );
-        updatedGameToReturn = updatedGame;
-      }
-    } else {
-      const userId = secretInfo.users[1];
-      if (userId) {
-        const player = game.players.find((player) => player.userId === userId);
-        if (
-          this.playerService.estimateAssets(player, fields) <
-          secretInfo.amounts[1]
-        ) {
-          await this.playerService.loseGame(player.userId, game.id, fields);
-          return;
-        }
-        const { updatedGame } = await this.gameService.transferWithBank(
-          game,
-          userId,
-          secretInfo.amounts[1]
-        );
-        updatedGameToReturn = updatedGame;
-      }
-      if (secretInfo.users[0]) {
-        const { updatedGame } = await this.gameService.transferWithBank(
-          game,
-          secretInfo.users[0],
-          secretInfo.amounts[0]
-        );
-        updatedGameToReturn = updatedGame;
-      }
-    }
-    secretInfo = null;
-    this.passTurnToNext(updatedGameToReturn);
+    const updatedGame = await this.secretService.resolveTwoUsers(game);
+    this.passTurnToNext(updatedGame);
   }
 
   @UseGuards(ActiveGameGuard, HasLostGuard)
@@ -433,65 +376,6 @@ export class GameGateway {
       game: updatedGame,
       secretInfo,
     });
-  }
-
-  // delete after refactor of payAll
-  async payToUser({
-    game,
-    userId,
-    userToPayId,
-    amount,
-  }: {
-    game: Partial<GamePayload>;
-    userId: string;
-    userToPayId: string;
-    amount: number;
-  }) {
-    let secretInfo = this.secretService.secrets.get(game.id);
-    if (!secretInfo.users.includes(userId))
-      throw new WsException('You cant pay for that secret');
-    const indexOfUser = secretInfo.users.indexOf(userId);
-    if (amount > 0)
-      throw new WsException('You dont have to pay for this secret field');
-    const player = game.players.find((player) => player.userId === userId);
-    const fields = await this.fieldService.getGameFields(game.id);
-    let updatedPlayer = null;
-    if (player.money < amount) {
-      const userToPay = game.players.find(
-        (player) => player.userId === userToPayId
-      );
-      updatedPlayer = await this.playerService.incrementMoneyWithUserAndGameId(
-        userToPayId,
-        game.id,
-        this.playerService.estimateAssets(userToPay, fields)
-      );
-      await this.playerService.loseGame(player.userId, game.id, fields);
-    } else {
-      await this.playerService.incrementMoneyWithUserAndGameId(
-        userId,
-        game.id,
-        amount
-      );
-      updatedPlayer = await this.playerService.decrementMoneyWithUserAndGameId(
-        userToPayId,
-        game.id,
-        amount
-      );
-    }
-    secretInfo.users.splice(indexOfUser, 1, '');
-    if (
-      secretInfo.users.every((userId, index) => {
-        if (secretInfo.amounts[index] > 0) return true;
-        return userId === '';
-      })
-    ) {
-      secretInfo = null;
-    }
-    this.server.to(game.id).emit('updatePlayers', {
-      game: updatedPlayer.game,
-      secretInfo,
-    });
-    return updatedPlayer;
   }
 
   @UseGuards(ActiveGameGuard, HasLostGuard)
@@ -594,7 +478,7 @@ export class GameGateway {
     amount: number;
     userId: string;
   }) {
-    const { updatedGame } = await this.gameService.transferWithBank(
+    const { updatedGame } = await this.paymentService.transferWithBank(
       argsObj.game,
       argsObj.userId,
       argsObj.amount

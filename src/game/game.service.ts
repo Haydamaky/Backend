@@ -493,65 +493,6 @@ export class GameService {
     return { updatedGame: received.game };
   }
 
-  async transferWithBank(
-    game: Partial<GamePayload>,
-    userId: string,
-    amount: number
-  ) {
-    const secretInfo = this.secretService.secrets.get(game.id);
-    if (!secretInfo) this.timerService.clear(game.id);
-    const currentPlayer = game.players.find(
-      (player) => player.userId === userId
-    );
-    const fields = await this.fieldService.getGameFields(game.id);
-    if (currentPlayer.money < amount) {
-      // We can add pledging of last owned field or smt to not make player lose immidiately
-      const { updatedPlayer, updatedFields } =
-        await this.playerService.loseGame(
-          currentPlayer.userId,
-          game.id,
-          fields
-        );
-      return { updatedGame: updatedPlayer.game, fields: updatedFields };
-    }
-    const playerWhoPayed =
-      await this.playerService.incrementMoneyWithUserAndGameId(
-        currentPlayer.userId || game.turnOfUserId,
-        game.id,
-        amount
-      );
-    if (secretInfo && secretInfo.users.includes(userId)) {
-      const userIndex = secretInfo.users.findIndex(
-        (userId) => userId === playerWhoPayed.userId
-      );
-      secretInfo.users[userIndex] = '';
-    }
-    if (
-      secretInfo &&
-      secretInfo.users.every((userId, index) => {
-        if (secretInfo.users.length === 2 && userId !== '') {
-          return secretInfo.amounts[index] > 0;
-        }
-        if (secretInfo.users.length > 2 && index === 0) {
-          return true;
-        }
-        return userId === '';
-      })
-    ) {
-      this.secretService.secrets.delete(game.id);
-      return {
-        updatedGame: playerWhoPayed.game,
-        fields,
-        playerWhoPayed,
-      };
-    }
-    return {
-      updatedGame: playerWhoPayed.game,
-      fields,
-      playerWhoPayed,
-    };
-  }
-
   decreaseHouses(gameId: string, quantity: number) {
     return this.gameRepository.updateById(gameId, {
       data: { housesQty: { decrement: quantity } },

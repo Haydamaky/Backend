@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Player } from '@prisma/client';
 import { ChatService } from 'src/chat/chat.service';
+import { FieldService } from 'src/field/field.service';
 import { GamePayload } from 'src/game/game.repository';
 import { GameService } from 'src/game/game.service';
 import { SecretInfo } from 'src/game/types/secretInfo.type';
+import { PaymentService } from 'src/payment/payment.service';
+import { PlayerService } from 'src/player/player.service';
 import secretFields, { SecretType } from 'src/utils/fields/secretFields';
 
 @Injectable()
@@ -11,7 +14,10 @@ export class SecretService {
   readonly secrets: Map<string, SecretInfo> = new Map();
   constructor(
     private gameService: GameService,
-    private chatService: ChatService
+    private chatService: ChatService,
+    private fieldService: FieldService,
+    private playerService: PlayerService,
+    private paymentService: PaymentService
   ) {}
   getRandomPlayersUserId(players: Partial<Player[]>) {
     const randomIndex = Math.floor(Math.random() * players.length);
@@ -78,5 +84,67 @@ export class SecretService {
       chatId: game.chat.id,
     });
     return { message, secretInfo };
+  }
+
+  async resolveTwoUsers(game: Partial<GamePayload>) {
+    let secretInfo = this.secrets.get(game.id);
+    const firstPay = secretInfo.amounts[0] < 1;
+    let updatedGameToReturn: null | Partial<GamePayload> = null;
+    const fields = await this.fieldService.getGameFields(game.id);
+    if (firstPay) {
+      const userId = secretInfo.users[0];
+      if (userId) {
+        const player = game.players.find((player) => player.userId === userId);
+        if (
+          this.playerService.estimateAssets(player, fields) <
+          secretInfo.amounts[0]
+        ) {
+          await this.playerService.loseGame(player.userId, game.id, fields);
+          return;
+        }
+        const { updatedGame } = await this.paymentService.transferWithBank(
+          game,
+          userId,
+          secretInfo.amounts[0]
+        );
+        updatedGameToReturn = updatedGame;
+      }
+      if (secretInfo.users[1]) {
+        const { updatedGame } = await this.paymentService.transferWithBank(
+          game,
+          secretInfo.users[1],
+          secretInfo.amounts[1]
+        );
+        updatedGameToReturn = updatedGame;
+      }
+    } else {
+      const userId = secretInfo.users[1];
+      if (userId) {
+        const player = game.players.find((player) => player.userId === userId);
+        if (
+          this.playerService.estimateAssets(player, fields) <
+          secretInfo.amounts[1]
+        ) {
+          await this.playerService.loseGame(player.userId, game.id, fields);
+          return;
+        }
+        const { updatedGame } = await this.paymentService.transferWithBank(
+          game,
+          userId,
+          secretInfo.amounts[1]
+        );
+        updatedGameToReturn = updatedGame;
+      }
+      if (secretInfo.users[0]) {
+        const { updatedGame } = await this.paymentService.transferWithBank(
+          game,
+          secretInfo.users[0],
+          secretInfo.amounts[0]
+        );
+        updatedGameToReturn = updatedGame;
+      }
+    }
+    secretInfo = null;
+    return updatedGameToReturn;
   }
 }
