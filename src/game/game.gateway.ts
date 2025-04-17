@@ -347,35 +347,11 @@ export class GameGateway {
   }
 
   async payAll(game: Partial<GamePayload>) {
-    const secretInfo = this.secretService.secrets.get(game.id);
-    let updatedPlayer = null;
-    for (const userId of secretInfo.users) {
-      const firstUser = secretInfo.users[0];
-      if (userId && userId !== firstUser) {
-        if (secretInfo.amounts.length === 2) {
-          updatedPlayer = await this.payToUser({
-            game,
-            userId,
-            userToPayId: firstUser,
-            amount: secretInfo.amounts[1],
-          });
-        }
-
-        if (secretInfo.amounts.length === 1) {
-          const { playerWhoPayed } = await this.gameService.transferWithBank(
-            game,
-            userId,
-            secretInfo.amounts[0]
-          );
-          updatedPlayer = playerWhoPayed;
-        }
-      }
-    }
-    this.secretService.secrets.delete(game.id);
-    this.passTurnToNext(updatedPlayer?.game || game);
+    const updatedGame = await this.paymentService.payAllforSecret(game);
     this.server.to(game.id).emit('updatePlayers', {
-      game: updatedPlayer?.game,
+      game: updatedGame,
     });
+    this.passTurnToNext(updatedGame);
   }
 
   async resolveTwoUsers(game: Partial<GamePayload>) {
