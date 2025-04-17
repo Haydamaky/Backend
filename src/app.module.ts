@@ -17,6 +17,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AuctionModule } from './auction/auction.module';
 import { SecretModule } from './secret/secret.module';
 import { FieldModule } from './field/field.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { FieldModule } from './field/field.module';
     AuctionModule,
     SecretModule,
     FieldModule,
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [

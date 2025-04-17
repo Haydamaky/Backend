@@ -15,6 +15,7 @@ import { GameController } from './game.controller';
 import { AuctionModule } from 'src/auction/auction.module';
 import { TimerModule } from 'src/timer/timers.module';
 import { SecretModule } from 'src/secret/secret.module';
+import { PaymentModule } from 'src/payment/payment.module';
 
 @Module({
   controllers: [GameController],
@@ -35,6 +36,7 @@ import { SecretModule } from 'src/secret/secret.module';
     ]),
     TimerModule,
     SecretModule,
+    PaymentModule,
   ],
   providers: [GameGateway, GameService, GameRepository],
   exports: [GameService],

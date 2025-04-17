@@ -12,33 +12,33 @@ import {
 } from '@nestjs/websockets';
 import { parse } from 'cookie';
 import { Server, Socket } from 'socket.io';
+import { AuctionService } from 'src/auction/auction.service';
 import { HasLostGuard } from 'src/auth/guard';
 import { ActiveGameGuard } from 'src/auth/guard/activeGame.guard';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 import { TurnGuard } from 'src/auth/guard/turn.guard';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
+import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
+import { PaymentService } from 'src/payment/payment.service';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
-import { PlayerPayload } from 'src/player/player.repository';
 import { PlayerService } from 'src/player/player.service';
+import { FieldDocument } from 'src/schema/Field.schema';
+import { SecretService } from 'src/secret/secret.service';
+import { SecretAnalyzer } from 'src/secret/secretAnalyzer';
+import { TimerService } from 'src/timer/timers.service';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
 import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.service';
-import { ChatService } from './../chat/chat.service';
 import { GetGameId } from './decorators/getGameCookieWs';
 import { GamePayload } from './game.repository';
 import { GameService } from './game.service';
-import { Auction } from './types/auction.type';
-import { Trade } from './types/trade.type';
-import { FieldDocument } from 'src/schema/Field.schema';
-import { AuctionService } from 'src/auction/auction.service';
-import { TimerService } from 'src/timer/timers.service';
-import { SecretService } from 'src/secret/secret.service';
+import { HandlerChain } from './handlers/handlerChain';
 import { PassTurnHandler } from './handlers/passTurn.handler';
 import { ProcessSpecialHandler } from './handlers/processSpecial.handler';
-import { SteppedOnPrivateHandler } from './handlers/steppedOnPrivate.handler';
 import { PutUpForAuctionHandler } from './handlers/putUpForAuction.handler';
-import { HandlerChain } from './handlers/handlerChain';
-import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
-import { SecretAnalyzer } from 'src/secret/secretAnalyzer';
+import { SteppedOnPrivateHandler } from './handlers/steppedOnPrivate.handler';
+import { Auction } from './types/auction.type';
+import { Trade } from './types/trade.type';
+import { FieldService } from 'src/field/field.service';
 
 @WebSocketGateway({
   cors: {
@@ -59,11 +59,12 @@ export class GameGateway {
     private playerService: PlayerService,
     private jwtService: JwtService,
     private configService: ConfigService,
-    private chatService: ChatService,
     private webSocketServer: WebSocketServerService,
     private auctionService: AuctionService,
     private timerService: TimerService,
-    private secretService: SecretService
+    private secretService: SecretService,
+    private paymentService: PaymentService,
+    private fieldService: FieldService
   ) {
     this.rollDice = this.rollDice.bind(this);
     this.putUpForAuction = this.putUpForAuction.bind(this);
@@ -162,7 +163,7 @@ export class GameGateway {
     const game = await this.gameService.getGame(gameId);
     const auction = this.auctionService.auctions.get(game.id);
     const secretInfo = this.secretService.secrets.get(game.id);
-    const fields = await this.gameService.getGameFields(game.id);
+    const fields = await this.fieldService.getGameFields(game.id);
     this.server.emit('gameData', { game, fields, auction, secretInfo });
   }
 
@@ -381,7 +382,7 @@ export class GameGateway {
     let secretInfo = this.secretService.secrets.get(game.id);
     const firstPay = secretInfo.amounts[0] < 1;
     let updatedGameToReturn: null | Partial<GamePayload> = null;
-    const fields = await this.gameService.getGameFields(game.id);
+    const fields = await this.fieldService.getGameFields(game.id);
     if (firstPay) {
       const userId = secretInfo.users[0];
       if (userId) {
@@ -447,15 +448,18 @@ export class GameGateway {
   ) {
     const game = socket.game;
     const userId = socket.jwtPayload.sub;
-    const secretInfo = this.secretService.secrets.get(game.id);
-    return this.payToUser({
-      game,
-      userId,
-      userToPayId: secretInfo.users[0],
-      amount: secretInfo.amounts[1],
+    const { game: updatedGame, secretInfo } =
+      await this.paymentService.payToUserForSecret({
+        game,
+        userId,
+      });
+    this.server.to(game.id).emit('updatePlayers', {
+      game: updatedGame,
+      secretInfo,
     });
   }
 
+  // delete after refactor of payAll
   async payToUser({
     game,
     userId,
@@ -474,7 +478,7 @@ export class GameGateway {
     if (amount > 0)
       throw new WsException('You dont have to pay for this secret field');
     const player = game.players.find((player) => player.userId === userId);
-    const fields = await this.gameService.getGameFields(game.id);
+    const fields = await this.fieldService.getGameFields(game.id);
     let updatedPlayer = null;
     if (player.money < amount) {
       const userToPay = game.players.find(
@@ -631,7 +635,7 @@ export class GameGateway {
   }
 
   async steppedOnPrivateField({ currentPlayer, field, game }: FieldAnalyzer) {
-    const fields = await this.gameService.getGameFields(game.id);
+    const fields = await this.fieldService.getGameFields(game.id);
     if (
       this.playerService.estimateAssets(currentPlayer, fields) >=
       field.income[field.amountOfBranches]
@@ -805,9 +809,9 @@ export class GameGateway {
     @ConnectedSocket()
     socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
   ) {
-    const fields = await this.gameService.getGameFields(socket.game.id);
+    const fields = await this.fieldService.getGameFields(socket.game.id);
     const currentPlayer = this.playerService.findPlayerWithTurn(socket.game);
-    const currentField = this.gameService.findPlayerFieldByIndex(
+    const currentField = this.fieldService.findPlayerFieldByIndex(
       fields,
       currentPlayer.currentFieldIndex
     );
@@ -819,7 +823,7 @@ export class GameGateway {
 
   async passTurnToNext(game: Partial<GamePayload>) {
     const { updatedGame } = await this.gameService.passTurnToNext(game);
-    const fields = await this.gameService.getGameFields(game.id);
+    const fields = await this.fieldService.getGameFields(game.id);
     this.server
       .to(game.id)
       .emit('passTurnToNext', { game: updatedGame, fields });
@@ -853,8 +857,8 @@ export class GameGateway {
   @OnEvent('setAfterRolledDiceTimer')
   async handleSetAfterRolledDiceTimer(updatedGame: Partial<GamePayload>) {
     const currentPlayer = this.playerService.findPlayerWithTurn(updatedGame);
-    const fields = await this.gameService.getGameFields(updatedGame.id);
-    const playerNextField = this.gameService.findPlayerFieldByIndex(
+    const fields = await this.fieldService.getGameFields(updatedGame.id);
+    const playerNextField = this.fieldService.findPlayerFieldByIndex(
       fields,
       currentPlayer.currentFieldIndex
     );
