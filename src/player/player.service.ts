@@ -1,19 +1,18 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { CreatePlayerDto } from './dto/create-player.dto';
-import { PlayerPayload, PlayerRepository } from './player.repository';
-import { Prisma } from '@prisma/client';
-import { GamePayload } from 'src/game/game.repository';
 import { WsException } from '@nestjs/websockets';
-import { OfferTradeDto } from './dto/offer-trade.dto';
-import { Trade } from 'src/game/types/trade.type';
-import { GameService } from 'src/game/game.service';
-import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.service';
+import { Prisma } from '@prisma/client';
 import { ChatService } from 'src/chat/chat.service';
 import { EventService } from 'src/event/event.service';
-import { Field, FieldDocument } from 'src/schema/Field.schema';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { FieldService } from 'src/field/field.service';
+import { GamePayload } from 'src/game/game.repository';
+import { GameService } from 'src/game/game.service';
+import { Trade } from 'src/game/types/trade.type';
+import { FieldDocument } from 'src/schema/Field.schema';
 import { TimerService } from 'src/timer/timers.service';
+import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.service';
+import { CreatePlayerDto } from './dto/create-player.dto';
+import { OfferTradeDto } from './dto/offer-trade.dto';
+import { PlayerPayload, PlayerRepository } from './player.repository';
 
 @Injectable()
 export class PlayerService {
@@ -24,8 +23,8 @@ export class PlayerService {
     private webSocketServerService: WebSocketServerService,
     private chatService: ChatService,
     private eventService: EventService,
-    @InjectModel(Field.name) private fieldModel: Model<Field>,
-    private timerService: TimerService
+    private timerService: TimerService,
+    private fieldService: FieldService
   ) {
     this.refuseFromTrade = this.refuseFromTrade.bind(this);
   }
@@ -201,7 +200,7 @@ export class PlayerService {
     userId?: string,
     buying: boolean = true
   ) {
-    const fields = await this.gameService.getGameFields(game.id);
+    const fields = await this.fieldService.getGameFields(game.id);
     const playerUserId = userId ? userId : game.turnOfUserId;
     const userFields = fields.filter((field) => field.ownedBy === playerUserId);
     const userFieldsIndexes = userFields.map((field) => field.index);
@@ -293,10 +292,9 @@ export class PlayerService {
     } else {
       updatedGame = await this.gameService.decreaseHouses(player.game.id, 1);
     }
-    await this.fieldModel.updateOne(
-      { _id: fieldToBuyBranch._id },
-      { $set: { amountOfBranches: fieldToBuyBranch.amountOfBranches } }
-    );
+    await this.fieldService.updateById(fieldToBuyBranch._id, {
+      amountOfBranches: fieldToBuyBranch.amountOfBranches,
+    });
     return updatedGame;
   }
 
@@ -318,10 +316,9 @@ export class PlayerService {
     } else {
       updatedGame = await this.gameService.increaseHouses(player.game.id, 1);
     }
-    await this.fieldModel.updateOne(
-      { _id: fieldToBuyBranch._id },
-      { $set: { amountOfBranches: fieldToBuyBranch.amountOfBranches } }
-    );
+    await this.fieldService.updateById(fieldToBuyBranch._id, {
+      amountOfBranches: fieldToBuyBranch.amountOfBranches,
+    });
     return updatedGame;
   }
 
@@ -330,7 +327,7 @@ export class PlayerService {
     index: number,
     userId?: string
   ) {
-    const fields = await this.gameService.getGameFields(game.id);
+    const fields = await this.fieldService.getGameFields(game.id);
     const playerUserId = userId ? userId : game.turnOfUserId;
     const fieldToPledge = this.findPlayerFieldByIndex(fields, index);
     if (fieldToPledge.isPledged) {
@@ -348,10 +345,10 @@ export class PlayerService {
     );
     fieldToPledge.isPledged = true;
     fieldToPledge.turnsToUnpledge = game.turnsToUnpledge;
-    await this.fieldModel.updateOne(
-      { _id: fieldToPledge._id },
-      { $set: { isPledged: true, turnsToUnpledge: game.turnsToUnpledge } }
-    );
+    await this.fieldService.updateById(fieldToPledge._id, {
+      isPledged: true,
+      turnsToUnpledge: game.turnsToUnpledge,
+    });
     return { player, fields };
   }
 
@@ -361,17 +358,17 @@ export class PlayerService {
     userId?: string
   ) {
     const playerUserId = userId ? userId : game.turnOfUserId;
-    const fields = await this.gameService.getGameFields(game.id);
+    const fields = await this.fieldService.getGameFields(game.id);
     const fieldToPayRedemption = this.findPlayerFieldByIndex(fields, index);
     if (!fieldToPayRedemption.isPledged) {
       throw new WsException('Field is not pledged');
     }
     fieldToPayRedemption.isPledged = false;
     fieldToPayRedemption.turnsToUnpledge = null;
-    await this.fieldModel.updateOne(
-      { _id: fieldToPayRedemption._id },
-      { $set: { isPledged: false, turnsToUnpledge: null } }
-    );
+    await this.fieldService.updateById(fieldToPayRedemption._id, {
+      isPledged: false,
+      turnsToUnpledge: null,
+    });
     const player = await this.decrementMoneyWithUserAndGameId(
       playerUserId,
       game.id,
@@ -389,7 +386,7 @@ export class PlayerService {
     ) {
       throw new WsException('You must offer something');
     }
-    const fields = await this.gameService.getGameFields(game.id);
+    const fields = await this.fieldService.getGameFields(game.id);
     if (data.offerFieldsIndexes.length > 0) {
       const userFields = fields.filter(
         (field) => field.ownedBy === game.turnOfUserId
@@ -428,7 +425,7 @@ export class PlayerService {
     if (trade.toUserId !== userId)
       throw new WsException('You cant accept this trade');
     this.timerService.clear(game.id);
-    const fields = await this.gameService.getGameFields(game.id);
+    const fields = await this.fieldService.getGameFields(game.id);
     if (trade.offerFieldsIndexes.length > 0) {
       trade.offerFieldsIndexes.forEach((index) => {
         const field = this.findPlayerFieldByIndex(fields, index);
@@ -442,7 +439,7 @@ export class PlayerService {
       });
     }
     if (trade.offerFieldsIndexes.length || trade.wantedFieldsIndexes) {
-      await this.gameService.updateFields(fields, ['ownedBy']);
+      await this.fieldService.updateFields(fields, ['ownedBy']);
     }
     let player = null;
     if (trade.offeredMoney) {
@@ -534,7 +531,7 @@ export class PlayerService {
         field.turnsToUnpledge = null;
       }
     });
-    await this.gameService.updateFields(fields, ['ownedBy']);
+    await this.fieldService.updateFields(fields, ['ownedBy']);
     if (this.gameService.hasWinner(updatedPlayer.game)) {
       this.timerService.clear(updatedPlayer.game.id);
       const game = await this.gameService.updateById(updatedPlayer.game.id, {

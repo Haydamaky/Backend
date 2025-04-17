@@ -10,14 +10,14 @@ export class FieldService {
     return await this.fieldModel.find({ gameId });
   }
 
-  async createMany(gameFields: FieldType[]) {
-    await this.fieldModel.insertMany(gameFields);
+  createMany(gameFields: FieldType[]) {
+    return this.fieldModel.insertMany(gameFields);
   }
 
-  async updateFields<T extends FieldDocument>(
+  updateFields<T extends FieldDocument>(
     fields: T[],
     propertiesToUpdate: string[]
-  ): Promise<void> {
+  ) {
     const updates = fields.map((field) => {
       const updateFields: any = {};
 
@@ -34,10 +34,14 @@ export class FieldService {
         },
       };
     });
-    await this.fieldModel.bulkWrite(updates);
+    return this.fieldModel.bulkWrite(updates);
   }
 
   findPlayerFieldByIndex(fields: FieldDocument[], indexOfField: number) {
     return fields.find((field) => field.index === indexOfField);
+  }
+
+  async updateById(id: unknown, field: Partial<FieldDocument>) {
+    return await this.fieldModel.updateOne({ _id: id }, { $set: field });
   }
 }
