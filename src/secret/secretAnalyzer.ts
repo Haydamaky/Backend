@@ -1,7 +1,10 @@
 import { SecretInfo } from 'src/game/types/secretInfo.type';
 
 export class SecretAnalyzer {
-  constructor(private readonly secretInfo: SecretInfo) {}
+  constructor(
+    public readonly secretInfo: SecretInfo,
+    public readonly userId: string
+  ) {}
   isOneUserHaveToPay() {
     return this.secretInfo.users.length === 1 && this.secretInfo.amounts[0] < 0;
   }
