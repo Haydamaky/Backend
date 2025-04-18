@@ -32,13 +32,16 @@ import { GetGameId } from './decorators/getGameCookieWs';
 import { GamePayload } from './game.repository';
 import { GameService } from './game.service';
 import { HandlerChain } from '../common/handlerChain';
-import { PassTurnHandler } from './handlers/passTurn.handler';
-import { ProcessSpecialHandler } from './handlers/processSpecial.handler';
-import { PutUpForAuctionHandler } from './handlers/putUpForAuction.handler';
-import { SteppedOnPrivateHandler } from './handlers/steppedOnPrivate.handler';
+import { PassTurnHandler } from './handlers/PassTurn.handler';
+import { ProcessSpecialHandler } from './handlers/ProcessSpecial.handler';
+import { PutUpForAuctionHandler } from './handlers/PutUpForAuction.handler';
+import { SteppedOnPrivateHandler } from './handlers/SteppedOnPrivate.handler';
 import { Auction } from './types/auction.type';
 import { Trade } from './types/trade.type';
 import { FieldService } from 'src/field/field.service';
+import { OnePlayerInvolvedHandler } from './handlers/onePlayerInvolved.handler';
+import { TwoPlayersInvolvedHandler } from './handlers/twoPlayersInvolved.handler';
+import { AllPlayersInvolvedHandler } from './handlers/allPlayersInvolved.handler';
 
 @WebSocketGateway({
   cors: {
@@ -320,7 +323,7 @@ export class GameGateway {
 
   async oneUserTransfer(game: Partial<GamePayload>) {
     const secretInfo = this.secretService.secrets.get(game.id);
-    const secretAnalyzer = new SecretAnalyzer(secretInfo);
+    const secretAnalyzer = new SecretAnalyzer(secretInfo, game.turnOfUserId);
     if (secretAnalyzer.isOneUserHaveToPay()) {
       this.timerService.set(
         game.id,
@@ -384,6 +387,7 @@ export class GameGateway {
     @ConnectedSocket()
     socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
   ) {
+    const userId = socket.jwtPayload.sub;
     const currentField = await this.gameService.findCurrentFieldWithUserId(
       socket.game
     );
@@ -395,60 +399,44 @@ export class GameGateway {
     if (currentField.toPay) {
       return this.transferWithBank({
         game: socket.game,
-        userId: socket.jwtPayload.sub,
+        userId,
         amount: currentField.toPay,
       });
     }
     let amountToPay = 0;
-    if (!secretInfo.users.includes(socket.jwtPayload.sub)) {
+    if (!secretInfo.users.includes(userId)) {
       throw new WsException(
         'You cant pay to bank because no user in secretInfo'
       );
     }
-    if (secretInfo.numOfPlayersInvolved === 'one') {
-      if (secretInfo.amounts[0] > 0) {
-        throw new WsException(
-          'You cant pay to bank because one user and he doesnt have to pay'
-        );
-      } else {
-        amountToPay = secretInfo.amounts[0];
-      }
-    } else if (secretInfo.numOfPlayersInvolved === 'two') {
-      const index = secretInfo.users.findIndex(
-        (userId) => userId === socket.jwtPayload.sub
-      );
-      if (secretInfo.amounts[index] > 0) {
-        throw new WsException(
-          'You cant pay to bank two users and the one wants to pay dont have to'
-        );
-      } else {
-        amountToPay = secretInfo.amounts[0];
-      }
-    } else if (secretInfo.numOfPlayersInvolved === 'all') {
-      if (
-        secretInfo.users.every((userId, index) => {
-          if (index === 0) return true;
-          return userId === '';
-        }) &&
-        secretInfo.amounts[0] === null
-      ) {
-        throw new WsException('You get money from all u dont have to pay');
-      }
-      if (secretInfo.amounts.length === 2) {
-        amountToPay = secretInfo.amounts[1];
-      }
-      if (secretInfo.amounts.length === 1) {
-        amountToPay = secretInfo.amounts[0];
-      }
-    }
-
+    const secretAnalyzer = new SecretAnalyzer(secretInfo, userId);
+    const assignFirstAmoutToPay = () => {
+      amountToPay = secretInfo.amounts[0];
+    };
+    const chain = new HandlerChain();
+    chain.addHandlers(
+      new OnePlayerInvolvedHandler(secretAnalyzer, assignFirstAmoutToPay),
+      new TwoPlayersInvolvedHandler(
+        secretAnalyzer,
+        assignFirstAmoutToPay,
+        this.secretService
+      ),
+      new AllPlayersInvolvedHandler(secretAnalyzer, () => {
+        if (secretInfo.amounts.length === 2) {
+          amountToPay = secretInfo.amounts[1];
+        }
+        assignFirstAmoutToPay();
+      })
+    );
+    chain.process();
     await this.transferWithBank({
       game: socket.game,
-      userId: socket.jwtPayload.sub,
+      userId,
       amount: amountToPay,
     });
-    const indexOfUser = secretInfo.users.findIndex(
-      (userId) => userId === socket.jwtPayload.sub
+    const indexOfUser = this.secretService.findIndexOfUserIdInSecretInfo(
+      secretInfo,
+      userId
     );
     secretInfo.users[indexOfUser] = '';
   }

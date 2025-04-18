@@ -27,6 +27,13 @@ export class SecretService {
     const randomSecretIndex = Math.floor(Math.random() * secretFields.length);
     return secretFields[randomSecretIndex];
   }
+
+  findIndexOfUserIdInSecretInfo(secretInfo: SecretInfo, userId: string) {
+    return secretInfo.users.findIndex(
+      (userIdInSecret) => userIdInSecret === userId
+    );
+  }
+
   async parseAndSaveSecret(secret: SecretType, game: Partial<GamePayload>) {
     if (secret.numOfPlayersInvolved === 'one') {
       const secretInfo = {

@@ -20,4 +20,10 @@ export class SecretAnalyzer {
   isAllPlayersInvolved() {
     return this.secretInfo.numOfPlayersInvolved === 'all';
   }
+  isFirstAndShouldGet() {
+    return (
+      this.secretInfo.users[0] === this.userId &&
+      this.secretInfo.amounts[0] === null
+    );
+  }
 }
