@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { FieldService } from 'src/field/field.service';
 import { GamePayload } from 'src/game/game.repository';
@@ -10,9 +10,9 @@ import { TimerService } from 'src/timer/timers.service';
 @Injectable()
 export class PaymentService {
   constructor(
+    @Inject(forwardRef(() => SecretService))
     private secretService: SecretService,
     private playerService: PlayerService,
-    private gameService: GameService,
     private timerService: TimerService,
     private fieldService: FieldService
   ) {}

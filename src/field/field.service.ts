@@ -1,11 +1,15 @@
 import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Field, FieldDocument } from 'src/schema/Field.schema';
 import { FieldType } from 'src/utils/fields';
 
 @Injectable()
 export class FieldService {
-  constructor(private fieldModel: Model<Field>) {}
+  constructor(
+    @InjectModel(Field.name)
+    private fieldModel: Model<Field>
+  ) {}
   async getGameFields(gameId: string) {
     return await this.fieldModel.find({ gameId });
   }

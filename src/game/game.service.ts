@@ -1,5 +1,4 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
 import { WsException } from '@nestjs/websockets';
 import { ChatType, Prisma } from '@prisma/client';
 import { AuctionService } from 'src/auction/auction.service';
@@ -8,8 +7,7 @@ import { FieldService } from 'src/field/field.service';
 import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
 import { PlayerPayload } from 'src/player/player.repository';
 import { PlayerService } from 'src/player/player.service';
-import { Field, FieldDocument } from 'src/schema/Field.schema';
-import { SecretService } from 'src/secret/secret.service';
+import { FieldDocument } from 'src/schema/Field.schema';
 import { TimerService } from 'src/timer/timers.service';
 import { DEFAULT_FIELDS } from 'src/utils/fields';
 import { GamePayload, GameRepository } from './game.repository';
@@ -22,9 +20,7 @@ export class GameService {
     private eventService: EventService,
     @Inject(forwardRef(() => AuctionService))
     private auctionService: AuctionService,
-    @InjectModel(Field.name)
     private timerService: TimerService,
-    private secretService: SecretService,
     private fieldService: FieldService
   ) {
     this.passTurnToUser = this.passTurnToUser.bind(this);

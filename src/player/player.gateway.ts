@@ -30,6 +30,7 @@ import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.serv
 import { OfferTradeDto } from './dto/offer-trade.dto';
 import { PlayerService } from './player.service';
 import { AuctionService } from 'src/auction/auction.service';
+import { FieldService } from 'src/field/field.service';
 
 @WebSocketGateway({
   cors: {
@@ -53,7 +54,8 @@ export class PlayerGateway implements OnGatewayInit {
     private readonly gameService: GameService,
     private chatService: ChatService,
     @Inject(forwardRef(() => AuctionService))
-    private auctionService: AuctionService
+    private auctionService: AuctionService,
+    private fieldService: FieldService
   ) {}
   @WebSocketServer()
   private server: Server;
@@ -81,7 +83,7 @@ export class PlayerGateway implements OnGatewayInit {
       fieldToBuyBranch,
       socket.jwtPayload.sub
     );
-    const fields = await this.gameService.getGameFields(game.id);
+    const fields = await this.fieldService.getGameFields(game.id);
     this.server
       .to(game.id)
       .emit('updateGameData', { fields, game: updatedGame });
@@ -95,7 +97,7 @@ export class PlayerGateway implements OnGatewayInit {
   ) {
     const game = socket.game;
     const userId = socket.jwtPayload.sub;
-    const fields = await this.gameService.getGameFields(game.id);
+    const fields = await this.fieldService.getGameFields(game.id);
     const fieldToSellBranch =
       await this.playerService.checkWhetherPlayerHasAllGroup(
         game,
@@ -229,7 +231,7 @@ export class PlayerGateway implements OnGatewayInit {
   ) {
     const userId = socket.jwtPayload.sub;
     const gameId = socket.game.id;
-    const fields = await this.gameService.getGameFields(socket.game.id);
+    const fields = await this.fieldService.getGameFields(socket.game.id);
     const { updatedPlayer, updatedFields } = await this.playerService.loseGame(
       userId,
       gameId,

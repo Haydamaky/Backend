@@ -16,6 +16,7 @@ import { AuctionModule } from 'src/auction/auction.module';
 import { TimerModule } from 'src/timer/timers.module';
 import { SecretModule } from 'src/secret/secret.module';
 import { PaymentModule } from 'src/payment/payment.module';
+import { FieldModule } from 'src/field/field.module';
 
 @Module({
   controllers: [GameController],
@@ -26,17 +27,11 @@ import { PaymentModule } from 'src/payment/payment.module';
     ChatModule,
     forwardRef(() => PlayerModule),
     EventModule,
-    WebSocketServerModule,
     forwardRef(() => AuctionModule),
-    MongooseModule.forFeature([
-      {
-        name: Field.name,
-        schema: FieldSchema,
-      },
-    ]),
     TimerModule,
-    SecretModule,
+    forwardRef(() => SecretModule),
     PaymentModule,
+    FieldModule,
   ],
   providers: [GameGateway, GameService, GameRepository],
   exports: [GameService],

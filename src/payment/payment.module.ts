@@ -1,7 +1,18 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { PaymentService } from './payment.service';
+import { SecretModule } from 'src/secret/secret.module';
+import { FieldModule } from 'src/field/field.module';
+import { PlayerModule } from 'src/player/player.module';
+import { TimerModule } from 'src/timer/timers.module';
 
 @Module({
+  imports: [
+    forwardRef(() => SecretModule),
+    FieldModule,
+    PlayerModule,
+    TimerModule,
+  ],
   providers: [PaymentService],
+  exports: [PaymentService],
 })
 export class PaymentModule {}

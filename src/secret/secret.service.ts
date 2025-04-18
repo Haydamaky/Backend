@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { Player } from '@prisma/client';
 import { ChatService } from 'src/chat/chat.service';
 import { FieldService } from 'src/field/field.service';
@@ -13,10 +13,12 @@ import secretFields, { SecretType } from 'src/utils/fields/secretFields';
 export class SecretService {
   readonly secrets: Map<string, SecretInfo> = new Map();
   constructor(
+    @Inject(forwardRef(() => GameService))
     private gameService: GameService,
     private chatService: ChatService,
     private fieldService: FieldService,
     private playerService: PlayerService,
+    @Inject(forwardRef(() => PaymentService))
     private paymentService: PaymentService
   ) {}
   getRandomPlayersUserId(players: Partial<Player[]>) {

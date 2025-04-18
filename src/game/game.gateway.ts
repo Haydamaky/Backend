@@ -1,4 +1,10 @@
-import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  UseFilters,
+  UseGuards,
+  UsePipes,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OnEvent } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
@@ -27,7 +33,6 @@ import { SecretService } from 'src/secret/secret.service';
 import { SecretAnalyzer } from 'src/secret/secretAnalyzer';
 import { TimerService } from 'src/timer/timers.service';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
-import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.service';
 import { GetGameId } from './decorators/getGameCookieWs';
 import { GamePayload } from './game.repository';
 import { GameService } from './game.service';
@@ -62,13 +67,16 @@ export class GameGateway {
     private playerService: PlayerService,
     private jwtService: JwtService,
     private configService: ConfigService,
-    private webSocketServer: WebSocketServerService,
     private auctionService: AuctionService,
     private timerService: TimerService,
+    @Inject(forwardRef(() => SecretService))
     private secretService: SecretService,
     private paymentService: PaymentService,
     private fieldService: FieldService
-  ) {
+  ) {}
+  @WebSocketServer()
+  private server: Server;
+  onModuleInit() {
     this.rollDice = this.rollDice.bind(this);
     this.putUpForAuction = this.putUpForAuction.bind(this);
     this.passTurnToNext = this.passTurnToNext.bind(this);
@@ -78,14 +86,6 @@ export class GameGateway {
     this.payAll = this.payAll.bind(this);
     this.resolveTwoUsers = this.resolveTwoUsers.bind(this);
   }
-
-  @WebSocketServer()
-  private server: Server;
-
-  afterInit(server: Server) {
-    this.webSocketServer.setServer(server);
-  }
-
   async handleConnection(socket: Socket & { jwtPayload: JwtPayload }) {
     try {
       const cookies = await this.extractCookies(socket);
@@ -532,6 +532,7 @@ export class GameGateway {
       game,
       15000
     );
+    console.log(this);
     this.server
       .to(game.id)
       .emit('hasPutUpForAuction', { game: updatedGame, auction });

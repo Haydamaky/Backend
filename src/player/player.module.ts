@@ -13,6 +13,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Field, FieldSchema } from 'src/schema/Field.schema';
 import { AuctionModule } from 'src/auction/auction.module';
 import { TimerModule } from 'src/timer/timers.module';
+import { FieldModule } from 'src/field/field.module';
 @Module({
   imports: [
     forwardRef(() => GameModule),
@@ -23,12 +24,7 @@ import { TimerModule } from 'src/timer/timers.module';
     WebSocketServerModule,
     ChatModule,
     forwardRef(() => AuctionModule),
-    MongooseModule.forFeature([
-      {
-        name: Field.name,
-        schema: FieldSchema,
-      },
-    ]),
+    FieldModule,
     TimerModule,
   ],
   providers: [PlayerGateway, PlayerService, PlayerRepository],
