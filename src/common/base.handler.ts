@@ -6,7 +6,7 @@ export abstract class BaseHandler<T> implements IHandler {
     private handler: () => void
   ) {}
 
-  abstract canHandle(): boolean;
+  abstract canHandle(): boolean | void;
   handle() {
     this.handler();
   }

@@ -1,4 +1,4 @@
 export interface IHandler {
-  canHandle(): boolean;
+  canHandle(): boolean | void;
   handle(): void;
 }
