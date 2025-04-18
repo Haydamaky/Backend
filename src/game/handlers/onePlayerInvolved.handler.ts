@@ -1,6 +1,6 @@
-import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
+import { SecretAnalyzer } from 'src/secret/secretAnalyzer';
 import { BaseHandler } from '../../common/base.handler';
-export class PassTurnHandler extends BaseHandler<FieldAnalyzer> {
+export class PassTurnHandler extends BaseHandler<SecretAnalyzer> {
   canHandle() {
     return (
       this.analyzer.isOwnedByCurrentUser() ||

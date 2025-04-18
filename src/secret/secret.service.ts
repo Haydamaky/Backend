@@ -33,6 +33,7 @@ export class SecretService {
         amounts: secret.amounts,
         users: [game.turnOfUserId],
         text: secret.text,
+        numOfPlayersInvolved: secret.numOfPlayersInvolved as 'one',
       };
       this.secrets.set(game.id, secretInfo);
       return secretInfo;
@@ -45,6 +46,7 @@ export class SecretService {
         amounts: secret.amounts,
         users: [game.turnOfUserId, randomUserId],
         text: secret.text,
+        numOfPlayersInvolved: secret.numOfPlayersInvolved as 'two',
       };
       this.secrets.set(game.id, secretInfo);
       return secretInfo;
@@ -63,6 +65,7 @@ export class SecretService {
             }),
         ],
         text: secret.text,
+        numOfPlayersInvolved: secret.numOfPlayersInvolved as 'all',
       };
       this.secrets.set(game.id, secretInfo);
       return secretInfo;

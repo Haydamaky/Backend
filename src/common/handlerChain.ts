@@ -6,11 +6,10 @@ export class HandlerChain {
     this.handlers.push(...handlers);
   }
 
-  process(): void {
+  process(): unknown {
     for (const handler of this.handlers) {
       if (handler.canHandle()) {
-        handler.handle();
-        return;
+        return handler.handle();
       }
     }
     console.log('No handler found for this data');

@@ -31,7 +31,7 @@ import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.serv
 import { GetGameId } from './decorators/getGameCookieWs';
 import { GamePayload } from './game.repository';
 import { GameService } from './game.service';
-import { HandlerChain } from './handlers/handlerChain';
+import { HandlerChain } from '../common/handlerChain';
 import { PassTurnHandler } from './handlers/passTurn.handler';
 import { ProcessSpecialHandler } from './handlers/processSpecial.handler';
 import { PutUpForAuctionHandler } from './handlers/putUpForAuction.handler';
@@ -360,8 +360,8 @@ export class GameGateway {
   }
 
   @UseGuards(ActiveGameGuard, HasLostGuard)
-  @SubscribeMessage('payToUser')
-  async onPayToUser(
+  @SubscribeMessage('payToUserForSecret')
+  async payToUserForSecret(
     @ConnectedSocket()
     socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
   ) {
@@ -392,85 +392,65 @@ export class GameGateway {
       throw new WsException(
         'You cant pay for that field because smt is missing'
       );
-    let amountToPay = 0;
-    if (secretInfo) {
-      if (!secretInfo.users.includes(socket.jwtPayload.sub)) {
-        throw new WsException(
-          'You cant pay to bank because no user in secretInfo'
-        );
-      }
-      if (secretInfo.users.length === 1) {
-        if (secretInfo.amounts[0] > 0) {
-          throw new WsException(
-            'You cant pay to bank because one user and he doesnt have to pay'
-          );
-        } else {
-          amountToPay = secretInfo.amounts[0];
-        }
-      } else if (secretInfo.users.length === 2) {
-        const index = secretInfo.users.findIndex(
-          (userId) => userId === socket.jwtPayload.sub
-        );
-        if (secretInfo.amounts[index] > 0) {
-          throw new WsException(
-            'You cant pay to bank two users and the one wants to pay dont have to'
-          );
-        } else {
-          amountToPay = secretInfo.amounts[0];
-        }
-      } else if (
-        secretInfo.users.length > 2 &&
-        socket.jwtPayload.sub !== secretInfo.users[0]
-      ) {
-        if (secretInfo.amounts.length === 2) {
-          if (secretInfo.amounts[1] > 0) {
-            throw new WsException(
-              'You cant pay to bank  more then 2 and this doesnt lya lya'
-            );
-          } else {
-            amountToPay = secretInfo.amounts[0];
-          }
-        }
-
-        if (secretInfo.amounts.length === 1) {
-          if (secretInfo.amounts[0] > 0) {
-            throw new WsException(
-              'You cant pay to bank more than 2 one amount and dont have t'
-            );
-          } else {
-            amountToPay = secretInfo.amounts[0];
-          }
-        }
-        if (
-          secretInfo.users.every((userId, index) => {
-            if (secretInfo.amounts[index] > 0) return true;
-            return userId === '';
-          })
-        ) {
-          throw new WsException(
-            'You cant pay to bank every user is empty string'
-          );
-        }
-      }
-    }
     if (currentField.toPay) {
-      this.transferWithBank({
+      return this.transferWithBank({
         game: socket.game,
         userId: socket.jwtPayload.sub,
         amount: currentField.toPay,
       });
     }
-    if (secretInfo) {
-      this.transferWithBank({
-        game: socket.game,
-        userId: socket.jwtPayload.sub,
-        amount: amountToPay,
-      });
-      const indexOfUser = secretInfo.users.findIndex(
+    let amountToPay = 0;
+    if (!secretInfo.users.includes(socket.jwtPayload.sub)) {
+      throw new WsException(
+        'You cant pay to bank because no user in secretInfo'
+      );
+    }
+    if (secretInfo.numOfPlayersInvolved === 'one') {
+      if (secretInfo.amounts[0] > 0) {
+        throw new WsException(
+          'You cant pay to bank because one user and he doesnt have to pay'
+        );
+      } else {
+        amountToPay = secretInfo.amounts[0];
+      }
+    } else if (secretInfo.numOfPlayersInvolved === 'two') {
+      const index = secretInfo.users.findIndex(
         (userId) => userId === socket.jwtPayload.sub
       );
-      secretInfo.users[indexOfUser] = '';
+      if (secretInfo.amounts[index] > 0) {
+        throw new WsException(
+          'You cant pay to bank two users and the one wants to pay dont have to'
+        );
+      } else {
+        amountToPay = secretInfo.amounts[0];
+      }
+    } else if (secretInfo.numOfPlayersInvolved === 'all') {
+      if (
+        secretInfo.users.every((userId, index) => {
+          if (index === 0) return true;
+          return userId === '';
+        }) &&
+        secretInfo.amounts[0] === null
+      ) {
+        throw new WsException('You get money from all u dont have to pay');
+      }
+      if (secretInfo.amounts.length === 2) {
+        amountToPay = secretInfo.amounts[1];
+      }
+      if (secretInfo.amounts.length === 1) {
+        amountToPay = secretInfo.amounts[0];
+      }
     }
+
+    await this.transferWithBank({
+      game: socket.game,
+      userId: socket.jwtPayload.sub,
+      amount: amountToPay,
+    });
+    const indexOfUser = secretInfo.users.findIndex(
+      (userId) => userId === socket.jwtPayload.sub
+    );
+    secretInfo.users[indexOfUser] = '';
   }
 
   async transferWithBank(argsObj: {
@@ -645,8 +625,7 @@ export class GameGateway {
     this.server
       .to(auction.gameId)
       .emit('wonAuction', { auction, game: updatedPlayer.game, fields });
-    const game = await this.gameService.getGame(auction.gameId);
-    this.passTurnToNext(game);
+    this.passTurnToNext(updatedPlayer.game);
   }
 
   @UseGuards(ActiveGameGuard, TurnGuard, HasLostGuard)

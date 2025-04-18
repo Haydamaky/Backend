@@ -8,4 +8,13 @@ export class SecretAnalyzer {
   isOneUserHaveToReceive() {
     return this.secretInfo.users.length === 1 && this.secretInfo.amounts[0] > 0;
   }
+  inOnePlayerInvolved() {
+    return this.secretInfo.numOfPlayersInvolved === 'one';
+  }
+  isTwoPlayersInvolved() {
+    return this.secretInfo.numOfPlayersInvolved === 'two';
+  }
+  isAllPlayersInvolved() {
+    return this.secretInfo.numOfPlayersInvolved === 'all';
+  }
 }
