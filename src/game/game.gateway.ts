@@ -106,21 +106,16 @@ export class GameGateway {
       this.rejoinGame(socket, gameId);
       const currentField =
         await this.gameService.findCurrentFieldFromGame(game);
-      let timerCallback: (args: unknown) => Promise<void>;
       if (game.dices) {
-        timerCallback = currentField?.price
-          ? this.putUpForAuction
-          : this.passTurnToNext;
+        this.processRolledDices(game, currentField);
       } else {
-        timerCallback = this.rollDice;
+        this.timerService.set(
+          gameId,
+          updatedGame.timeOfTurn,
+          updatedGame,
+          this.rollDice
+        );
       }
-
-      this.timerService.set(
-        gameId,
-        updatedGame.timeOfTurn,
-        updatedGame,
-        timerCallback
-      );
     } catch (err) {
       console.log(err);
     }
