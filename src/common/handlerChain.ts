@@ -6,7 +6,7 @@ export class HandlerChain {
     this.handlers.push(...handlers);
   }
 
-  process(): unknown {
+  process(): unknown | Promise<unknown> {
     for (const handler of this.handlers) {
       if (handler.canHandle()) {
         return handler.handle();

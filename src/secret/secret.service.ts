@@ -53,7 +53,7 @@ export class SecretService {
       const randomUserId = this.getRandomPlayersUserId(playersWithoutActive);
       const secretInfo = {
         amounts: secret.amounts,
-        users: [game.turnOfUserId, randomUserId],
+        users: [randomUserId, game.turnOfUserId],
         text: secret.text,
         numOfPlayersInvolved: secret.numOfPlayersInvolved as 'two',
       };

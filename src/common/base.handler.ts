@@ -3,11 +3,13 @@ import { IHandler } from './IHandler';
 export abstract class BaseHandler<T> implements IHandler {
   constructor(
     protected analyzer: T,
-    private handler: () => void
+    private handler?: () => void
   ) {}
 
   abstract canHandle(): boolean | void;
   handle() {
-    this.handler();
+    if (this.handler) {
+      this.handler();
+    }
   }
 }

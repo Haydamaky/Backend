@@ -11,9 +11,12 @@ import { FieldDocument } from 'src/schema/Field.schema';
 import { TimerService } from 'src/timer/timers.service';
 import { DEFAULT_FIELDS } from 'src/utils/fields';
 import { GamePayload, GameRepository } from './game.repository';
+import { GameGateway } from './game.gateway';
 @Injectable()
 export class GameService {
   constructor(
+    @Inject(forwardRef(() => GameGateway))
+    private gameGateway: GameGateway,
     private gameRepository: GameRepository,
     @Inject(forwardRef(() => PlayerService))
     private playerService: PlayerService,
@@ -230,7 +233,7 @@ export class GameService {
     return this.gameRepository.findById(gameId);
   }
 
-  onRollDice() {
+  rollDice() {
     const firstDice = Math.ceil(Math.random() * 6);
     const secondDice = Math.ceil(Math.random() * 6);
     return `${firstDice}:${secondDice}`;
@@ -332,7 +335,7 @@ export class GameService {
   }
 
   async makeTurn(game: Partial<GamePayload>) {
-    const dices = this.onRollDice();
+    const dices = this.rollDice();
 
     const currentPlayer = this.playerService.findPlayerWithTurn(game);
     const dicesArr = this.parseDicesToArr(dices);
