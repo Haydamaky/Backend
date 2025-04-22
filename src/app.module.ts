@@ -1,23 +1,23 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { UserModule } from './user/user.module';
-import { AuthModule } from './auth/auth.module';
-import { PrismaModule } from './prisma/prisma.module';
-import { JwtGuard } from './auth/guard/jwt.guard';
-import { APP_GUARD } from '@nestjs/core';
-import { ChatModule } from './chat/chat.module';
-import { GameModule } from './game/game.module';
-import { PlayerModule } from './player/player.module';
-import { EventEmitterModule } from '@nestjs/event-emitter';
-import { WebSocketServerModule } from './webSocketServer/webSocketServer.module';
-import { WebSocketServerService } from './webSocketServer/webSocketServer.service';
-import { MongooseModule } from '@nestjs/mongoose';
 import { AuctionModule } from './auction/auction.module';
-import { SecretModule } from './secret/secret.module';
+import { AuthModule } from './auth/auth.module';
+import { JwtGuard } from './auth/guard/jwt.guard';
+import { ChatModule } from './chat/chat.module';
 import { FieldModule } from './field/field.module';
+import { GameModule } from './game/game.module';
 import { PaymentModule } from './payment/payment.module';
+import { PlayerModule } from './player/player.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { SecretModule } from './secret/secret.module';
+import { UserModule } from './user/user.module';
+import { WebSocketProviderModule } from './webSocketProvider/webSocketProvider.module';
+import { WebSocketProvider } from './webSocketProvider/webSocketProvider.service';
 
 @Module({
   imports: [
@@ -29,7 +29,7 @@ import { PaymentModule } from './payment/payment.module';
     ChatModule,
     GameModule,
     PlayerModule,
-    WebSocketServerModule,
+    WebSocketProviderModule,
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -49,7 +49,7 @@ import { PaymentModule } from './payment/payment.module';
       provide: APP_GUARD,
       useClass: JwtGuard,
     },
-    WebSocketServerService,
+    WebSocketProvider,
   ],
 })
 export class AppModule {}
