@@ -237,23 +237,32 @@ export class GameGateway {
   }
 
   async rollDice(game: Partial<GamePayload>) {
-    const { fieldAnalyzer, fields } = await this.gameService.makeTurn(game);
+    const { playerNextField, fields, updatedGame } =
+      await this.gameService.makeTurn(game);
+    await this.processRolledDices(updatedGame, playerNextField, fields);
+  }
+
+  async processRolledDices(
+    game: Partial<GamePayload>,
+    playerNextField: FieldDocument,
+    fields?: FieldDocument[]
+  ) {
+    const fieldAnalyzer = new FieldAnalyzer(
+      playerNextField,
+      game,
+      this.playerService
+    );
     this.server.to(game.id).emit('rolledDice', {
       fields,
-      game: fieldAnalyzer.game,
+      game,
     });
     const chain = new HandlerChain();
     chain.addHandlers(
       new PassTurnHandler(fieldAnalyzer, () => {
-        this.timerService.set(
-          game.id,
-          2500,
-          fieldAnalyzer.game,
-          this.passTurnToNext
-        );
+        this.timerService.set(game.id, 2500, game, this.passTurnToNext);
       }),
       new ProcessSpecialHandler(fieldAnalyzer, () => {
-        this.processSpecialField(fieldAnalyzer.game, fieldAnalyzer.field);
+        this.processSpecialField(game, playerNextField);
       }),
       new SteppedOnPrivateHandler(fieldAnalyzer, () => {
         this.steppedOnPrivateField(fieldAnalyzer);
@@ -262,7 +271,7 @@ export class GameGateway {
         this.timerService.set(
           game.id,
           game.timeOfTurn,
-          fieldAnalyzer.game,
+          game,
           this.putUpForAuction
         );
       })

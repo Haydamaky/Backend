@@ -367,18 +367,11 @@ export class GameService {
         dices,
       });
     }
-    const fieldAnalyzer = new FieldAnalyzer(
-      playerNextField,
-      updatedGame,
-      this.playerService
-    );
+
     return {
       updatedGame,
       fields,
-      nextIndex,
       playerNextField,
-      fieldAnalyzer,
-      currentPlayer,
     };
   }
 
