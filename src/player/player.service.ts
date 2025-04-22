@@ -9,10 +9,10 @@ import { GameService } from 'src/game/game.service';
 import { Trade } from 'src/game/types/trade.type';
 import { FieldDocument } from 'src/schema/Field.schema';
 import { TimerService } from 'src/timer/timers.service';
-import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.service';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { OfferTradeDto } from './dto/offer-trade.dto';
 import { PlayerPayload, PlayerRepository } from './player.repository';
+import { WebSocketProvider } from 'src/webSocketProvider/webSocketProvider.service';
 
 @Injectable()
 export class PlayerService {
@@ -20,11 +20,10 @@ export class PlayerService {
     @Inject(forwardRef(() => GameService))
     private readonly gameService: GameService,
     private playerRepository: PlayerRepository,
-    private webSocketServerService: WebSocketServerService,
     private chatService: ChatService,
-    private eventService: EventService,
     private timerService: TimerService,
-    private fieldService: FieldService
+    private fieldService: FieldService,
+    private webSocketProvider: WebSocketProvider
   ) {
     this.refuseFromTrade = this.refuseFromTrade.bind(this);
   }
@@ -480,7 +479,7 @@ export class PlayerService {
       toUserId: trade.fromUserId,
       turnTime: game.timeOfTurn,
     });
-    this.webSocketServerService.server
+    this.webSocketProvider.server
       .to(game.id)
       .emit('updateGameData', { game: updatedGame });
     const toPlayer = game.players.find(
@@ -490,9 +489,7 @@ export class PlayerService {
       text: `${toPlayer.user.nickname} відхилив угоду!`,
       chatId: game.chat.id,
     });
-    this.webSocketServerService.server
-      .to(game.id)
-      .emit('gameChatMessage', message);
+    this.webSocketProvider.server.to(game.id).emit('gameChatMessage', message);
   }
 
   async loseGame(userId: string, gameId: string, fields: FieldDocument[]) {
@@ -537,15 +534,30 @@ export class PlayerService {
       const game = await this.gameService.updateById(updatedPlayer.game.id, {
         status: 'FINISHED',
       });
-      this.webSocketServerService.server
-        .to(game.id)
-        .emit('playerWon', { game });
+      this.webSocketProvider.server.to(game.id).emit('playerWon', { game });
       return { updatedPlayer, fields };
     }
-    this.eventService.emitGameEvent('passTurnToNext', {
-      game: updatedGame,
-    });
+    this.gameService.passTurnToNext(updatedGame);
     return { updatedPlayer, updatedFields: fields };
+  }
+
+  async handleOfferTrade(data: { game: Partial<GamePayload>; trade: Trade }) {
+    const { updatedGame } = await this.gameService.passTurnToUser({
+      game: data.game,
+      toUserId: data.trade.toUserId,
+    });
+    this.webSocketProvider.server
+      .to(data.game.id)
+      .emit('updateGameData', { game: updatedGame });
+    this.webSocketProvider.server
+      .to(data.trade.toUserId)
+      .emit('tradeOffered', { trade: data.trade });
+    this.timerService.set(
+      updatedGame.id,
+      10000,
+      updatedGame,
+      this.refuseFromTrade
+    );
   }
 
   validatePlayerMoney(player: Partial<PlayerPayload>, moneyNeeded: number) {

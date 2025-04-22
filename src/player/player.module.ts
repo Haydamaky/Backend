@@ -1,19 +1,17 @@
 import { forwardRef, Module } from '@nestjs/common';
-import { PlayerService } from './player.service';
+import { ConfigModule } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { AuctionModule } from 'src/auction/auction.module';
+import { ChatModule } from 'src/chat/chat.module';
+import { EventModule } from 'src/event/event.module';
+import { FieldModule } from 'src/field/field.module';
+import { GameModule } from 'src/game/game.module';
+import { TimerModule } from 'src/timer/timers.module';
+import { UserModule } from 'src/user/user.module';
 import { PlayerGateway } from './player.gateway';
 import { PlayerRepository } from './player.repository';
-import { UserModule } from 'src/user/user.module';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule } from '@nestjs/config';
-import { GameModule } from 'src/game/game.module';
-import { EventModule } from 'src/event/event.module';
-import { WebSocketServerModule } from 'src/webSocketServer/webSocketServer.module';
-import { ChatModule } from 'src/chat/chat.module';
-import { MongooseModule } from '@nestjs/mongoose';
-import { Field, FieldSchema } from 'src/schema/Field.schema';
-import { AuctionModule } from 'src/auction/auction.module';
-import { TimerModule } from 'src/timer/timers.module';
-import { FieldModule } from 'src/field/field.module';
+import { PlayerService } from './player.service';
+import { WebSocketProviderModule } from 'src/webSocketProvider/webSocketProvider.module';
 @Module({
   imports: [
     forwardRef(() => GameModule),
@@ -21,7 +19,7 @@ import { FieldModule } from 'src/field/field.module';
     JwtModule,
     ConfigModule,
     EventModule,
-    WebSocketServerModule,
+    WebSocketProviderModule,
     ChatModule,
     forwardRef(() => AuctionModule),
     FieldModule,

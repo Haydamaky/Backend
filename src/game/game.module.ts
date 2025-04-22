@@ -8,9 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PlayerModule } from 'src/player/player.module';
 import { ChatModule } from 'src/chat/chat.module';
 import { EventModule } from 'src/event/event.module';
-import { WebSocketServerModule } from 'src/webSocketServer/webSocketServer.module';
-import { MongooseModule } from '@nestjs/mongoose';
-import { Field, FieldSchema } from 'src/schema/Field.schema';
+import { WebSocketProviderModule } from 'src/webSocketProvider/webSocketProvider.module';
 import { GameController } from './game.controller';
 import { AuctionModule } from 'src/auction/auction.module';
 import { TimerModule } from 'src/timer/timers.module';
@@ -32,6 +30,7 @@ import { FieldModule } from 'src/field/field.module';
     forwardRef(() => SecretModule),
     PaymentModule,
     FieldModule,
+    WebSocketProviderModule,
   ],
   providers: [GameGateway, GameService, GameRepository],
   exports: [GameService],

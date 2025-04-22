@@ -26,7 +26,6 @@ import { GameService } from 'src/game/game.service';
 import { Trade } from 'src/game/types/trade.type';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
-import { WebSocketServerService } from 'src/webSocketServer/webSocketServer.service';
 import { OfferTradeDto } from './dto/offer-trade.dto';
 import { PlayerService } from './player.service';
 import { AuctionService } from 'src/auction/auction.service';
@@ -45,11 +44,9 @@ import { FieldService } from 'src/field/field.service';
 @UseFilters(WebsocketExceptionsFilter)
 @UsePipes(new WsValidationPipe())
 @UseGuards(WsGuard, ActiveGameGuard, HasLostGuard)
-export class PlayerGateway implements OnGatewayInit {
+export class PlayerGateway {
   constructor(
     private readonly playerService: PlayerService,
-    private eventService: EventService,
-    private webSocketServerService: WebSocketServerService,
     @Inject(forwardRef(() => GameService))
     private readonly gameService: GameService,
     private chatService: ChatService,
@@ -59,10 +56,6 @@ export class PlayerGateway implements OnGatewayInit {
   ) {}
   @WebSocketServer()
   private server: Server;
-
-  afterInit(server: Server) {
-    this.webSocketServerService.setServer(server);
-  }
   @SubscribeMessage('buyBranch')
   async buyBranch(
     @ConnectedSocket()
@@ -176,7 +169,7 @@ export class PlayerGateway implements OnGatewayInit {
       chatId: game.chat.id,
     });
     this.server.to(game.id).emit('gameChatMessage', message);
-    this.eventService.emitGameEvent('offerTrade', { game, trade });
+    this.playerService.handleOfferTrade({ game, trade });
   }
 
   @SubscribeMessage('refuseFromTrade')
