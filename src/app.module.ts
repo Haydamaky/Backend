@@ -18,6 +18,7 @@ import { SecretModule } from './secret/secret.module';
 import { UserModule } from './user/user.module';
 import { WebSocketProviderModule } from './webSocketProvider/webSocketProvider.module';
 import { WebSocketProvider } from './webSocketProvider/webSocketProvider.service';
+import { TradeModule } from './trade/trade.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { WebSocketProvider } from './webSocketProvider/webSocketProvider.service
     SecretModule,
     FieldModule,
     PaymentModule,
+    TradeModule,
   ],
   controllers: [AppController],
   providers: [
