@@ -25,10 +25,10 @@ import { WebSocketProvider } from 'src/webSocketProvider/webSocketProvider.servi
 @Injectable()
 export class GameService {
   constructor(
-    private webSocketProvider: WebSocketProvider,
-    private gameRepository: GameRepository,
     @Inject(forwardRef(() => PlayerService))
     private playerService: PlayerService,
+    private webSocketProvider: WebSocketProvider,
+    private gameRepository: GameRepository,
     @Inject(forwardRef(() => AuctionService))
     private auctionService: AuctionService,
     private timerService: TimerService,
@@ -44,6 +44,7 @@ export class GameService {
     this.processPayingForField = this.processPayingForField.bind(this);
     this.transferWithBank = this.transferWithBank.bind(this);
     this.payAll = this.payAll.bind(this);
+    this.payForField = this.payForField.bind(this);
     this.resolveTwoUsers = this.resolveTwoUsers.bind(this);
   }
 
@@ -210,7 +211,7 @@ export class GameService {
           },
         },
       });
-      this.startGame(game);
+      this.startGame(startedGame);
       return startedGame;
     }
     return gameWithCreatedPlayer;
@@ -686,14 +687,18 @@ export class GameService {
     return game.players.filter((player) => !player.lost);
   }
 
-  async passTurnToNext(game: Partial<GamePayload>) {
+  async passTurnToNext(game: Partial<GamePayload>, fromEvent: boolean = false) {
     const fields = await this.fieldService.getGameFields(game.id);
     const currentPlayer = this.playerService.findPlayerWithTurn(game);
     const currentField = this.fieldService.findPlayerFieldByIndex(
       fields,
       currentPlayer.currentFieldIndex
     );
-    if (!currentField.large && currentField.ownedBy !== game.turnOfUserId) {
+    if (
+      fromEvent &&
+      !currentField.large &&
+      currentField.ownedBy !== game.turnOfUserId
+    ) {
       throw new WsException('You cant pass turn with that field');
     }
 

@@ -25,7 +25,6 @@ import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 import { FieldService } from 'src/field/field.service';
 import { PaymentService } from 'src/payment/payment.service';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
-import { PlayerService } from 'src/player/player.service';
 import { SecretService } from 'src/secret/secret.service';
 import { TimerService } from 'src/timer/timers.service';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
@@ -49,10 +48,8 @@ import { GameService } from './game.service';
 @UseGuards(WsGuard)
 export class GameGateway {
   constructor(
-    @Inject(forwardRef(() => GameService))
     private gameService: GameService,
     private webSocketProvider: WebSocketProvider,
-    private playerService: PlayerService,
     private jwtService: JwtService,
     private configService: ConfigService,
     private auctionService: AuctionService,
