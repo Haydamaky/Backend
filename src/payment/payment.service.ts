@@ -2,7 +2,6 @@ import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { FieldService } from 'src/field/field.service';
 import { GamePayload } from 'src/game/game.repository';
-import { GameService } from 'src/game/game.service';
 import { PlayerService } from 'src/player/player.service';
 import { SecretService } from 'src/secret/secret.service';
 import { TimerService } from 'src/timer/timers.service';
@@ -154,4 +153,6 @@ export class PaymentService {
       playerWhoPayed,
     };
   }
+
+  transferToUser() {}
 }
