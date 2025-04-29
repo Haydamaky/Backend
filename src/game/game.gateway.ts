@@ -278,4 +278,59 @@ export class GameGateway {
   ) {
     await this.gameService.passTurnToNext(socket.game);
   }
+
+  @SubscribeMessage('buyBranch')
+  async onBuyBranch(
+    @ConnectedSocket()
+    socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
+    @MessageBody('index') index: number
+  ) {
+    const game = socket.game;
+    const userId = socket.jwtPayload.sub;
+    const { updatedGame, fields } = await this.gameService.buyBranch(
+      game,
+      index,
+      userId
+    );
+    this.server
+      .to(game.id)
+      .emit('updateGameData', { fields, game: updatedGame });
+  }
+
+  @SubscribeMessage('sellBranch')
+  async onSellBranch(
+    @ConnectedSocket()
+    socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
+    @MessageBody('index') index: number
+  ) {
+    const game = socket.game;
+    const userId = socket.jwtPayload.sub;
+    const { updatedGame, fields } = await this.gameService.sellBranch(
+      game,
+      index,
+      userId
+    );
+    this.server
+      .to(game.id)
+      .emit('updateGameData', { fields, game: updatedGame });
+  }
+
+  @SubscribeMessage('surrender')
+  async surrender(
+    @ConnectedSocket()
+    socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload }
+  ) {
+    const userId = socket.jwtPayload.sub;
+    const gameId = socket.game.id;
+
+    const { updatedPlayer, updatedFields } = await this.gameService.loseGame(
+      userId,
+      gameId
+    );
+
+    this.server.to(gameId).emit('playerSurrendered', {
+      game: updatedPlayer.game,
+      fields: updatedFields,
+    });
+  }
 }

@@ -1,26 +1,17 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { Prisma } from '@prisma/client';
-import { ChatService } from 'src/chat/chat.service';
 import { FieldService } from 'src/field/field.service';
 import { GamePayload } from 'src/game/game.repository';
-import { GameService } from 'src/game/game.service';
 import { FieldDocument } from 'src/schema/Field.schema';
-import { TimerService } from 'src/timer/timers.service';
-import { WebSocketProvider } from 'src/webSocketProvider/webSocketProvider.service';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { PlayerPayload, PlayerRepository } from './player.repository';
 
 @Injectable()
 export class PlayerService {
   constructor(
-    @Inject(forwardRef(() => GameService))
-    private readonly gameService: GameService,
     private playerRepository: PlayerRepository,
-    private chatService: ChatService,
-    private timerService: TimerService,
-    private fieldService: FieldService,
-    private webSocketProvider: WebSocketProvider
+    private fieldService: FieldService
   ) {}
 
   readonly COLORS = ['blue', 'yellow', 'green', 'purple', 'red'];
@@ -263,58 +254,6 @@ export class PlayerService {
     }
   }
 
-  async buyBranch(
-    game: Partial<GamePayload>,
-    fieldToBuyBranch: FieldDocument,
-    userId: string
-  ) {
-    const playerToPay = game.players.find((player) => player.userId === userId);
-    if (playerToPay.money < fieldToBuyBranch.branchPrice) {
-      throw new WsException('You dont have enough money to buy branch');
-    }
-    const player = await this.decrementMoneyWithUserAndGameId(
-      userId,
-      game.id,
-      fieldToBuyBranch.branchPrice
-    );
-    fieldToBuyBranch.amountOfBranches++;
-    let updatedGame = null;
-    if (fieldToBuyBranch.amountOfBranches === 5) {
-      await this.gameService.decreaseHotels(player.game.id, 1);
-      updatedGame = await this.gameService.increaseHouses(player.game.id, 4);
-    } else {
-      updatedGame = await this.gameService.decreaseHouses(player.game.id, 1);
-    }
-    await this.fieldService.updateById(fieldToBuyBranch._id, {
-      amountOfBranches: fieldToBuyBranch.amountOfBranches,
-    });
-    return updatedGame;
-  }
-
-  async sellBranch(
-    game: Partial<GamePayload>,
-    fieldToBuyBranch: FieldDocument,
-    userId: string
-  ) {
-    const player = await this.incrementMoneyWithUserAndGameId(
-      userId,
-      game.id,
-      fieldToBuyBranch.sellBranchPrice
-    );
-    fieldToBuyBranch.amountOfBranches--;
-    let updatedGame = null;
-    if (fieldToBuyBranch.amountOfBranches === 4) {
-      await this.gameService.increaseHotels(player.game.id, 1);
-      updatedGame = await this.gameService.decreaseHouses(player.game.id, 4);
-    } else {
-      updatedGame = await this.gameService.increaseHouses(player.game.id, 1);
-    }
-    await this.fieldService.updateById(fieldToBuyBranch._id, {
-      amountOfBranches: fieldToBuyBranch.amountOfBranches,
-    });
-    return updatedGame;
-  }
-
   async pledgeField(
     game: Partial<GamePayload>,
     index: number,
@@ -376,9 +315,8 @@ export class PlayerService {
     return { player, fields };
   }
 
-  async loseGame(userId: string, gameId: string, fields: FieldDocument[]) {
-    this.timerService.clear(gameId);
-    const updatedPlayer = await this.update({
+  async updateLostGame(userId: string, gameId: string) {
+    return this.update({
       where: {
         userId_gameId: {
           userId: userId,
@@ -401,28 +339,6 @@ export class PlayerService {
         },
       },
     });
-    const updatedGame = await this.gameService.updateById(gameId, {
-      dices: 'playerLost',
-    });
-    fields.forEach((field) => {
-      if (field.ownedBy === updatedPlayer.userId) {
-        field.ownedBy = null;
-        field.amountOfBranches = 0;
-        field.isPledged = false;
-        field.turnsToUnpledge = null;
-      }
-    });
-    await this.fieldService.updateFields(fields, ['ownedBy']);
-    if (this.gameService.hasWinner(updatedPlayer.game)) {
-      this.timerService.clear(updatedPlayer.game.id);
-      const game = await this.gameService.updateById(updatedPlayer.game.id, {
-        status: 'FINISHED',
-      });
-      this.webSocketProvider.server.to(game.id).emit('playerWon', { game });
-      return { updatedPlayer, fields };
-    }
-    this.gameService.passTurnToNext(updatedGame);
-    return { updatedPlayer, updatedFields: fields };
   }
 
   validatePlayerMoney(player: Partial<PlayerPayload>, moneyNeeded: number) {

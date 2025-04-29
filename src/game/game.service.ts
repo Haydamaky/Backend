@@ -481,7 +481,7 @@ export class GameService {
       this.timerService.set(game.id, game.timeOfTurn, game, this.payForField);
       return;
     }
-    const { updatedPlayer } = await this.playerService.loseGame(
+    const { updatedPlayer } = await this.loseGame(
       currentPlayer.userId,
       game.id,
       fields
@@ -758,7 +758,7 @@ export class GameService {
     ) {
       const fields = await this.fieldService.getGameFields(game.id);
       // We can add pledging of last owned field or smt to not make player lose immidiately
-      const { updatedPlayer } = await this.playerService.loseGame(
+      const { updatedPlayer } = await this.loseGame(
         currentPlayer.userId,
         game.id,
         fields
@@ -885,5 +885,99 @@ export class GameService {
       this.processRolledDices(updatedGame);
     }
     return { updatedGame };
+  }
+
+  async buyBranch(game: Partial<GamePayload>, index: number, userId: string) {
+    const fieldToBuyBranch =
+      await this.playerService.checkWhetherPlayerHasAllGroup(
+        game,
+        index,
+        userId
+      );
+    this.playerService.checkFieldHasMaxBranches(fieldToBuyBranch);
+    const playerToPay = game.players.find((player) => player.userId === userId);
+    if (playerToPay.money < fieldToBuyBranch.branchPrice) {
+      throw new WsException('You dont have enough money to buy branch');
+    }
+    const player = await this.playerService.decrementMoneyWithUserAndGameId(
+      userId,
+      game.id,
+      fieldToBuyBranch.branchPrice
+    );
+    fieldToBuyBranch.amountOfBranches++;
+    let updatedGame = null;
+    if (fieldToBuyBranch.amountOfBranches === 5) {
+      await this.decreaseHotels(player.game.id, 1);
+      updatedGame = await this.increaseHouses(player.game.id, 4);
+    } else {
+      updatedGame = await this.decreaseHouses(player.game.id, 1);
+    }
+    await this.fieldService.updateById(fieldToBuyBranch._id, {
+      amountOfBranches: fieldToBuyBranch.amountOfBranches,
+    });
+    const fields = await this.fieldService.getGameFields(game.id);
+    return { updatedGame, fields };
+  }
+
+  async sellBranch(game: Partial<GamePayload>, index: number, userId: string) {
+    const fieldToSellBranch =
+      await this.playerService.checkWhetherPlayerHasAllGroup(
+        game,
+        index,
+        userId,
+        false
+      );
+    this.playerService.checkFieldHasBranches(fieldToSellBranch);
+    const player = await this.playerService.incrementMoneyWithUserAndGameId(
+      userId,
+      game.id,
+      fieldToSellBranch.sellBranchPrice
+    );
+    fieldToSellBranch.amountOfBranches--;
+    let updatedGame = null;
+    if (fieldToSellBranch.amountOfBranches === 4) {
+      await this.increaseHotels(player.game.id, 1);
+      updatedGame = await this.decreaseHouses(player.game.id, 4);
+    } else {
+      updatedGame = await this.increaseHouses(player.game.id, 1);
+    }
+    await this.fieldService.updateById(fieldToSellBranch._id, {
+      amountOfBranches: fieldToSellBranch.amountOfBranches,
+    });
+    const fields = await this.fieldService.getGameFields(game.id);
+    return { updatedGame, fields };
+  }
+
+  async loseGame(userId: string, gameId: string, fields?: FieldDocument[]) {
+    if (!fields) {
+      fields = await this.fieldService.getGameFields(gameId);
+    }
+    this.timerService.clear(gameId);
+    const updatedPlayer = await this.playerService.updateLostGame(
+      userId,
+      gameId
+    );
+    const updatedGame = await this.updateById(gameId, {
+      dices: 'playerLost',
+    });
+    fields.forEach((field) => {
+      if (field.ownedBy === updatedPlayer.userId) {
+        field.ownedBy = null;
+        field.amountOfBranches = 0;
+        field.isPledged = false;
+        field.turnsToUnpledge = null;
+      }
+    });
+    await this.fieldService.updateFields(fields, ['ownedBy']);
+    if (this.hasWinner(updatedPlayer.game)) {
+      this.timerService.clear(updatedPlayer.game.id);
+      const game = await this.updateById(updatedPlayer.game.id, {
+        status: 'FINISHED',
+      });
+      this.webSocketProvider.server.to(game.id).emit('playerWon', { game });
+      return { updatedPlayer, fields };
+    }
+    this.passTurnToNext(updatedGame);
+    return { updatedPlayer, updatedFields: fields };
   }
 }
