@@ -980,4 +980,14 @@ export class GameService {
     this.passTurnToNext(updatedGame);
     return { updatedPlayer, updatedFields: fields };
   }
+
+  pledgeField(game: Partial<GamePayload>, index: number, userId?: string) {
+    const auction = this.auctionService.auctions.get(game.id);
+    const secretInfo = this.secretService.secrets.get(game.id);
+    if (auction || secretInfo)
+      throw new WsException(
+        'You cant pledge field while auction or secret is active'
+      );
+    return this.playerService.pledgeField(game, index, userId);
+  }
 }

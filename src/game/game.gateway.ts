@@ -330,4 +330,21 @@ export class GameGateway {
       fields: updatedFields,
     });
   }
+
+  @SubscribeMessage('pledgeField')
+  async pledgeField(
+    @ConnectedSocket()
+    socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
+    @MessageBody('index') index: number
+  ) {
+    const game = socket.game;
+    const { player, fields } = await this.gameService.pledgeField(
+      game,
+      index,
+      socket.jwtPayload.sub
+    );
+    this.server
+      .to(game.id)
+      .emit('updateGameData', { fields, game: player.game });
+  }
 }

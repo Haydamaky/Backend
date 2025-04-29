@@ -13,6 +13,7 @@ import { GamePayload } from 'src/game/game.repository';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
 import { PlayerService } from './player.service';
+import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 
 @WebSocketGateway({
   cors: {
@@ -31,22 +32,6 @@ export class PlayerGateway {
   constructor(private readonly playerService: PlayerService) {}
   @WebSocketServer()
   private server: Server;
-
-  @SubscribeMessage('pledgeField')
-  async pledgeField(
-    @ConnectedSocket()
-    socket: Socket & { game: Partial<GamePayload> },
-    @MessageBody('index') index: number
-  ) {
-    const game = socket.game;
-    const { player, fields } = await this.playerService.pledgeField(
-      game,
-      index
-    );
-    this.server
-      .to(game.id)
-      .emit('updateGameData', { fields, game: player.game });
-  }
 
   @UseGuards(TurnGuard)
   @SubscribeMessage('payRedemptionForField')
