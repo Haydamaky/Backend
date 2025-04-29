@@ -7,10 +7,8 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { HasLostGuard, TurnGuard } from 'src/auth/guard';
-import { ActiveGameGuard } from 'src/auth/guard/activeGame.guard';
+import { ValidPlayerGuard, TurnGuard } from 'src/auth/guard';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
-import { FieldService } from 'src/field/field.service';
 import { GamePayload } from 'src/game/game.repository';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
@@ -28,7 +26,7 @@ import { PlayerService } from './player.service';
 })
 @UseFilters(WebsocketExceptionsFilter)
 @UsePipes(new WsValidationPipe())
-@UseGuards(WsGuard, ActiveGameGuard, HasLostGuard)
+@UseGuards(WsGuard, ValidPlayerGuard)
 export class PlayerGateway {
   constructor(private readonly playerService: PlayerService) {}
   @WebSocketServer()

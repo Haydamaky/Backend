@@ -17,10 +17,7 @@ import {
 import { parse } from 'cookie';
 import { Server, Socket } from 'socket.io';
 import { AuctionService } from 'src/auction/auction.service';
-import { HasLostGuard } from 'src/auth/guard';
-import { ActiveGameGuard } from 'src/auth/guard/activeGame.guard';
-import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
-import { TurnGuard } from 'src/auth/guard/turn.guard';
+import { ValidPlayerGuard, WsGuard, TurnGuard } from 'src/auth/guard';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 import { FieldService } from 'src/field/field.service';
 import { PaymentService } from 'src/payment/payment.service';
@@ -184,7 +181,7 @@ export class GameGateway {
     }
   }
 
-  @UseGuards(ActiveGameGuard, TurnGuard, HasLostGuard)
+  @UseGuards(ValidPlayerGuard, TurnGuard)
   @SubscribeMessage('rollDice')
   async onRollDice(
     @ConnectedSocket()
@@ -193,7 +190,7 @@ export class GameGateway {
     await this.gameService.rollDice(socket.game);
   }
 
-  @UseGuards(ActiveGameGuard, HasLostGuard)
+  @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('payToUserForSecret')
   async onPayToUserForSecret(
     @ConnectedSocket()
@@ -212,7 +209,7 @@ export class GameGateway {
     });
   }
 
-  @UseGuards(ActiveGameGuard, HasLostGuard)
+  @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('payToBank')
   async onPayToBank(
     @ConnectedSocket()
@@ -221,7 +218,7 @@ export class GameGateway {
     await this.gameService.payToBank(socket.jwtPayload.sub, socket.game);
   }
 
-  @UseGuards(ActiveGameGuard, TurnGuard, HasLostGuard)
+  @UseGuards(ValidPlayerGuard, TurnGuard)
   @SubscribeMessage('payForField')
   async onPayForField(
     @ConnectedSocket()
@@ -230,7 +227,7 @@ export class GameGateway {
     await this.gameService.payForField(socket.game);
   }
 
-  @UseGuards(ActiveGameGuard, TurnGuard, HasLostGuard)
+  @UseGuards(ValidPlayerGuard, TurnGuard)
   @SubscribeMessage('putUpForAuction')
   async onPutUpForAuction(
     @ConnectedSocket()
@@ -239,7 +236,7 @@ export class GameGateway {
     await this.gameService.putUpForAuction(socket.game);
   }
 
-  @UseGuards(ActiveGameGuard, HasLostGuard)
+  @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('raisePrice')
   async raisePrice(
     @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
@@ -251,7 +248,7 @@ export class GameGateway {
     await this.auctionService.raisePrice(gameId, userId, raiseBy, bidAmount);
   }
 
-  @UseGuards(ActiveGameGuard, HasLostGuard)
+  @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('refuseAuction')
   async refuseAuction(
     @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
@@ -261,7 +258,7 @@ export class GameGateway {
     await this.auctionService.refuseAuction(gameId, userId);
   }
 
-  @UseGuards(ActiveGameGuard, TurnGuard, HasLostGuard)
+  @UseGuards(ValidPlayerGuard, TurnGuard)
   @SubscribeMessage('buyField')
   async onBuyField(
     @ConnectedSocket()
@@ -270,7 +267,7 @@ export class GameGateway {
     await this.gameService.buyField(socket.game);
   }
 
-  @UseGuards(ActiveGameGuard, TurnGuard, HasLostGuard)
+  @UseGuards(ValidPlayerGuard, TurnGuard)
   @SubscribeMessage('passTurn')
   async onPassTurn(
     @ConnectedSocket()

@@ -1,10 +1,9 @@
 import { CanActivate, Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
-import { GameService } from 'src/game/game.service';
 
 @Injectable()
 export class TurnGuard implements CanActivate {
-  constructor(private gameService: GameService) {}
+  constructor() {}
 
   async canActivate(context: any): Promise<boolean | any> {
     const client = context.switchToWs().getClient();

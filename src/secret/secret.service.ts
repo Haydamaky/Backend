@@ -111,7 +111,7 @@ export class SecretService {
           this.playerService.estimateAssets(player, fields) <
           secretInfo.amounts[0]
         ) {
-          await this.playerService.loseGame(player.userId, game.id, fields);
+          await this.gameService.loseGame(player.userId, game.id, fields);
           return;
         }
         const { updatedGame } = await this.paymentService.transferWithBank(
@@ -137,7 +137,7 @@ export class SecretService {
           this.playerService.estimateAssets(player, fields) <
           secretInfo.amounts[1]
         ) {
-          await this.playerService.loseGame(player.userId, game.id, fields);
+          await this.gameService.loseGame(player.userId, game.id, fields);
           return;
         }
         const { updatedGame } = await this.paymentService.transferWithBank(

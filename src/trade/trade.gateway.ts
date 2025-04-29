@@ -7,15 +7,13 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
-import { HasLostGuard, TurnGuard } from 'src/auth/guard';
+import { ValidPlayerGuard, TurnGuard } from 'src/auth/guard';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 import { GamePayload } from 'src/game/game.repository';
 import { OfferTradeDto } from './dto/offer-trade.dto';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
-import { ActiveGameGuard } from 'src/auth/guard/activeGame.guard';
-import { PlayerService } from 'src/player/player.service';
 import { AuctionService } from 'src/auction/auction.service';
 import { TradeService } from './trade.service';
 import { WebSocketProvider } from 'src/webSocketProvider/webSocketProvider.service';
@@ -34,7 +32,7 @@ import { Trade } from 'src/game/types/trade.type';
 })
 @UseFilters(WebsocketExceptionsFilter)
 @UsePipes(new WsValidationPipe())
-@UseGuards(WsGuard, ActiveGameGuard, HasLostGuard)
+@UseGuards(WsGuard, ValidPlayerGuard)
 export class TradeGateway {
   constructor(
     private auctionService: AuctionService,

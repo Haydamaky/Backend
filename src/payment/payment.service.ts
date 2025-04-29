@@ -2,6 +2,7 @@ import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { FieldService } from 'src/field/field.service';
 import { GamePayload } from 'src/game/game.repository';
+import { GameService } from 'src/game/game.service';
 import { PlayerService } from 'src/player/player.service';
 import { SecretService } from 'src/secret/secret.service';
 import { TimerService } from 'src/timer/timers.service';
@@ -13,7 +14,9 @@ export class PaymentService {
     private secretService: SecretService,
     private playerService: PlayerService,
     private timerService: TimerService,
-    private fieldService: FieldService
+    private fieldService: FieldService,
+    @Inject(forwardRef(() => GameService))
+    private gameService: GameService
   ) {}
   async payToUserForSecret({
     game,
@@ -42,7 +45,7 @@ export class PaymentService {
         game.id,
         this.playerService.estimateAssets(userToPay, fields)
       );
-      await this.playerService.loseGame(player.userId, game.id, fields);
+      await this.gameService.loseGame(player.userId, game.id, fields);
     } else {
       await this.playerService.incrementMoneyWithUserAndGameId(
         userId,
@@ -108,12 +111,11 @@ export class PaymentService {
     const fields = await this.fieldService.getGameFields(game.id);
     if (currentPlayer.money < amount) {
       // We can add pledging of last owned field or smt to not make player lose immidiately
-      const { updatedPlayer, updatedFields } =
-        await this.playerService.loseGame(
-          currentPlayer.userId,
-          game.id,
-          fields
-        );
+      const { updatedPlayer, updatedFields } = await this.gameService.loseGame(
+        currentPlayer.userId,
+        game.id,
+        fields
+      );
       return { updatedGame: updatedPlayer.game, fields: updatedFields };
     }
     const playerWhoPayed =
