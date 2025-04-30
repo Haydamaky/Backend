@@ -175,6 +175,11 @@ export class PlayerService {
     return player;
   }
 
+  findPlayerWithUserId(game: Partial<GamePayload>, userId: string) {
+    const player = game.players.find((player) => player.userId === userId);
+    return player;
+  }
+
   async checkWhetherPlayerHasAllGroup(
     game: Partial<GamePayload>,
     index: number,
@@ -287,30 +292,30 @@ export class PlayerService {
     return { player, fields };
   }
 
-  async payRedemptionForField(
+  async unmortgageField(
     game: Partial<GamePayload>,
     index: number,
     userId?: string
   ) {
     const playerUserId = userId ? userId : game.turnOfUserId;
     const fields = await this.fieldService.getGameFields(game.id);
-    const fieldToPayRedemption = this.fieldService.findPlayerFieldByIndex(
+    const fieldToUnmortgage = this.fieldService.findPlayerFieldByIndex(
       fields,
       index
     );
-    if (!fieldToPayRedemption.isPledged) {
+    if (!fieldToUnmortgage.isPledged) {
       throw new WsException('Field is not pledged');
     }
-    fieldToPayRedemption.isPledged = false;
-    fieldToPayRedemption.turnsToUnpledge = null;
-    await this.fieldService.updateById(fieldToPayRedemption._id, {
+    fieldToUnmortgage.isPledged = false;
+    fieldToUnmortgage.turnsToUnpledge = null;
+    await this.fieldService.updateById(fieldToUnmortgage._id, {
       isPledged: false,
       turnsToUnpledge: null,
     });
     const player = await this.decrementMoneyWithUserAndGameId(
       playerUserId,
       game.id,
-      fieldToPayRedemption.redemptionPrice
+      fieldToUnmortgage.redemptionPrice
     );
     return { player, fields };
   }
@@ -344,5 +349,10 @@ export class PlayerService {
   validatePlayerMoney(player: Partial<PlayerPayload>, moneyNeeded: number) {
     if (!player) throw new WsException('No such player');
     if (player.money <= moneyNeeded) throw new WsException('Not enough money');
+  }
+
+  choseRandomPlayer(players: Partial<PlayerPayload[]>) {
+    const randomIndex = Math.floor(Math.random() * players.length);
+    return players[randomIndex];
   }
 }

@@ -137,7 +137,9 @@ export class GameGateway {
     const auction = this.auctionService.auctions.get(game.id);
     const secretInfo = this.secretService.secrets.get(game.id);
     const fields = await this.fieldService.getGameFields(game.id);
-    this.server.emit('gameData', { game, fields, auction, secretInfo });
+    this.server
+      .to(gameId)
+      .emit('gameData', { game, fields, auction, secretInfo });
   }
 
   @SubscribeMessage('createGame')
@@ -191,6 +193,18 @@ export class GameGateway {
   }
 
   @UseGuards(ValidPlayerGuard)
+  @SubscribeMessage('payToBankForSpecialField')
+  async onPayToBankForSpecialField(
+    @ConnectedSocket()
+    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
+  ) {
+    await this.gameService.payToBankForSpecialField(
+      socket.jwtPayload.sub,
+      socket.game
+    );
+  }
+
+  @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('payToUserForSecret')
   async onPayToUserForSecret(
     @ConnectedSocket()
@@ -199,7 +213,7 @@ export class GameGateway {
     const game = socket.game;
     const userId = socket.jwtPayload.sub;
     const { game: updatedGame, secretInfo } =
-      await this.paymentService.payToUserForSecret({
+      await this.gameService.payToUserForSecret({
         game,
         userId,
       });
@@ -210,21 +224,23 @@ export class GameGateway {
   }
 
   @UseGuards(ValidPlayerGuard)
-  @SubscribeMessage('payToBank')
-  async onPayToBank(
+  @SubscribeMessage('payToBankForSecret')
+  async onPayToBankForSecret(
     @ConnectedSocket()
     socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
   ) {
-    await this.gameService.payToBank(socket.jwtPayload.sub, socket.game);
+    const game = socket.game;
+    const userId = socket.jwtPayload.sub;
+    await this.gameService.payToBankForSecret(game, userId);
   }
 
   @UseGuards(ValidPlayerGuard, TurnGuard)
-  @SubscribeMessage('payForField')
-  async onPayForField(
+  @SubscribeMessage('payForPrivateField')
+  async onPayForPrivateField(
     @ConnectedSocket()
     socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
   ) {
-    await this.gameService.payForField(socket.game);
+    await this.gameService.payForPrivateField(socket.game);
   }
 
   @UseGuards(ValidPlayerGuard, TurnGuard)
@@ -331,14 +347,14 @@ export class GameGateway {
     });
   }
 
-  @SubscribeMessage('pledgeField')
-  async pledgeField(
+  @SubscribeMessage('mortgageField')
+  async onMortgageField(
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
     @MessageBody('index') index: number
   ) {
     const game = socket.game;
-    const { player, fields } = await this.gameService.pledgeField(
+    const { player, fields } = await this.gameService.mortgageField(
       game,
       index,
       socket.jwtPayload.sub

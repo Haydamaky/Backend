@@ -1,20 +1,24 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { WsException } from '@nestjs/websockets';
 import { Player } from '@prisma/client';
 import { ChatService } from 'src/chat/chat.service';
 import { FieldService } from 'src/field/field.service';
 import { GamePayload } from 'src/game/game.repository';
 import { GameService } from 'src/game/game.service';
+import { TwoPlayersInvolvedHandler } from 'src/game/handlers/twoPlayersInvolved.handler';
 import { SecretInfo } from 'src/game/types/secretInfo.type';
 import { PaymentService } from 'src/payment/payment.service';
 import { PlayerService } from 'src/player/player.service';
 import secretFields, { SecretType } from 'src/utils/fields/secretFields';
+import { SecretAnalyzer } from './secretAnalyzer';
+import { HandlerChain } from 'src/common/handlerChain';
+import { OnePlayerInvolvedHandler } from 'src/game/handlers/onePlayerInvolved.handler';
+import { AllPlayersInvolvedHandler } from 'src/game/handlers/allPlayersInvolved.handler';
 
 @Injectable()
 export class SecretService {
   readonly secrets: Map<string, SecretInfo> = new Map();
   constructor(
-    @Inject(forwardRef(() => GameService))
-    private gameService: GameService,
     private chatService: ChatService,
     private fieldService: FieldService,
     private playerService: PlayerService,
@@ -81,11 +85,89 @@ export class SecretService {
     }
   }
 
+  async payToUserForSecret({
+    game,
+    userId,
+  }: {
+    game: Partial<GamePayload>;
+    userId: string;
+  }) {
+    let secretInfo = this.secrets.get(game.id);
+    if (!secretInfo.users.includes(userId))
+      throw new WsException('You cant pay for that secret');
+    const amount = secretInfo.amounts[1];
+    if (amount > 0)
+      throw new WsException('You dont have to pay for this secret field');
+    const userToGetId = secretInfo.users[0];
+    const indexOfUser = secretInfo.users.indexOf(userId);
+    const player = game.players.find((player) => player.userId === userId);
+    const fields = await this.fieldService.getGameFields(game.id);
+    let updatedPlayer = null;
+    let loseGame = false;
+    if (player.money < amount) {
+      loseGame = true;
+      updatedPlayer = await this.playerService.incrementMoneyWithUserAndGameId(
+        userToGetId,
+        game.id,
+        this.playerService.estimateAssets(player, fields)
+      );
+    } else {
+      updatedPlayer = await this.playerService.incrementMoneyWithUserAndGameId(
+        userToGetId,
+        game.id,
+        amount
+      );
+      await this.playerService.decrementMoneyWithUserAndGameId(
+        userId,
+        game.id,
+        amount
+      );
+    }
+    secretInfo.users.splice(indexOfUser, 1, '');
+    if (
+      secretInfo.users.every((userId, index) => {
+        if (secretInfo.amounts[index] > 0) return true;
+        return userId === '';
+      })
+    ) {
+      secretInfo = null;
+    }
+
+    return { game: updatedPlayer.game, secretInfo, loseGame };
+  }
+
+  async payAllforSecret(game: Partial<GamePayload>) {
+    const secretInfo = this.secrets.get(game.id);
+    let updatedPlayer = null;
+    for (const userId of secretInfo.users) {
+      const firstUser = secretInfo.users[0];
+      if (userId && userId !== firstUser) {
+        if (secretInfo.amounts.length === 2) {
+          updatedPlayer = await this.payToUserForSecret({
+            game,
+            userId,
+          });
+        }
+
+        if (secretInfo.amounts.length === 1) {
+          const { playerWhoPayed } = await this.paymentService.transferWithBank(
+            game,
+            userId,
+            secretInfo.amounts[0]
+          );
+          updatedPlayer = playerWhoPayed;
+        }
+      }
+    }
+    this.secrets.delete(game.id);
+    return updatedPlayer.game || game;
+  }
+
   async handleSecretWithMessage(game: Partial<GamePayload>) {
     const secret = this.choseRandomSecret();
     const secretInfo = await this.parseAndSaveSecret(secret, game);
     if (secretInfo.text.includes('$RANDOM_PLAYER$')) {
-      const randomPlayer = this.gameService.choseRandomPlayer(game.players);
+      const randomPlayer = this.playerService.choseRandomPlayer(game.players);
       secretInfo.text = secretInfo.text.replace(
         '$RANDOM_PLAYER$',
         randomPlayer?.user.nickname
@@ -111,8 +193,7 @@ export class SecretService {
           this.playerService.estimateAssets(player, fields) <
           secretInfo.amounts[0]
         ) {
-          await this.gameService.loseGame(player.userId, game.id, fields);
-          return;
+          return { loseGame: true, userId: player.userId, fields };
         }
         const { updatedGame } = await this.paymentService.transferWithBank(
           game,
@@ -137,8 +218,7 @@ export class SecretService {
           this.playerService.estimateAssets(player, fields) <
           secretInfo.amounts[1]
         ) {
-          await this.gameService.loseGame(player.userId, game.id, fields);
-          return;
+          return { loseGame: true, userId: player.userId, fields };
         }
         const { updatedGame } = await this.paymentService.transferWithBank(
           game,
@@ -157,6 +237,32 @@ export class SecretService {
       }
     }
     secretInfo = null;
-    return updatedGameToReturn;
+    return {
+      loseGame: false,
+      fields,
+      updatedGame: updatedGameToReturn,
+    };
+  }
+
+  async payToBankForSecret(game: Partial<GamePayload>, userId: string) {
+    const secretInfo = this.secrets.get(game.id);
+    if (!secretInfo) throw new WsException('No secret found');
+    if (!secretInfo.users.includes(userId)) {
+      throw new WsException(
+        'You cant pay to bank because no user in secretInfo'
+      );
+    }
+    const secretAnalyzer = new SecretAnalyzer(secretInfo, userId);
+    const chain = new HandlerChain();
+    chain.addHandlers(
+      new OnePlayerInvolvedHandler(secretAnalyzer),
+      new TwoPlayersInvolvedHandler(secretAnalyzer, this),
+      new AllPlayersInvolvedHandler(secretAnalyzer)
+    );
+    chain.process();
+    const lastAmount = secretInfo.amounts[secretInfo.amounts.length - 1];
+    const indexOfUser = this.findIndexOfUserIdInSecretInfo(secretInfo, userId);
+    secretInfo.users[indexOfUser] = '';
+    return lastAmount;
   }
 }

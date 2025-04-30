@@ -2,26 +2,23 @@ import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { ChatType, Prisma } from '@prisma/client';
 import { AuctionService } from 'src/auction/auction.service';
+import { HandlerChain } from 'src/common/handlerChain';
 import { FieldService } from 'src/field/field.service';
 import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
+import { PaymentService } from 'src/payment/payment.service';
 import { PlayerPayload } from 'src/player/player.repository';
 import { PlayerService } from 'src/player/player.service';
 import { FieldDocument } from 'src/schema/Field.schema';
-import { TimerService } from 'src/timer/timers.service';
-import { DEFAULT_FIELDS } from 'src/utils/fields';
-import { GamePayload, GameRepository } from './game.repository';
-import { HandlerChain } from 'src/common/handlerChain';
-import { PassTurnHandler } from './handlers/PassTurn.handler';
-import { ProcessSpecialHandler } from './handlers/ProcessSpecial.handler';
-import { SteppedOnPrivateHandler } from './handlers/SteppedOnPrivate.handler';
-import { PutUpForAuctionHandler } from './handlers/PutUpForAuction.handler';
 import { SecretService } from 'src/secret/secret.service';
 import { SecretAnalyzer } from 'src/secret/secretAnalyzer';
-import { OnePlayerInvolvedHandler } from './handlers/onePlayerInvolved.handler';
-import { TwoPlayersInvolvedHandler } from './handlers/twoPlayersInvolved.handler';
-import { AllPlayersInvolvedHandler } from './handlers/allPlayersInvolved.handler';
-import { PaymentService } from 'src/payment/payment.service';
+import { TimerService } from 'src/timer/timers.service';
+import { DEFAULT_FIELDS } from 'src/utils/fields';
 import { WebSocketProvider } from 'src/webSocketProvider/webSocketProvider.service';
+import { GamePayload, GameRepository } from './game.repository';
+import { PassTurnHandler } from './handlers/PassTurn.handler';
+import { ProcessSpecialHandler } from './handlers/ProcessSpecial.handler';
+import { PutUpForAuctionHandler } from './handlers/PutUpForAuction.handler';
+import { SteppedOnPrivateHandler } from './handlers/SteppedOnPrivate.handler';
 @Injectable()
 export class GameService {
   constructor(
@@ -44,7 +41,7 @@ export class GameService {
     this.processPayingForField = this.processPayingForField.bind(this);
     this.transferWithBank = this.transferWithBank.bind(this);
     this.payAll = this.payAll.bind(this);
-    this.payForField = this.payForField.bind(this);
+    this.payForPrivateField = this.payForPrivateField.bind(this);
     this.resolveTwoUsers = this.resolveTwoUsers.bind(this);
   }
 
@@ -399,7 +396,7 @@ export class GameService {
   }
 
   async payAll(game: Partial<GamePayload>) {
-    const updatedGame = await this.paymentService.payAllforSecret(game);
+    const updatedGame = await this.secretService.payAllforSecret(game);
     this.webSocketProvider.server.to(game.id).emit('updatePlayers', {
       game: updatedGame,
     });
@@ -407,8 +404,13 @@ export class GameService {
   }
 
   async resolveTwoUsers(game: Partial<GamePayload>) {
-    const updatedGame = await this.secretService.resolveTwoUsers(game);
-    this.passTurnToNext(updatedGame);
+    const { userId, loseGame, fields, updatedGame } =
+      await this.secretService.resolveTwoUsers(game);
+    let gameAfterLoss = null;
+    if (loseGame) {
+      gameAfterLoss = await this.loseGame(userId, game.id, fields);
+    }
+    this.passTurnToNext(gameAfterLoss || updatedGame);
   }
 
   async transferWithBank(argsObj: {
@@ -432,44 +434,17 @@ export class GameService {
     }
   }
 
-  async payToBank(userId: string, game: Partial<GamePayload>) {
+  async payToBankForSpecialField(userId: string, game: Partial<GamePayload>) {
     const currentField = await this.findCurrentFieldWithUserId(game);
-    const secretInfo = this.secretService.secrets.get(game.id);
-    if (!game.dices && !currentField.toPay && !secretInfo)
+    if (!game.dices && !currentField.toPay)
       throw new WsException(
-        'You cant pay for that field because smt is missing'
+        'You cant pay for that field because its not special field'
       );
-    if (currentField.toPay) {
-      return this.transferWithBank({
-        game: game,
-        userId,
-        amount: currentField.toPay,
-      });
-    }
-    if (!secretInfo.users.includes(userId)) {
-      throw new WsException(
-        'You cant pay to bank because no user in secretInfo'
-      );
-    }
-    const secretAnalyzer = new SecretAnalyzer(secretInfo, userId);
-    const chain = new HandlerChain();
-    chain.addHandlers(
-      new OnePlayerInvolvedHandler(secretAnalyzer),
-      new TwoPlayersInvolvedHandler(secretAnalyzer, this.secretService),
-      new AllPlayersInvolvedHandler(secretAnalyzer)
-    );
-    chain.process();
-    const lastAmount = secretInfo.amounts[secretInfo.amounts.length - 1];
-    await this.transferWithBank({
+    return this.transferWithBank({
       game: game,
       userId,
-      amount: lastAmount,
+      amount: currentField.toPay,
     });
-    const indexOfUser = this.secretService.findIndexOfUserIdInSecretInfo(
-      secretInfo,
-      userId
-    );
-    secretInfo.users[indexOfUser] = '';
   }
 
   async steppedOnPrivateField({ currentPlayer, field, game }: FieldAnalyzer) {
@@ -478,7 +453,12 @@ export class GameService {
       this.playerService.estimateAssets(currentPlayer, fields) >=
       field.income[field.amountOfBranches]
     ) {
-      this.timerService.set(game.id, game.timeOfTurn, game, this.payForField);
+      this.timerService.set(
+        game.id,
+        game.timeOfTurn,
+        game,
+        this.payForPrivateField
+      );
       return;
     }
     const { updatedPlayer } = await this.loseGame(
@@ -634,11 +614,6 @@ export class GameService {
     };
   }
 
-  choseRandomPlayer(players: Partial<PlayerPayload[]>) {
-    const randomIndex = Math.floor(Math.random() * players.length);
-    return players[randomIndex];
-  }
-
   async findCurrentFieldWithUserId(game: Partial<GamePayload>) {
     const player = this.playerService.findPlayerWithTurn(game);
     const fields = await this.fieldService.getGameFields(game.id);
@@ -732,7 +707,7 @@ export class GameService {
     this.timerService.set(game.id, game.timeOfTurn, updatedGame, this.rollDice);
   }
 
-  async payForField(game: Partial<GamePayload>) {
+  async payForPrivateField(game: Partial<GamePayload>) {
     const currentField = await this.findCurrentFieldWithUserId(game);
     if (!game.dices || !currentField.ownedBy)
       throw new WsException('You cant pay for that field');
@@ -981,7 +956,7 @@ export class GameService {
     return { updatedPlayer, updatedFields: fields };
   }
 
-  pledgeField(game: Partial<GamePayload>, index: number, userId?: string) {
+  mortgageField(game: Partial<GamePayload>, index: number, userId?: string) {
     const auction = this.auctionService.auctions.get(game.id);
     const secretInfo = this.secretService.secrets.get(game.id);
     if (auction || secretInfo)
@@ -989,5 +964,39 @@ export class GameService {
         'You cant pledge field while auction or secret is active'
       );
     return this.playerService.pledgeField(game, index, userId);
+  }
+
+  async payToUserForSecret({
+    game,
+    userId,
+  }: {
+    game: Partial<GamePayload>;
+    userId: string;
+  }) {
+    const {
+      game: updatedGame,
+      secretInfo,
+      loseGame,
+    } = await this.secretService.payToUserForSecret({
+      game,
+      userId,
+    });
+    let gameAfterLoss = null;
+    if (loseGame) {
+      gameAfterLoss = await this.loseGame(userId, game.id);
+    }
+    return { game: loseGame ? gameAfterLoss : updatedGame, secretInfo };
+  }
+
+  async payToBankForSecret(game: Partial<GamePayload>, userId: string) {
+    const amountToPay = await this.secretService.payToBankForSecret(
+      game,
+      userId
+    );
+    await this.transferWithBank({
+      game: game,
+      userId,
+      amount: amountToPay,
+    });
   }
 }
