@@ -206,7 +206,7 @@ export class AuctionService {
       if (hasWinner) {
         this.winAuction({ ...auction, gameId });
       } else {
-        this.gameService.passTurnToNext(game);
+        this.gameService.passTurn(game);
       }
     }
     this.webSocketProvider.server
@@ -230,7 +230,7 @@ export class AuctionService {
     this.webSocketProvider.server
       .to(auction.gameId)
       .emit('wonAuction', { auction, game: updatedPlayer.game, fields });
-    this.gameService.passTurnToNext(updatedPlayer.game);
+    this.gameService.passTurn(updatedPlayer.game);
   }
 
   async processVictoryOfAuction(auction: Auction & { gameId: string }) {

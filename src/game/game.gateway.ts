@@ -1,10 +1,4 @@
-import {
-  forwardRef,
-  Inject,
-  UseFilters,
-  UseGuards,
-  UsePipes,
-} from '@nestjs/common';
+import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
@@ -17,12 +11,9 @@ import {
 import { parse } from 'cookie';
 import { Server, Socket } from 'socket.io';
 import { AuctionService } from 'src/auction/auction.service';
-import { ValidPlayerGuard, WsGuard, TurnGuard } from 'src/auth/guard';
+import { TurnGuard, ValidPlayerGuard, WsGuard } from 'src/auth/guard';
 import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
-import { FieldService } from 'src/field/field.service';
-import { PaymentService } from 'src/payment/payment.service';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
-import { SecretService } from 'src/secret/secret.service';
 import { TimerService } from 'src/timer/timers.service';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
 import { WebSocketProvider } from 'src/webSocketProvider/webSocketProvider.service';
@@ -50,11 +41,7 @@ export class GameGateway {
     private jwtService: JwtService,
     private configService: ConfigService,
     private auctionService: AuctionService,
-    private timerService: TimerService,
-    @Inject(forwardRef(() => SecretService))
-    private secretService: SecretService,
-    private paymentService: PaymentService,
-    private fieldService: FieldService
+    private timerService: TimerService
   ) {}
   @WebSocketServer()
   readonly server: Server;
@@ -133,10 +120,8 @@ export class GameGateway {
 
   @SubscribeMessage('getGameData')
   async onGetGameData(@GetGameId() gameId: string) {
-    const game = await this.gameService.getGame(gameId);
-    const auction = this.auctionService.auctions.get(game.id);
-    const secretInfo = this.secretService.secrets.get(game.id);
-    const fields = await this.fieldService.getGameFields(game.id);
+    const { game, fields, auction, secretInfo } =
+      await this.gameService.getGameData(gameId);
     this.server
       .to(gameId)
       .emit('gameData', { game, fields, auction, secretInfo });
@@ -213,10 +198,7 @@ export class GameGateway {
     const game = socket.game;
     const userId = socket.jwtPayload.sub;
     const { game: updatedGame, secretInfo } =
-      await this.gameService.payToUserForSecret({
-        game,
-        userId,
-      });
+      await this.gameService.payToUserForSecret(game, userId);
     this.server.to(game.id).emit('updatePlayers', {
       game: updatedGame,
       secretInfo,
@@ -289,7 +271,7 @@ export class GameGateway {
     @ConnectedSocket()
     socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
   ) {
-    await this.gameService.passTurnToNext(socket.game);
+    await this.gameService.passTurn(socket.game);
   }
 
   @SubscribeMessage('buyBranch')

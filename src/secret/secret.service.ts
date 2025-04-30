@@ -85,13 +85,7 @@ export class SecretService {
     }
   }
 
-  async payToUserForSecret({
-    game,
-    userId,
-  }: {
-    game: Partial<GamePayload>;
-    userId: string;
-  }) {
+  async payToUserForSecret(game: Partial<GamePayload>, userId: string) {
     let secretInfo = this.secrets.get(game.id);
     if (!secretInfo.users.includes(userId))
       throw new WsException('You cant pay for that secret');
@@ -143,10 +137,7 @@ export class SecretService {
       const firstUser = secretInfo.users[0];
       if (userId && userId !== firstUser) {
         if (secretInfo.amounts.length === 2) {
-          updatedPlayer = await this.payToUserForSecret({
-            game,
-            userId,
-          });
+          updatedPlayer = await this.payToUserForSecret(game, userId);
         }
 
         if (secretInfo.amounts.length === 1) {

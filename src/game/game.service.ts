@@ -37,7 +37,7 @@ export class GameService {
     this.passTurnToUser = this.passTurnToUser.bind(this);
     this.rollDice = this.rollDice.bind(this);
     this.putUpForAuction = this.putUpForAuction.bind(this);
-    this.passTurnToNext = this.passTurnToNext.bind(this);
+    this.passTurn = this.passTurn.bind(this);
     this.processPayingForField = this.processPayingForField.bind(this);
     this.transferWithBank = this.transferWithBank.bind(this);
     this.payAll = this.payAll.bind(this);
@@ -64,6 +64,14 @@ export class GameService {
         },
       },
     });
+  }
+
+  async getGameData(gameId: string) {
+    const game = await this.getGame(gameId);
+    const auction = this.auctionService.auctions.get(game.id);
+    const secretInfo = this.secretService.secrets.get(game.id);
+    const fields = await this.fieldService.getGameFields(game.id);
+    return { game, auction, secretInfo, fields };
   }
 
   async createGame(userId: string) {
@@ -330,7 +338,7 @@ export class GameService {
     const chain = new HandlerChain();
     chain.addHandlers(
       new PassTurnHandler(fieldAnalyzer, () => {
-        this.timerService.set(game.id, 2500, game, this.passTurnToNext);
+        this.timerService.set(game.id, 2500, game, this.passTurn);
       }),
       new ProcessSpecialHandler(fieldAnalyzer, () => {
         this.processSpecialField(game, playerNextField);
@@ -400,7 +408,7 @@ export class GameService {
     this.webSocketProvider.server.to(game.id).emit('updatePlayers', {
       game: updatedGame,
     });
-    this.passTurnToNext(updatedGame);
+    this.passTurn(updatedGame);
   }
 
   async resolveTwoUsers(game: Partial<GamePayload>) {
@@ -410,7 +418,7 @@ export class GameService {
     if (loseGame) {
       gameAfterLoss = await this.loseGame(userId, game.id, fields);
     }
-    this.passTurnToNext(gameAfterLoss || updatedGame);
+    this.passTurn(gameAfterLoss || updatedGame);
   }
 
   async transferWithBank(argsObj: {
@@ -425,7 +433,7 @@ export class GameService {
     );
     const secretInfo = this.secretService.secrets.get(updatedGame.id);
     if (!secretInfo) {
-      await this.passTurnToNext(updatedGame);
+      await this.passTurn(updatedGame);
     } else {
       this.webSocketProvider.server.to(updatedGame.id).emit('updatePlayers', {
         game: updatedGame,
@@ -466,7 +474,7 @@ export class GameService {
       game.id,
       fields
     );
-    await this.passTurnToNext(updatedPlayer.game);
+    await this.passTurn(updatedPlayer.game);
   }
 
   async putUpForAuction(game: Partial<GamePayload>) {
@@ -475,7 +483,7 @@ export class GameService {
     this.webSocketProvider.server
       .to(game.id)
       .emit('hasPutUpForAuction', { game: updatedGame, auction });
-    this.timerService.set(game.id, 15000, updatedGame, this.passTurnToNext);
+    this.timerService.set(game.id, 15000, updatedGame, this.passTurn);
   }
 
   async findCurrentFieldFromGame(game: Partial<GamePayload>) {
@@ -625,7 +633,7 @@ export class GameService {
 
   async buyField(game: Partial<GamePayload>) {
     await this.processBuyField(game);
-    this.passTurnToNext(game);
+    this.passTurn(game);
   }
 
   async processBuyField(game: Partial<GamePayload>) {
@@ -662,7 +670,7 @@ export class GameService {
     return game.players.filter((player) => !player.lost);
   }
 
-  async passTurnToNext(game: Partial<GamePayload>, fromEvent: boolean = false) {
+  async passTurn(game: Partial<GamePayload>, fromEvent: boolean = false) {
     const fields = await this.fieldService.getGameFields(game.id);
     const currentPlayer = this.playerService.findPlayerWithTurn(game);
     const currentField = this.fieldService.findPlayerFieldByIndex(
@@ -718,7 +726,7 @@ export class GameService {
       game: updatedGame,
       fields: updatedFields,
     });
-    this.passTurnToNext(updatedGame);
+    this.passTurn(updatedGame);
   }
 
   async processPayingForField(
@@ -952,7 +960,7 @@ export class GameService {
       this.webSocketProvider.server.to(game.id).emit('playerWon', { game });
       return { updatedPlayer, fields };
     }
-    this.passTurnToNext(updatedGame);
+    this.passTurn(updatedGame);
     return { updatedPlayer, updatedFields: fields };
   }
 
@@ -966,21 +974,12 @@ export class GameService {
     return this.playerService.pledgeField(game, index, userId);
   }
 
-  async payToUserForSecret({
-    game,
-    userId,
-  }: {
-    game: Partial<GamePayload>;
-    userId: string;
-  }) {
+  async payToUserForSecret(game: Partial<GamePayload>, userId: string) {
     const {
       game: updatedGame,
       secretInfo,
       loseGame,
-    } = await this.secretService.payToUserForSecret({
-      game,
-      userId,
-    });
+    } = await this.secretService.payToUserForSecret(game, userId);
     let gameAfterLoss = null;
     if (loseGame) {
       gameAfterLoss = await this.loseGame(userId, game.id);

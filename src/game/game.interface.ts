@@ -1,3 +1,0 @@
-interface IGameService {
-  rollDice: () => number;
-}

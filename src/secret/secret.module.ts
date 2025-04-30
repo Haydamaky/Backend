@@ -5,7 +5,6 @@ import { PlayerModule } from 'src/player/player.module';
 import { ChatModule } from 'src/chat/chat.module';
 import { FieldModule } from 'src/field/field.module';
 import { PaymentModule } from 'src/payment/payment.module';
-import { SecretGateway } from './secret.gateway';
 
 @Module({
   imports: [
@@ -15,7 +14,7 @@ import { SecretGateway } from './secret.gateway';
     FieldModule,
     forwardRef(() => PaymentModule),
   ],
-  providers: [SecretService, SecretGateway],
+  providers: [SecretService],
   exports: [SecretService],
 })
 export class SecretModule {}
