@@ -59,7 +59,6 @@ export class ChatGateway implements OnModuleInit {
     dataArray: [NewGameMessageDto, null]
   ) {
     const data = dataArray[0];
-    console.log({ data });
     const message = await this.chatService.onNewMessage(
       socket.jwtPayload.sub,
       data
@@ -69,8 +68,7 @@ export class ChatGateway implements OnModuleInit {
   }
 
   @SubscribeMessage('chatData')
-  async onChatData(@MessageBody() dataArray: [{ chatId: string }, null]) {
-    const data = dataArray[0];
+  async onChatData(@MessageBody() data: { chatId: string }) {
     const chat = await this.chatService.onChatData(data.chatId);
     return chat;
   }

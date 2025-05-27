@@ -7,7 +7,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 import { PlayerModule } from 'src/player/player.module';
 import { ChatModule } from 'src/chat/chat.module';
-import { EventModule } from 'src/event/event.module';
 import { WebSocketProviderModule } from 'src/webSocketProvider/webSocketProvider.module';
 import { GameController } from './game.controller';
 import { AuctionModule } from 'src/auction/auction.module';
@@ -24,7 +23,6 @@ import { FieldModule } from 'src/field/field.module';
     ConfigModule,
     ChatModule,
     forwardRef(() => PlayerModule),
-    EventModule,
     forwardRef(() => AuctionModule),
     TimerModule,
     forwardRef(() => SecretModule),

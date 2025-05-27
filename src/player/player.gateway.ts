@@ -33,7 +33,7 @@ export class PlayerGateway {
   @WebSocketServer()
   private server: Server;
 
-  @UseGuards(TurnGuard)
+  @UseGuards(TurnGuard, ValidPlayerGuard)
   @SubscribeMessage('unmortgageField')
   async onUnmortgageField(
     @ConnectedSocket()

@@ -281,6 +281,7 @@ export class GameGateway {
     await this.gameService.passTurn(socket.game);
   }
 
+  @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('buyBranch')
   async onBuyBranch(
     @ConnectedSocket()
@@ -301,6 +302,7 @@ export class GameGateway {
       .emit('updateGameData', { fields, game: updatedGame });
   }
 
+  @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('sellBranch')
   async onSellBranch(
     @ConnectedSocket()
@@ -321,6 +323,7 @@ export class GameGateway {
       .emit('updateGameData', { fields, game: updatedGame });
   }
 
+  @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('surrender')
   async surrender(
     @ConnectedSocket()
@@ -340,6 +343,7 @@ export class GameGateway {
     });
   }
 
+  @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('mortgageField')
   async onMortgageField(
     @ConnectedSocket()
