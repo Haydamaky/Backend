@@ -46,8 +46,9 @@ export class TradeGateway {
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
     @MessageBody()
-    data: OfferTradeDto
+    dataArray: [OfferTradeDto, null]
   ) {
+    const data = dataArray[0];
     const game = socket.game;
     const userId = socket.jwtPayload.sub;
     if (this.auctionService.getAuction(game.id))
