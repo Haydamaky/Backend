@@ -951,7 +951,12 @@ export class GameService {
         field.turnsToUnpledge = null;
       }
     });
-    await this.fieldService.updateFields(fields, ['ownedBy']);
+    await this.fieldService.updateFields(fields, [
+      'ownedBy',
+      'amountOfBranches',
+      'isPledged',
+      'turnsToUnpledge',
+    ]);
     if (this.hasWinner(updatedPlayer.game)) {
       this.timerService.clear(updatedPlayer.game.id);
       const game = await this.updateById(updatedPlayer.game.id, {
