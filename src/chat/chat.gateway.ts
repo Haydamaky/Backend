@@ -42,8 +42,9 @@ export class ChatGateway implements OnModuleInit {
   @SubscribeMessage('newMessage')
   async onNewMessage(
     socket: Socket & { jwtPayload: JwtPayload },
-    data: NewMessagePayloadDto
+    dataArray: [NewMessagePayloadDto, null]
   ) {
+    const data = dataArray[0];
     const message = await this.chatService.onNewMessage(
       socket.jwtPayload.sub,
       data
@@ -55,8 +56,9 @@ export class ChatGateway implements OnModuleInit {
   @SubscribeMessage('newGameMessage')
   async onNewGameMessage(
     socket: Socket & { jwtPayload: JwtPayload },
-    data: NewGameMessageDto
+    dataArray: [NewGameMessageDto, null]
   ) {
+    const data = dataArray[0];
     const message = await this.chatService.onNewMessage(
       socket.jwtPayload.sub,
       data
@@ -66,12 +68,14 @@ export class ChatGateway implements OnModuleInit {
   }
 
   @SubscribeMessage('chatData')
-  onChatData(@MessageBody() data: { chatId: string }) {
-    return this.chatService.onChatData(data.chatId);
+  async onChatData(@MessageBody() data: { chatId: string }) {
+    const chat = await this.chatService.onChatData(data.chatId);
+    return chat;
   }
 
   @SubscribeMessage('mutualChatData')
-  onMutualChatData() {
-    return this.chatService.onMutualChatData();
+  async onMutualChatData() {
+    const mutualChat = await this.chatService.onMutualChatData();
+    return mutualChat;
   }
 }
