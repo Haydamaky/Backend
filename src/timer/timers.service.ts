@@ -23,7 +23,7 @@ export class TimerService {
         } catch (err: unknown) {
           const error = err instanceof Error ? err : new Error(String(err));
           console.log('In Timer');
-          console.log(error.message);
+          console.log(error);
           reject(error);
         }
       }, time);

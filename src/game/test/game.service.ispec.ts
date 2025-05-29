@@ -1,24 +1,23 @@
-import {GameRepository} from "../game.repository";
-import {GameService} from "../game.service";
-import {PrismaService} from "../../prisma/prisma.service";
-import {UserModule} from "../../user/user.module";
-import {PlayerModule} from "../../player/player.module";
-import {Test} from "@nestjs/testing";
-import {JwtModule} from "@nestjs/jwt";
-import {ConfigModule} from "@nestjs/config";
-import {GameGateway} from "../game.gateway";
-import {WsException} from "@nestjs/websockets";
-import {fields} from "../../utils/fields";
-
+import { GameRepository } from '../game.repository';
+import { GameService } from '../game.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { UserModule } from '../../user/user.module';
+import { PlayerModule } from '../../player/player.module';
+import { Test } from '@nestjs/testing';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule } from '@nestjs/config';
+import { GameGateway } from '../game.gateway';
+import { WsException } from '@nestjs/websockets';
+import { fields } from '../../utils/fields';
 
 describe('GameService', () => {
   let gameService: GameService;
   let prismaService: PrismaService;
 
   beforeAll(async () => {
-    const module =  await Test.createTestingModule({
+    const module = await Test.createTestingModule({
       imports: [UserModule, JwtModule, ConfigModule, PlayerModule],
-      providers: [GameGateway, GameService, GameRepository]
+      providers: [GameGateway, GameService, GameRepository],
     }).compile();
 
     gameService = module.get<GameService>(GameService);
@@ -31,14 +30,25 @@ describe('GameService', () => {
         playersCapacity: 2,
       },
     });
-  })
+  });
 
   it('should allow a player to join a game and start the game if capacity is reached', async () => {
-
     const game = await prismaService.game.findFirst({});
 
-    const user1 = await prismaService.user.create({ data: { nickname: 'User1', email: 'user1@example.com', hash: 'hashedPassword1' } });
-    const user2 = await prismaService.user.create({ data: { nickname: 'User2', email: 'user2@example.com', hash: 'hashedPassword2' } });
+    const user1 = await prismaService.user.create({
+      data: {
+        nickname: 'User1',
+        email: 'user1@example.com',
+        hash: 'hashedPassword1',
+      },
+    });
+    const user2 = await prismaService.user.create({
+      data: {
+        nickname: 'User2',
+        email: 'user2@example.com',
+        hash: 'hashedPassword2',
+      },
+    });
 
     await gameService.onJoinGame(game.id, user1.id);
     const result = await gameService.onJoinGame(game.id, user2.id);
@@ -51,8 +61,8 @@ describe('GameService', () => {
     const game = await prismaService.game.findFirst({});
     const user = await prismaService.user.findFirst({
       where: {
-        email: 'user1@example.com'
-      }
+        email: 'user1@example.com',
+      },
     });
 
     await expect(gameService.raisePrice(game.id, user.id, 200)).rejects.toThrow(
@@ -64,8 +74,8 @@ describe('GameService', () => {
     const game = await prismaService.game.findFirst({});
     const user = await prismaService.user.findFirst({
       where: {
-        email: 'user1@example.com'
-      }
+        email: 'user1@example.com',
+      },
     });
 
     await expect(gameService.raisePrice(game.id, user.id, 200)).rejects.toThrow(
@@ -77,8 +87,8 @@ describe('GameService', () => {
     const game = await prismaService.game.findFirst({});
     const user = await prismaService.user.findFirst({
       where: {
-        email: 'user1@example.com'
-      }
+        email: 'user1@example.com',
+      },
     });
 
     await prismaService.player.updateMany({
@@ -88,8 +98,8 @@ describe('GameService', () => {
       data: {
         currentFieldIndex: 2,
         money: 1000,
-      }
-    })
+      },
+    });
 
     await gameService.putUpForAuction(game);
 
@@ -105,8 +115,8 @@ describe('GameService', () => {
     const game = await prismaService.game.findFirst({});
     const user = await prismaService.user.findFirst({
       where: {
-        email: 'user1@example.com'
-      }
+        email: 'user1@example.com',
+      },
     });
 
     await prismaService.player.updateMany({
@@ -115,8 +125,8 @@ describe('GameService', () => {
       },
       data: {
         currentFieldIndex: 2,
-      }
-    })
+      },
+    });
 
     await prismaService.player.update({
       where: {
@@ -127,21 +137,23 @@ describe('GameService', () => {
       },
       data: {
         money: 0,
-      }
-    })
+      },
+    });
 
     await gameService.putUpForAuction(game);
     const auction = gameService.getAuction(game.id);
     expect(auction).toBeDefined();
-    await expect(gameService.raisePrice(game.id, user.id, 200)).rejects.toThrow(new WsException('Not enough money'));
+    await expect(gameService.raisePrice(game.id, user.id, 200)).rejects.toThrow(
+      new WsException('Not enough money')
+    );
   });
 
   it('should throw an error if the raise amount is less than 100', async () => {
     const game = await prismaService.game.findFirst({});
     const user = await prismaService.user.findFirst({
       where: {
-        email: 'user1@example.com'
-      }
+        email: 'user1@example.com',
+      },
     });
 
     await prismaService.player.updateMany({
@@ -150,8 +162,8 @@ describe('GameService', () => {
       },
       data: {
         currentFieldIndex: 2,
-      }
-    })
+      },
+    });
 
     await gameService.putUpForAuction(game);
 
@@ -164,8 +176,8 @@ describe('GameService', () => {
     const game = await prismaService.game.findFirst({});
     const user = await prismaService.user.findFirst({
       where: {
-        email: 'user1@example.com'
-      }
+        email: 'user1@example.com',
+      },
     });
 
     await prismaService.player.updateMany({
@@ -174,8 +186,8 @@ describe('GameService', () => {
       },
       data: {
         currentFieldIndex: 2,
-      }
-    })
+      },
+    });
 
     await prismaService.player.update({
       where: {
@@ -186,7 +198,7 @@ describe('GameService', () => {
       },
       data: {
         money: 50,
-      }
+      },
     });
 
     await gameService.putUpForAuction(game);
@@ -204,17 +216,17 @@ describe('GameService', () => {
       },
       data: {
         currentFieldIndex: 2,
-      }
-    })
+      },
+    });
     const user1 = await prismaService.user.findFirst({
       where: {
-        email: 'user1@example.com'
-      }
+        email: 'user1@example.com',
+      },
     });
     const user2 = await prismaService.user.findFirst({
       where: {
-        email: 'user2@example.com'
-      }
+        email: 'user2@example.com',
+      },
     });
 
     await prismaService.player.update({
@@ -226,7 +238,7 @@ describe('GameService', () => {
       },
       data: {
         money: 5000,
-      }
+      },
     });
 
     await prismaService.player.update({
@@ -238,7 +250,7 @@ describe('GameService', () => {
       },
       data: {
         money: 5000,
-      }
+      },
     });
 
     await gameService.putUpForAuction(game);
@@ -253,13 +265,12 @@ describe('GameService', () => {
     expect(raisedAuction.auctionUpdated.userId).toEqual(user2.id);
   });
 
-
   it('should reset the auction timer after a price raise', async () => {
     const game = await prismaService.game.findFirst({});
     const user = await prismaService.user.findFirst({
       where: {
-        email: 'user1@example.com'
-      }
+        email: 'user1@example.com',
+      },
     });
 
     await prismaService.player.update({
@@ -271,7 +282,7 @@ describe('GameService', () => {
       },
       data: {
         money: 1000,
-      }
+      },
     });
 
     await gameService.putUpForAuction(game);
@@ -286,7 +297,6 @@ describe('GameService', () => {
   });
 
   describe('buyField tests', () => {
-
     it('should allow a player to buy a field if they have enough money', async () => {
       const game = await prismaService.game.findFirst({
         include: { players: true },
@@ -329,7 +339,10 @@ describe('GameService', () => {
         data: { money: 5000, currentFieldIndex: 2 },
       });
 
-      const field = gameService.findPlayerFieldByIndex(fields, player.currentFieldIndex);
+      const field = gameService.findPlayerFieldByIndex(
+        fields,
+        player.currentFieldIndex
+      );
       field.price = null;
 
       await expect(gameService.buyField(game as any)).rejects.toThrow(
@@ -361,7 +374,6 @@ describe('GameService', () => {
   });
 
   describe('makeTurn tests', () => {
-
     it('should successfully make a turn and update the game state', async () => {
       const game = await prismaService.game.findFirst({
         include: { players: true },
@@ -379,7 +391,7 @@ describe('GameService', () => {
       expect(result.updatedGame.turnEnds).toBeDefined();
     });
 
-    it('should update the player\'s field index based on the dice roll', async () => {
+    it("should update the player's field index based on the dice roll", async () => {
       const game = await prismaService.game.findFirst({
         include: { players: true },
       });
@@ -416,7 +428,9 @@ describe('GameService', () => {
       });
 
       const result = await gameService.makeTurn(game as any);
-      expect(result.nextIndex).toBeLessThan(gameService.PLAYING_FIELDS_QUANTITY);
+      expect(result.nextIndex).toBeLessThan(
+        gameService.PLAYING_FIELDS_QUANTITY
+      );
     });
 
     it('should update the game state correctly after a turn', async () => {
@@ -441,11 +455,23 @@ describe('GameService', () => {
   });
 
   describe('GameService - passTurnToNext', () => {
-
     it('should pass the turn to the next player and reset the auction state', async () => {
-
-      const user1 = await prismaService.user.create({ data: { id: 'user3-id', nickname: 'User3', email: 'user3@example.com', hash: 'hashedPassword1' } });
-      const user2 = await prismaService.user.create({ data: { id: 'user4-id', nickname: 'User4', email: 'user4@example.com', hash: 'hashedPassword2' } });
+      const user1 = await prismaService.user.create({
+        data: {
+          id: 'user3-id',
+          nickname: 'User3',
+          email: 'user3@example.com',
+          hash: 'hashedPassword1',
+        },
+      });
+      const user2 = await prismaService.user.create({
+        data: {
+          id: 'user4-id',
+          nickname: 'User4',
+          email: 'user4@example.com',
+          hash: 'hashedPassword2',
+        },
+      });
 
       const game = await prismaService.game.create({
         data: {
@@ -493,12 +519,20 @@ describe('GameService', () => {
         data: { money: 5000, currentFieldIndex: 2 },
       });
 
-      const field = { index: 2, ownedBy: player2.userId, incomeWithoutBranches: 200 };
+      const field = {
+        index: 2,
+        ownedBy: player2.userId,
+        incomeWithoutBranches: 200,
+      };
 
       const result = await gameService.payForField(game as any, field as any);
 
-      const updatedPlayer1 = await prismaService.player.findUnique({ where: { id: player1.id } });
-      const updatedPlayer2 = await prismaService.player.findUnique({ where: { id: player2.id } });
+      const updatedPlayer1 = await prismaService.player.findUnique({
+        where: { id: player1.id },
+      });
+      const updatedPlayer2 = await prismaService.player.findUnique({
+        where: { id: player2.id },
+      });
 
       expect(updatedPlayer1.money).toBe(4800); // 5000 - 200
       expect(updatedPlayer2.money).toBe(5200); // 5000 + 200
@@ -515,8 +549,8 @@ describe('GameService', () => {
       await prismaService.game.update({
         where: { id: game.id },
         data: { turnOfUserId: player1.userId },
-      })
-      
+      });
+
       await prismaService.player.update({
         where: { id: player1.id },
         data: { money: 100, currentFieldIndex: 2 },
@@ -525,13 +559,17 @@ describe('GameService', () => {
       const updatedGame = await prismaService.game.findFirst({
         where: { id: game.id },
         include: { players: true },
-      })
+      });
 
+      const field = {
+        index: 2,
+        ownedBy: player2.userId,
+        incomeWithoutBranches: 200,
+      };
 
-      const field = { index: 2, ownedBy: player2.userId, incomeWithoutBranches: 200 };
-
-      await expect(gameService.payForField(updatedGame as any, field as any)).rejects.toThrow(WsException);
+      await expect(
+        gameService.payForField(updatedGame as any, field as any)
+      ).rejects.toThrow(WsException);
     });
-
   });
 });

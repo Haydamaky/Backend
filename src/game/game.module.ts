@@ -7,14 +7,13 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 import { PlayerModule } from 'src/player/player.module';
 import { ChatModule } from 'src/chat/chat.module';
-import { EventModule } from 'src/event/event.module';
-import { WebSocketServerModule } from 'src/webSocketServer/webSocketServer.module';
-import { MongooseModule } from '@nestjs/mongoose';
-import { Field, FieldSchema } from 'src/schema/Field.schema';
+import { WebSocketProviderModule } from 'src/webSocketProvider/webSocketProvider.module';
 import { GameController } from './game.controller';
 import { AuctionModule } from 'src/auction/auction.module';
 import { TimerModule } from 'src/timer/timers.module';
 import { SecretModule } from 'src/secret/secret.module';
+import { PaymentModule } from 'src/payment/payment.module';
+import { FieldModule } from 'src/field/field.module';
 
 @Module({
   controllers: [GameController],
@@ -24,17 +23,12 @@ import { SecretModule } from 'src/secret/secret.module';
     ConfigModule,
     ChatModule,
     forwardRef(() => PlayerModule),
-    EventModule,
-    WebSocketServerModule,
     forwardRef(() => AuctionModule),
-    MongooseModule.forFeature([
-      {
-        name: Field.name,
-        schema: FieldSchema,
-      },
-    ]),
     TimerModule,
-    SecretModule,
+    forwardRef(() => SecretModule),
+    PaymentModule,
+    FieldModule,
+    WebSocketProviderModule,
   ],
   providers: [GameGateway, GameService, GameRepository],
   exports: [GameService],

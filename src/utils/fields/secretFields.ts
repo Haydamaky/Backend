@@ -6,7 +6,7 @@ const secretFields = [
   },
   {
     text: '$RANDOM_PLAYER$ reported him/her to NABU for undeclared property that he/she did not list in financial documents. Pays a fine of 1500mm. The reporter receives a reward of 3500mm.',
-    amounts: [-1500, 3500],
+    amounts: [3500, -1500],
     numOfPlayersInvolved: 'two',
   },
   {
