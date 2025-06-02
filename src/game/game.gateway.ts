@@ -148,6 +148,10 @@ export class GameGateway {
     );
     this.leaveAllRoomsExceptInitial(socket);
     socket.join(data.id);
+    if (game.status === 'ACTIVE') {
+      this.gameService.startGame(game);
+    }
+
     this.server.emit('onParticipateGame', game);
   }
 

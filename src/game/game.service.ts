@@ -6,7 +6,6 @@ import { HandlerChain } from 'src/common/handlerChain';
 import { FieldService } from 'src/field/field.service';
 import { FieldAnalyzer } from 'src/field/FieldAnalyzer';
 import { PaymentService } from 'src/payment/payment.service';
-import { PlayerPayload } from 'src/player/player.repository';
 import { PlayerService } from 'src/player/player.service';
 import { FieldDocument } from 'src/schema/Field.schema';
 import { SecretService } from 'src/secret/secret.service';
@@ -166,7 +165,7 @@ export class GameService {
       (player) => player.userId === userId
     );
     if (alreadyJoined || game.status !== 'LOBBY')
-      return { game: null, shouldStart: false };
+      throw new WsException('You cannot join this game');
     const color = this.playerService.COLORS[game.players.length];
     const player = await this.playerService.create({
       color,
@@ -216,7 +215,6 @@ export class GameService {
           },
         },
       });
-      this.startGame(startedGame);
       return startedGame;
     }
     return gameWithCreatedPlayer;
