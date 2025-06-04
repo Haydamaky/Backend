@@ -169,7 +169,7 @@ export class GameGateway {
       this.leaveAllRoomsExceptInitial(socket);
       this.server.emit('onParticipateGame', {
         id: data.id,
-        players: game.players,
+        ...game,
       });
     }
   }

@@ -146,6 +146,18 @@ export class GameService {
   }
 
   async joinGame(gameId: string, userId: string) {
+    const playerWithUserId = await this.playerService.findFirst({
+      where: {
+        userId,
+        game: {
+          status: {
+            in: ['LOBBY', 'ACTIVE'],
+          },
+        },
+      },
+    });
+    if (playerWithUserId)
+      throw new WsException('You already in game, leave it first');
     const game = await this.gameRepository.findFirst({
       where: { id: gameId },
       include: {
@@ -240,7 +252,13 @@ export class GameService {
 
     await this.playerService.deleteById(player.id);
 
-    const game = await this.getGame(gameId);
+    let game = await this.getGame(gameId);
+    if (!game.players.length) {
+      game = await this.gameRepository.delete({
+        where: { id: gameId },
+        include: { players: true },
+      });
+    }
     return game;
   }
 
