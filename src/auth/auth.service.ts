@@ -81,7 +81,7 @@ export class AuthService {
       throw new ForbiddenException('Password is incorrect');
     }
     const tokens = await this.signTokens(user.id, user.email);
-    await this.updateRtHash(user.id, tokens.refresh_token);
+    await this.updateRtHash(user.id, tokens.refreshToken);
     return {
       tokens,
       user: { nickname: user.nickname, email: user.email, id: user.id },
@@ -123,7 +123,7 @@ export class AuthService {
     if (!rtMatches) throw new ForbiddenException('Access Denied');
 
     const tokens = await this.signTokens(user.id, user.email);
-    await this.updateRtHash(user.id, tokens.refresh_token);
+    await this.updateRtHash(user.id, tokens.refreshToken);
     return tokens;
   }
 
@@ -149,8 +149,8 @@ export class AuthService {
     ]);
 
     return {
-      access_token: at_token,
-      refresh_token: rt_token,
+      accessToken: at_token,
+      refreshToken: rt_token,
     };
   }
 
@@ -169,7 +169,7 @@ export class AuthService {
     });
 
     const tokens = await this.signTokens(user.id, user.email);
-    await this.updateRtHash(user.id, tokens.refresh_token);
+    await this.updateRtHash(user.id, tokens.refreshToken);
     return { tokens, user: { nickname: user.nickname, email: user.email } };
   }
 

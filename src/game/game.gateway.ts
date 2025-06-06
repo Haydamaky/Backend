@@ -90,8 +90,8 @@ export class GameGateway {
 
     if (!cookies?.gameId) return null;
 
-    const { gameId, access_token } = cookies;
-    const decoded = await this.jwtService.verify(access_token, {
+    const { gameId, accessToken } = cookies;
+    const decoded = await this.jwtService.verify(accessToken, {
       publicKey: this.configService.get('ACCESS_TOKEN_PUB_KEY'),
     });
     socket['jwtPayload'] = decoded;
