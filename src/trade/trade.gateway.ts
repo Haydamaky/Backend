@@ -13,7 +13,6 @@ import { GamePayload } from 'src/game/game.repository';
 import { OfferTradeDto } from './dto/offer-trade.dto';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
-import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 import { AuctionService } from 'src/auction/auction.service';
 import { TradeService } from './trade.service';
 import { WebSocketProvider } from 'src/webSocketProvider/webSocketProvider.service';
@@ -32,7 +31,6 @@ import { Trade } from 'src/game/types/trade.type';
 })
 @UseFilters(WebsocketExceptionsFilter)
 @UsePipes(new WsValidationPipe())
-@UseGuards(WsGuard, ValidPlayerGuard)
 export class TradeGateway {
   constructor(
     private auctionService: AuctionService,
@@ -40,7 +38,7 @@ export class TradeGateway {
     private webSocketProvider: WebSocketProvider,
     private chatService: ChatService
   ) {}
-  @UseGuards(TurnGuard)
+  @UseGuards(ValidPlayerGuard, TurnGuard)
   @SubscribeMessage('offerTrade')
   async offerTrade(
     @ConnectedSocket()
@@ -50,7 +48,7 @@ export class TradeGateway {
   ) {
     const data = dataArray[0];
     const game = socket.game;
-    const userId = socket.jwtPayload.sub;
+    const userId = socket.data.jwtPayload.sub;
     if (this.auctionService.getAuction(game.id))
       throw new WsException('Cannot offer trade while auction');
     await this.tradeService.validateTradeData(game, data);
@@ -70,6 +68,7 @@ export class TradeGateway {
     this.tradeService.handleOfferTrade({ game, trade });
   }
 
+  @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('refuseFromTrade')
   async refuseFromTrade(
     @ConnectedSocket()
@@ -79,6 +78,7 @@ export class TradeGateway {
     this.tradeService.refuseFromTrade(game);
   }
 
+  @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('acceptTrade')
   async acceptTrade(
     @ConnectedSocket()
@@ -89,7 +89,7 @@ export class TradeGateway {
     const { updatedGame, fields } = await this.tradeService.acceptTrade(
       game,
       trade,
-      socket.jwtPayload.sub
+      socket.data.jwtPayload.sub
     );
     const data = { fields };
     if (updatedGame) {

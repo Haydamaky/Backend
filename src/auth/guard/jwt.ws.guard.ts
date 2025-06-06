@@ -16,13 +16,16 @@ export class WsGuard implements CanActivate {
     if (!client.handshake.headers.cookie) {
       throw new WsException('Unauthorized');
     }
-
+    const userId = client.data.jwtPayload?.sub;
+    if (userId) {
+      return true;
+    }
     const { access_token } = parse(client.handshake.headers.cookie);
     try {
       const decoded = await this.jwtService.verify(access_token, {
         publicKey: this.configService.get('ACCESS_TOKEN_PUB_KEY'),
       });
-      client.jwtPayload = decoded;
+      client.data.jwtPayload = decoded;
       return decoded;
     } catch (ex) {
       throw new WsException(ex.message);

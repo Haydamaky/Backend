@@ -7,7 +7,7 @@ export class TurnGuard implements CanActivate {
 
   async canActivate(context: any): Promise<boolean | any> {
     const client = context.switchToWs().getClient();
-    const userId = client.jwtPayload.sub;
+    const userId = client.data.jwtPayload.sub;
     try {
       if (
         client.game?.turnOfUserId !== userId &&

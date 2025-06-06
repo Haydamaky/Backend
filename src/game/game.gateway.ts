@@ -33,7 +33,6 @@ import { GameService } from './game.service';
 })
 @UseFilters(WebsocketExceptionsFilter)
 @UsePipes(new WsValidationPipe())
-@UseGuards(WsGuard)
 export class GameGateway {
   constructor(
     private gameService: GameService,
@@ -48,13 +47,15 @@ export class GameGateway {
   afterInit(server: Server) {
     this.webSocketProvider.setServer(server);
   }
-  async handleConnection(socket: Socket & { jwtPayload: JwtPayload }) {
+  async handleConnection(
+    socket: Socket & { jwtPayload: JwtPayload; gameId: string }
+  ) {
     try {
-      const cookies = await this.extractCookies(socket);
-      if (!cookies) return;
-      const { gameId, userId } = cookies;
-      if (!gameId) return;
+      await this.extractCookies(socket);
+      const userId = socket.data.jwtPayload?.sub;
+      const gameId = socket.gameId;
       if (!userId) return;
+      if (!gameId) return;
       socket.join(userId);
       const game = await this.gameService.getGame(gameId);
       if (game.status !== 'ACTIVE') return;
@@ -82,7 +83,7 @@ export class GameGateway {
     }
   }
 
-  private async extractCookies(socket: Socket & { jwtPayload: JwtPayload }) {
+  private async extractCookies(socket: Socket) {
     const cookies = socket.handshake.headers.cookie
       ? parse(socket.handshake.headers.cookie)
       : null;
@@ -93,7 +94,9 @@ export class GameGateway {
     const decoded = await this.jwtService.verify(access_token, {
       publicKey: this.configService.get('ACCESS_TOKEN_PUB_KEY'),
     });
-    return { gameId, userId: decoded.sub };
+    socket['jwtPayload'] = decoded;
+    socket['gameId'] = gameId;
+    socket.data.jwtPayload = decoded;
   }
 
   private rejoinGame(socket: Socket, gameId: string) {
@@ -127,24 +130,23 @@ export class GameGateway {
       .emit('gameData', { game, fields, auction, secretInfo });
   }
 
+  @UseGuards(WsGuard)
   @SubscribeMessage('createGame')
-  async createGame(socket: Socket & { jwtPayload: JwtPayload }) {
+  async createGame(socket: Socket) {
     const createdGameWithPlayer = await this.gameService.createGame(
-      socket.jwtPayload.sub
+      socket.data.jwtPayload.sub
     );
     socket.join(createdGameWithPlayer.id);
     return this.server.emit('newGameCreated', createdGameWithPlayer);
   }
 
+  @UseGuards(WsGuard)
   @SubscribeMessage('joinGame')
-  async onJoinGame(
-    socket: Socket & { jwtPayload: JwtPayload },
-    dataArray: [{ id: string }, null]
-  ) {
+  async onJoinGame(socket: Socket, dataArray: [{ id: string }, null]) {
     const data = dataArray[0];
     const game = await this.gameService.joinGame(
       data.id,
-      socket.jwtPayload.sub
+      socket.data.jwtPayload.sub
     );
     this.leaveAllRoomsExceptInitial(socket);
     socket.join(data.id);
@@ -155,15 +157,16 @@ export class GameGateway {
     this.server.emit('onParticipateGame', game);
   }
 
+  @UseGuards(WsGuard)
   @SubscribeMessage('leaveGame')
   async onLeaveGame(
-    socket: Socket & { jwtPayload: JwtPayload },
+    socket: Socket & { jwtPayload: JwtPayload; user: JwtPayload },
     dataArray: [{ id: string }, null]
   ) {
     const data = dataArray[0];
     const game = await this.gameService.leaveGame(
       data.id,
-      socket.jwtPayload.sub
+      socket.data.jwtPayload.sub
     );
     if (game) {
       this.leaveAllRoomsExceptInitial(socket);
@@ -190,7 +193,7 @@ export class GameGateway {
     socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
   ) {
     await this.gameService.payToBankForSpecialField(
-      socket.jwtPayload.sub,
+      socket.data.jwtPayload.sub,
       socket.game
     );
   }
@@ -202,7 +205,7 @@ export class GameGateway {
     socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
   ) {
     const game = socket.game;
-    const userId = socket.jwtPayload.sub;
+    const userId = socket.data.jwtPayload.sub;
     const { game: updatedGame, secretInfo } =
       await this.gameService.payToUserForSecret(game, userId);
     this.server.to(game.id).emit('updatePlayers', {
@@ -218,7 +221,7 @@ export class GameGateway {
     socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
   ) {
     const game = socket.game;
-    const userId = socket.jwtPayload.sub;
+    const userId = socket.data.jwtPayload.sub;
     await this.gameService.payToBankForSecret(game, userId);
   }
 
@@ -248,7 +251,7 @@ export class GameGateway {
     @MessageBody() dataArray: [{ raiseBy: number; bidAmount: number }, null]
   ) {
     const data = dataArray[0];
-    const userId = socket.jwtPayload.sub;
+    const userId = socket.data.jwtPayload.sub;
     await this.auctionService.raisePrice(
       gameId,
       userId,
@@ -263,7 +266,7 @@ export class GameGateway {
     @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
     @GetGameId() gameId: string
   ) {
-    const userId = socket.jwtPayload.sub;
+    const userId = socket.data.jwtPayload.sub;
     await this.auctionService.refuseAuction(gameId, userId);
   }
 
@@ -295,7 +298,7 @@ export class GameGateway {
     const data = dataArray[0];
     const index = data.index;
     const game = socket.game;
-    const userId = socket.jwtPayload.sub;
+    const userId = socket.data.jwtPayload.sub;
     const { updatedGame, fields } = await this.gameService.buyBranch(
       game,
       index,
@@ -316,7 +319,7 @@ export class GameGateway {
     const data = dataArray[0];
     const index = data.index;
     const game = socket.game;
-    const userId = socket.jwtPayload.sub;
+    const userId = socket.data.jwtPayload.sub;
     const { updatedGame, fields } = await this.gameService.sellBranch(
       game,
       index,
@@ -333,7 +336,7 @@ export class GameGateway {
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload }
   ) {
-    const userId = socket.jwtPayload.sub;
+    const userId = socket.data.jwtPayload.sub;
     const gameId = socket.game.id;
 
     const { updatedPlayer, updatedFields } = await this.gameService.loseGame(
@@ -360,7 +363,7 @@ export class GameGateway {
     const { player, fields } = await this.gameService.mortgageField(
       game,
       index,
-      socket.jwtPayload.sub
+      socket.data.jwtPayload.sub
     );
     this.server
       .to(game.id)
