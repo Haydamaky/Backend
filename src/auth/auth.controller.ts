@@ -24,9 +24,8 @@ import { GetCurrentUser } from './decorator/get-current-user.decorator';
 import { GetCurrentUserId } from './decorator/get-current-user-id.decorator';
 import { Public } from './decorator/public.decorator';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ConfigService } from '@nestjs/config';
 import { AccessCookieAttributes, RefreshCookieAttributes } from './types';
-import { JwtRtGuard } from './guard';
+import { JwtGuard, JwtRtGuard } from './guard';
 import { GetUser } from './decorator';
 import { JwtPayloadWithRt } from './types/jwtPayloadWithRt.type';
 
@@ -36,20 +35,23 @@ export class AuthController {
   constructor(private authService: AuthService) {}
   static readonly ACCESS_COOKIES_ATTRIBUTES: AccessCookieAttributes = {
     httpOnly: true,
+    path: '/',
+    maxAge: 1000 * 60 * 15,
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     secure: process.env.NODE_ENV === 'production',
     ...(process.env.NODE_ENV === 'production' && {
-      domain: process.env.DOMAIN_NAME_PROD,
+      domain: `.${process.env.DOMAIN_NAME_PROD}`,
     }),
   };
 
   static readonly REFRESH_COOKIES_ATTRIBUTES: RefreshCookieAttributes = {
     httpOnly: true,
-    path: '/',
+    path: '/auth/refresh',
+    maxAge: 1000 * 60 * 60 * 24 * 7,
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     secure: process.env.NODE_ENV === 'production',
     ...(process.env.NODE_ENV === 'production' && {
-      domain: process.env.DOMAIN_NAME_PROD,
+      domain: `.${process.env.DOMAIN_NAME_PROD}`,
     }),
   };
 
@@ -101,20 +103,9 @@ export class AuthController {
       .send({ status: 'success', message: 'Logged in successfully', user });
   }
 
-  @Public()
-  @UseGuards(JwtRtGuard)
   @Get('local/me')
   async me(@GetUser() user: JwtPayloadWithRt, @Res() res: Response) {
     const result = await this.authService.me(user);
-
-    this.setCookie(
-      res,
-      'access_token',
-      result.access_token,
-      AuthController.ACCESS_COOKIES_ATTRIBUTES
-    );
-    delete result.access_token;
-
     return res.status(HttpStatus.OK).send(result);
   }
 
