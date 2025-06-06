@@ -20,9 +20,9 @@ export class WsGuard implements CanActivate {
     if (userId) {
       return true;
     }
-    const { access_token } = parse(client.handshake.headers.cookie);
+    const { accessToken } = parse(client.handshake.headers.cookie);
     try {
-      const decoded = await this.jwtService.verify(access_token, {
+      const decoded = await this.jwtService.verify(accessToken, {
         publicKey: this.configService.get('ACCESS_TOKEN_PUB_KEY'),
       });
       client.data.jwtPayload = decoded;

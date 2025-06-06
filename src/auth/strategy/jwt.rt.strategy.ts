@@ -12,7 +12,7 @@ export class JwtRtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: Request) => {
-          const token = request.cookies['refresh_token'];
+          const token = request.cookies['refreshToken'];
           return token;
         },
       ]),
@@ -22,7 +22,7 @@ export class JwtRtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
     });
   }
   validate(req: Request, payload: JwtPayload): JwtPayloadWithRt {
-    const refreshToken = req.cookies['refresh_token'];
+    const refreshToken = req.cookies['refreshToken'];
     return {
       ...payload,
       refreshToken,

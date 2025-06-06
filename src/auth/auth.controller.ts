@@ -9,6 +9,7 @@ import {
   Post,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
@@ -24,64 +25,14 @@ import { GetCurrentUser } from './decorator/get-current-user.decorator';
 import { GetCurrentUserId } from './decorator/get-current-user-id.decorator';
 import { Public } from './decorator/public.decorator';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AccessCookieAttributes, RefreshCookieAttributes } from './types';
-import { JwtGuard, JwtRtGuard } from './guard';
 import { GetUser } from './decorator';
 import { JwtPayloadWithRt } from './types/jwtPayloadWithRt.type';
+import { TokenCookieInterceptor } from './interceptor/authCookies.interceptor';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
-  static readonly ACCESS_COOKIES_ATTRIBUTES: AccessCookieAttributes = {
-    httpOnly: true,
-    path: '/',
-    maxAge: 1000 * 60 * 15,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    ...(process.env.NODE_ENV === 'production' && {
-      domain: `.${process.env.DOMAIN_NAME_PROD}`,
-    }),
-  };
-
-  static readonly REFRESH_COOKIES_ATTRIBUTES: RefreshCookieAttributes = {
-    httpOnly: true,
-    path: '/auth/refresh',
-    maxAge: 1000 * 60 * 60 * 24 * 7,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    ...(process.env.NODE_ENV === 'production' && {
-      domain: `.${process.env.DOMAIN_NAME_PROD}`,
-    }),
-  };
-
-  setCookie(
-    res: Response,
-    name: string,
-    value: string,
-    options: Record<string, any>
-  ) {
-    const cookieOptions = {
-      ...options,
-    };
-    res.cookie(name, value, cookieOptions);
-  }
-
-  setTokens(res: Response, accessToken: string, refreshToken: string) {
-    this.setCookie(
-      res,
-      'access_token',
-      accessToken,
-      AuthController.ACCESS_COOKIES_ATTRIBUTES
-    );
-    this.setCookie(
-      res,
-      'refresh_token',
-      refreshToken,
-      AuthController.REFRESH_COOKIES_ATTRIBUTES
-    );
-  }
-
   @Public()
   @Post('/local/signup')
   @ApiOperation({ summary: 'signup' })
@@ -93,14 +44,16 @@ export class AuthController {
 
   @Public()
   @Post('/local/signin')
+  @UseInterceptors(TokenCookieInterceptor)
   @ApiOperation({ summary: 'signin' })
-  async signin(@Body() dto: SignInDto, @Res() res: Response) {
+  async signin(@Body() dto: SignInDto) {
     const { tokens, user } = await this.authService.signin(dto);
-    const { access_token: accessToken, refresh_token: refreshToken } = tokens;
-    this.setTokens(res, accessToken, refreshToken);
-    return res
-      .status(HttpStatus.OK)
-      .send({ status: 'success', message: 'Logged in successfully', user });
+    return {
+      status: 'success',
+      message: 'Logged in successfully',
+      user,
+      ...tokens,
+    };
   }
 
   @Get('local/me')
@@ -121,34 +74,34 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt-refresh'))
   @Post('refresh')
   @ApiOperation({ summary: 'refreshTokens' })
+  @UseInterceptors(TokenCookieInterceptor)
   async refreshTokens(
     @GetCurrentUserId() userId: string,
-    @GetCurrentUser('refreshToken') refreshToken: string,
-    @Res() res: Response
+    @GetCurrentUser('refreshToken') refreshTokenOld: string
   ) {
-    const { access_token: accessToken, refresh_token: refreshTokenNew } =
-      await this.authService.refreshTokens(userId, refreshToken);
-
-    this.setTokens(res, accessToken, refreshTokenNew);
-
-    return res
-      .status(HttpStatus.OK)
-      .send({ status: 'success', message: 'Refreshed token successfully' });
+    const tokens = await this.authService.refreshTokens(
+      userId,
+      refreshTokenOld
+    );
+    return {
+      status: 'success',
+      message: 'Refreshed token successfully',
+      ...tokens,
+    };
   }
 
   @Public()
   @Get('confirm-email/:token')
   @ApiOperation({ summary: 'confirm-email' })
-  async confirmEmail(@Param('token') token: string, @Res() res: Response) {
+  @UseInterceptors(TokenCookieInterceptor)
+  async confirmEmail(@Param('token') token: string) {
     const { tokens, user } = await this.authService.confirmEmail(token);
-    const { access_token: accessToken, refresh_token: refreshToken } = tokens;
-    this.setTokens(res, accessToken, refreshToken);
-
-    return res.status(HttpStatus.OK).send({
+    return {
       status: 'success',
       message: 'Confirmed email successfully',
       user,
-    });
+      ...tokens,
+    };
   }
 
   @Patch('change-password')
