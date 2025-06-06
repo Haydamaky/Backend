@@ -8,7 +8,6 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { TurnGuard, ValidPlayerGuard } from 'src/auth/guard';
-import { WsGuard } from 'src/auth/guard/jwt.ws.guard';
 import { GamePayload } from 'src/game/game.repository';
 import { WsValidationPipe } from 'src/pipes/wsValidation.pipe';
 import { WebsocketExceptionsFilter } from 'src/utils/exceptions/websocket-exceptions.filter';
@@ -27,13 +26,12 @@ import { JwtPayload } from 'src/auth/types/jwtPayloadType.type';
 })
 @UseFilters(WebsocketExceptionsFilter)
 @UsePipes(new WsValidationPipe())
-@UseGuards(WsGuard, ValidPlayerGuard)
 export class PlayerGateway {
   constructor(private readonly playerService: PlayerService) {}
   @WebSocketServer()
   private server: Server;
 
-  @UseGuards(TurnGuard, ValidPlayerGuard)
+  @UseGuards(ValidPlayerGuard, TurnGuard)
   @SubscribeMessage('unmortgageField')
   async onUnmortgageField(
     @ConnectedSocket()
@@ -43,7 +41,7 @@ export class PlayerGateway {
     const data = dataArray[0];
     const { index } = data;
     const game = socket.game;
-    const userId = socket.jwtPayload.sub;
+    const userId = socket.data.jwtPayload.sub;
     const { player, fields } = await this.playerService.unmortgageField(
       game,
       index,

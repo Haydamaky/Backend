@@ -248,7 +248,7 @@ export class GameService {
     const player = await this.playerService.findFirst({
       where: { userId, gameId },
     });
-    if (!player) return null;
+    if (!player) throw new WsException('You are not in this game');
 
     await this.playerService.deleteById(player.id);
 

@@ -46,13 +46,14 @@ export class ChatGateway implements OnModuleInit {
   ) {
     const data = dataArray[0];
     const message = await this.chatService.onNewMessage(
-      socket.jwtPayload.sub,
+      socket.data.jwtPayload.sub,
       data
     );
 
     this.server.emit('onMessage', message);
   }
 
+  @UseGuards(WsGuard)
   @SubscribeMessage('newGameMessage')
   async onNewGameMessage(
     socket: Socket & { jwtPayload: JwtPayload },
@@ -60,7 +61,7 @@ export class ChatGateway implements OnModuleInit {
   ) {
     const data = dataArray[0];
     const message = await this.chatService.onNewMessage(
-      socket.jwtPayload.sub,
+      socket.data.jwtPayload.sub,
       data
     );
     if (Array.from(socket.rooms).includes(data.gameId))
