@@ -91,16 +91,7 @@ export class AuthService {
   async me(user: JwtPayloadWithRt) {
     const userFromDB = await this.userRepository.findByEmail(user.email);
     if (!userFromDB) throw new UnauthorizedException('User does not exist');
-    const access_token = await this.jwtService.signAsync(
-      { sub: userFromDB.id, email: userFromDB.email },
-      {
-        expiresIn: '1d',
-        privateKey: this.configService.get('ACCESS_TOKEN_PRIV_KEY'),
-        algorithm: 'RS256',
-      }
-    );
     return {
-      access_token,
       nickname: userFromDB.nickname,
       email: userFromDB.email,
       id: userFromDB.id,
