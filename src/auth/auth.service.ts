@@ -3,18 +3,17 @@ import {
   ForbiddenException,
   Injectable,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
-import { SignInDto, SignUpDto } from './dto';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { Tokens } from './types';
+import { JwtService } from '@nestjs/jwt';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import * as argon2 from 'argon2';
-import { JwtRtGuard } from './guard';
 import { MailService } from 'src/mail/mail.service';
-import { JwtPayload } from './types/jwtPayloadType.type';
+import { SseService } from 'src/sse/sse.service';
 import { UserRepository } from 'src/user/user.repository';
+import { SignInDto, SignUpDto } from './dto';
+import { Tokens } from './types';
+import { JwtPayload } from './types/jwtPayloadType.type';
 import { JwtPayloadWithRt } from './types/jwtPayloadWithRt.type';
 
 @Injectable()
@@ -23,7 +22,8 @@ export class AuthService {
     private userRepository: UserRepository,
     private jwtService: JwtService,
     private configService: ConfigService,
-    private emailService: MailService
+    private emailService: MailService,
+    private sseService: SseService
   ) {}
 
   async signup(dto: SignUpDto) {
@@ -41,11 +41,11 @@ export class AuthService {
         hashPasswordPromise,
         emailConfirmationTokenPromise,
       ]);
-      await this.userRepository.create({
+      const user = await this.userRepository.create({
         data: {
+          nickname: dto.nickname,
           email: dto.email,
           hash,
-          nickname: dto.nickname,
           emailConfirmationToken,
         },
       });
@@ -53,6 +53,12 @@ export class AuthService {
         dto.email,
         emailConfirmationToken
       );
+      return {
+        email: user.email,
+        id: user.id,
+        nickname: user.nickname,
+        isEmailConfirmed: user.isEmailConfirmed,
+      };
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -84,7 +90,7 @@ export class AuthService {
     await this.updateRtHash(user.id, tokens.refreshToken);
     return {
       tokens,
-      user: { nickname: user.nickname, email: user.email, id: user.id },
+      user: { email: user.email, id: user.id },
     };
   }
 
@@ -92,7 +98,6 @@ export class AuthService {
     const userFromDB = await this.userRepository.findByEmail(user.email);
     if (!userFromDB) throw new UnauthorizedException('User does not exist');
     return {
-      nickname: userFromDB.nickname,
       email: userFromDB.email,
       id: userFromDB.id,
       isEmailConfirmed: userFromDB.isEmailConfirmed,
@@ -112,15 +117,14 @@ export class AuthService {
       },
     });
   }
-  @UseGuards(JwtRtGuard)
+
   async refreshTokens(id: string, rt: string) {
     const user = await this.userRepository.findById(id);
-
     if (!user) throw new ForbiddenException('Access Denied');
     if (!user.hashedRt) throw new ForbiddenException('Access Denied');
 
     const rtMatches = await argon2.verify(user.hashedRt, rt);
-    if (!rtMatches) throw new ForbiddenException('Access Denied');
+    if (!rtMatches) throw new ForbiddenException('Rt token does not match');
 
     const tokens = await this.signTokens(user.id, user.email);
     await this.updateRtHash(user.id, tokens.refreshToken);
@@ -170,7 +174,8 @@ export class AuthService {
 
     const tokens = await this.signTokens(user.id, user.email);
     await this.updateRtHash(user.id, tokens.refreshToken);
-    return { tokens, user: { nickname: user.nickname, email: user.email } };
+    this.sseService.sendToUser(user.id, { type: 'email_verified' });
+    return { tokens, user: { email: user.email } };
   }
 
   async changePassword(
@@ -259,7 +264,6 @@ export class AuthService {
 
   async updateRtHash(id: string, rt: string) {
     const hash = await argon2.hash(rt);
-
     await this.userRepository.update({
       where: {
         id,
