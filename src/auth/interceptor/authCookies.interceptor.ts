@@ -24,13 +24,9 @@ export class TokenCookieInterceptor implements NestInterceptor {
           if (data.accessToken) {
             response.cookie('accessToken', data.accessToken, {
               httpOnly: true,
-              path: '/',
               maxAge: 1000 * 60 * 15,
               sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
               secure: process.env.NODE_ENV === 'production',
-              ...(process.env.NODE_ENV === 'production' && {
-                domain: `.${process.env.DOMAIN_NAME_PROD}`,
-              }),
             });
             delete data.accessToken;
           }
@@ -38,20 +34,16 @@ export class TokenCookieInterceptor implements NestInterceptor {
           if (data.refreshToken) {
             response.cookie('refreshToken', data.refreshToken, {
               httpOnly: true,
-              path: '/auth/refresh',
               maxAge: 1000 * 60 * 60 * 24 * 7,
               sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
               secure: process.env.NODE_ENV === 'production',
-              ...(process.env.NODE_ENV === 'production' && {
-                domain: `.${process.env.DOMAIN_NAME_PROD}`,
-              }),
             });
             delete data.refreshToken;
           }
         }
 
         return data;
-      })
+      }),
     );
   }
 }

@@ -32,7 +32,7 @@ export class ValidPlayerGuard implements CanActivate {
     }
     let gameId = client.data.gameId;
     if (!gameId) {
-      gameId = parse(client.handshake.headers.cookie);
+      gameId = parse(client.handshake.headers.cookie).gameId;
     }
     try {
       const player = await this.playerService.findByUserAndGameId(

@@ -11,9 +11,9 @@ export class MailService {
 
   async sendVerificationEmail(email: string, token: string) {
     const confirmationUrl = `${
-      process.env.NODE_ENV === 'development'
-        ? process.env.FRONTEND_URL_DEV
-        : process.env.FRONTEND_URL_PROD
+      this.configService.get('NODE_ENV') === 'development'
+        ? this.configService.get('FRONTEND_URL_DEV')
+        : this.configService.get('FRONTEND_URL_PROD')
     }/auth/confirm-email/${token}`;
     await this.mailerService.sendMail({
       to: email,
@@ -25,9 +25,9 @@ export class MailService {
 
   async sendForgotPasswordEmail(email: string, token: string) {
     const forgotPasswordUrl = `${
-      process.env.NODE_ENV === 'development'
-        ? process.env.FRONTEND_URL_DEV
-        : process.env.FRONTEND_URL_PROD
+      this.configService.get('NODE_ENV') === 'development'
+        ? this.configService.get('FRONTEND_URL_DEV')
+        : this.configService.get('FRONTEND_URL_PROD')
     }/auth/reset-password/${token}`;
     await this.mailerService.sendMail({
       to: email,
