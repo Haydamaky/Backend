@@ -8,11 +8,19 @@ import {
   Patch,
   Post,
   Res,
+  Sse,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
+import { Observable } from 'rxjs';
+import { SseService } from 'src/sse/sse.service';
 import { AuthService } from './auth.service';
+import { GetUser } from './decorator';
+import { GetCurrentUserId } from './decorator/get-current-user-id.decorator';
+import { GetCurrentUser } from './decorator/get-current-user.decorator';
+import { Public } from './decorator/public.decorator';
 import {
   ChangePasswordDto,
   ForgotPasswordDto,
@@ -20,26 +28,24 @@ import {
   SignInDto,
   SignUpDto,
 } from './dto';
-import { AuthGuard } from '@nestjs/passport';
-import { GetCurrentUser } from './decorator/get-current-user.decorator';
-import { GetCurrentUserId } from './decorator/get-current-user-id.decorator';
-import { Public } from './decorator/public.decorator';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { GetUser } from './decorator';
-import { JwtPayloadWithRt } from './types/jwtPayloadWithRt.type';
+import { JwtRtGuard } from './guard';
 import { TokenCookieInterceptor } from './interceptor/authCookies.interceptor';
+import { JwtPayloadWithRt } from './types/jwtPayloadWithRt.type';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private sseService: SseService
+  ) {}
   @Public()
   @Post('/local/signup')
   @ApiOperation({ summary: 'signup' })
   async signup(@Body() dto: SignUpDto) {
-    await this.authService.signup(dto);
+    const user = await this.authService.signup(dto);
 
-    return { status: 'success', message: 'Confirm you email' };
+    return { status: 'success', message: 'Confirm you email', user };
   }
 
   @Public()
@@ -71,7 +77,7 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(AuthGuard('jwt-refresh'))
+  @UseGuards(JwtRtGuard)
   @Post('refresh')
   @ApiOperation({ summary: 'refreshTokens' })
   @UseInterceptors(TokenCookieInterceptor)
@@ -102,6 +108,18 @@ export class AuthController {
       user,
       ...tokens,
     };
+  }
+
+  @Public()
+  @Sse('sse/:userId')
+  sse(@Param('userId') userId: string): Observable<MessageEvent> {
+    return this.sseService.getEventStream(null, userId);
+  }
+
+  @Public()
+  @Sse('sse')
+  sseAll(): Observable<MessageEvent> {
+    return this.sseService.getEventStream(null, null);
   }
 
   @Patch('change-password')
