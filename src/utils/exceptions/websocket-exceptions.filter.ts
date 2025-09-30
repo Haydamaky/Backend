@@ -9,6 +9,6 @@ export class WebsocketExceptionsFilter implements WsExceptionFilter {
     const client: Socket = ctx.getClient<Socket>();
     const error = exception.getError();
     const details = typeof error === 'string' ? { message: error } : error;
-    client.emit('error', { status: 'error', ...details });
+    client.emit('error', { type: 'error', ...details });
   }
 }
