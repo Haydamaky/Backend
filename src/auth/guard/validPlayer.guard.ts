@@ -34,6 +34,14 @@ export class ValidPlayerGuard implements CanActivate {
     if (!gameId) {
       gameId = parse(client.handshake.headers.cookie).gameId;
     }
+    if (!gameId)
+      throw new WsException({
+        code: 'USER_NOT_IN_GAME',
+        message: 'You must join a game before performing this action',
+        details: {
+          action: 'ValidPlayerGuard',
+        },
+      });
     try {
       const player = await this.playerService.findByUserAndGameId(
         userId || client.data.jwtPayload.sub,

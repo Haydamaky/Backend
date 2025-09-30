@@ -14,7 +14,7 @@ export class WsGuard implements CanActivate {
   async canActivate(context: any): Promise<boolean | any> {
     const client = context.switchToWs().getClient();
     if (!client.handshake.headers.cookie) {
-      throw new WsException('Unauthorized');
+      throw new WsException({ message: 'Unauthorized' });
     }
     const userId = client.data.jwtPayload?.sub;
     if (userId) {
@@ -28,7 +28,7 @@ export class WsGuard implements CanActivate {
       client.data.jwtPayload = decoded;
       return decoded;
     } catch (ex) {
-      throw new WsException(ex.message);
+      throw new WsException(ex);
     }
   }
 }
