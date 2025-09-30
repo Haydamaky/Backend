@@ -65,7 +65,7 @@ export class GameService {
     });
   }
 
-  async getGameData(gameId: string) {
+  async getAllGameData(gameId: string) {
     const game = await this.getGame(gameId);
     const auction = this.auctionService.auctions.get(game.id);
     const secretInfo = this.secretService.secrets.get(game.id);

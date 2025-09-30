@@ -121,10 +121,10 @@ export class GameGateway {
     return games;
   }
 
-  @SubscribeMessage('getGameData')
-  async onGetGameData(@GetGameId() gameId: string) {
+  @SubscribeMessage('getAllGameData')
+  async onGetAllGameData(@GetGameId() gameId: string) {
     const { game, fields, auction, secretInfo } =
-      await this.gameService.getGameData(gameId);
+      await this.gameService.getAllGameData(gameId);
     this.server
       .to(gameId)
       .emit('gameData', { game, fields, auction, secretInfo });
