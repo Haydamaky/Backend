@@ -234,12 +234,12 @@ export class GameService {
 
   startGame(game: Partial<GamePayload>) {
     // We can setTimeout here for some countdown on frontend
-    this.webSocketProvider.server.emit('clearStartedGame', {
-      gameId: game.id,
-    });
     this.webSocketProvider.server.to(game.id).emit('startGame', {
       game,
       chatId: game.chat.id,
+    });
+    this.webSocketProvider.server.emit('clearStartedGame', {
+      gameId: game.id,
     });
     this.timerService.set(game.id, game.timeOfTurn, game, this.rollDice);
   }
