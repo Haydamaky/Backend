@@ -14,7 +14,13 @@ export class WsGuard implements CanActivate {
   async canActivate(context: any): Promise<boolean | any> {
     const client = context.switchToWs().getClient();
     if (!client.handshake.headers.cookie) {
-      throw new WsException({ message: 'Unauthorized' });
+      throw new WsException({
+        code: 'USER_NOT_AUTHENTICATED',
+        message: 'You must log in before performing this action',
+        details: {
+          action: 'WsGuard',
+        },
+      });
     }
     const userId = client.data.jwtPayload?.sub;
     if (userId) {
