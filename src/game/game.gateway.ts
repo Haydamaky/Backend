@@ -248,9 +248,8 @@ export class GameGateway {
   async raisePrice(
     @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
     @GetGameId() gameId: string,
-    @MessageBody() dataArray: [{ raiseBy: number; bidAmount: number }, null]
+    @MessageBody() data: { raiseBy: number; bidAmount: number }
   ) {
-    const data = dataArray[0];
     const userId = socket.data.jwtPayload.sub;
     await this.auctionService.raisePrice(
       gameId,
@@ -293,9 +292,8 @@ export class GameGateway {
   async onBuyBranch(
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
-    @MessageBody() dataArray: [{ index: number }, null]
+    @MessageBody() data: { index: number }
   ) {
-    const data = dataArray[0];
     const index = data.index;
     const game = socket.game;
     const userId = socket.data.jwtPayload.sub;
@@ -314,9 +312,8 @@ export class GameGateway {
   async onSellBranch(
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
-    @MessageBody() dataArray: [{ index: number }, null]
+    @MessageBody() data: { index: number }
   ) {
-    const data = dataArray[0];
     const index = data.index;
     const game = socket.game;
     const userId = socket.data.jwtPayload.sub;
@@ -344,7 +341,7 @@ export class GameGateway {
       gameId
     );
 
-    this.server.to(gameId).emit('playerSurrendered', {
+    this.server.to(gameId).emit('updateGameData', {
       game: updatedPlayer.game,
       fields: updatedFields,
     });
@@ -355,9 +352,8 @@ export class GameGateway {
   async onMortgageField(
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
-    @MessageBody() dataArray: [{ index: number }, null]
+    @MessageBody() data: { index: number }
   ) {
-    const data = dataArray[0];
     const index = data.index;
     const game = socket.game;
     const { player, fields } = await this.gameService.mortgageField(

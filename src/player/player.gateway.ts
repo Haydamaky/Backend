@@ -36,9 +36,8 @@ export class PlayerGateway {
   async onUnmortgageField(
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
-    @MessageBody() dataArray: [{ index: number }, null]
+    @MessageBody() data: { index: number }
   ) {
-    const data = dataArray[0];
     const { index } = data;
     const game = socket.game;
     const userId = socket.data.jwtPayload.sub;
