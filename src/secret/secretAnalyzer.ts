@@ -3,7 +3,8 @@ import { SecretInfo } from 'src/game/types/secretInfo.type';
 export class SecretAnalyzer {
   constructor(
     public readonly secretInfo: SecretInfo,
-    public readonly userId: string
+    public readonly userId: string,
+    public readonly requestId?: string
   ) {}
   isOneUserHaveToPay() {
     return this.secretInfo.users.length === 1 && this.secretInfo.amounts[0] < 0;

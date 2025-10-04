@@ -122,31 +122,49 @@ export class GameGateway {
   }
 
   @SubscribeMessage('getAllGameData')
-  async onGetAllGameData(@GetGameId() gameId: string) {
+  async onGetAllGameData(
+    @GetGameId() gameId: string,
+    @MessageBody() data: { requestId: string }
+  ) {
     const { game, fields, auction, secretInfo } =
-      await this.gameService.getAllGameData(gameId);
-    this.server
-      .to(gameId)
-      .emit('gameData', { game, fields, auction, secretInfo });
+      await this.gameService.getAllGameData(gameId, data.requestId);
+    this.server.to(gameId).emit('gameData', {
+      game,
+      fields,
+      auction,
+      secretInfo,
+      requestId: data.requestId,
+    });
   }
 
   @UseGuards(WsGuard)
   @SubscribeMessage('createGame')
-  async createGame(socket: Socket) {
+  async createGame(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() data: { requestId: string }
+  ) {
     const createdGameWithPlayer = await this.gameService.createGame(
-      socket.data.jwtPayload.sub
+      socket.data.jwtPayload.sub,
+      data.requestId
     );
     socket.join(createdGameWithPlayer.id);
-    return this.server.emit('newGameCreated', createdGameWithPlayer);
+    return this.server.emit('newGameCreated', {
+      game: createdGameWithPlayer,
+      requestId: data.requestId,
+    });
   }
 
   @UseGuards(WsGuard)
   @SubscribeMessage('joinGame')
-  async onJoinGame(socket: Socket, dataArray: [{ id: string }, null]) {
-    const data = dataArray[0];
+  async onJoinGame(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() data: { id: string; requestId: string }
+  ) {
+    console.log({ data });
     const game = await this.gameService.joinGame(
       data.id,
-      socket.data.jwtPayload.sub
+      socket.data.jwtPayload.sub,
+      data.requestId
     );
     this.leaveAllRoomsExceptInitial(socket);
     socket.join(data.id);
@@ -154,25 +172,28 @@ export class GameGateway {
       this.gameService.startGame(game);
     }
 
-    this.server.emit('onParticipateGame', game);
+    this.server.emit('onParticipateGame', {
+      game,
+      requestId: data.requestId,
+    });
   }
 
   @UseGuards(WsGuard)
   @SubscribeMessage('leaveGame')
   async onLeaveGame(
     socket: Socket & { jwtPayload: JwtPayload; user: JwtPayload },
-    dataArray: [{ id: string }, null]
+    data: { id: string; requestId: string }
   ) {
-    const data = dataArray[0];
     const game = await this.gameService.leaveGame(
       data.id,
-      socket.data.jwtPayload.sub
+      socket.data.jwtPayload.sub,
+      data.requestId
     );
     if (game) {
       this.leaveAllRoomsExceptInitial(socket);
       this.server.emit('onParticipateGame', {
-        id: data.id,
-        ...game,
+        game,
+        requestId: data.requestId,
       });
     }
   }
@@ -181,20 +202,23 @@ export class GameGateway {
   @SubscribeMessage('rollDice')
   async onRollDice(
     @ConnectedSocket()
-    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
+    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> },
+    @MessageBody() data: { requestId: string }
   ) {
-    await this.gameService.rollDice(socket.game);
+    await this.gameService.rollDice(socket.game, data.requestId);
   }
 
   @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('payToBankForSpecialField')
   async onPayToBankForSpecialField(
     @ConnectedSocket()
-    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
+    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> },
+    @MessageBody() data: { requestId: string }
   ) {
     await this.gameService.payToBankForSpecialField(
       socket.data.jwtPayload.sub,
-      socket.game
+      socket.game,
+      data.requestId
     );
   }
 
@@ -202,15 +226,17 @@ export class GameGateway {
   @SubscribeMessage('payToUserForSecret')
   async onPayToUserForSecret(
     @ConnectedSocket()
-    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
+    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> },
+    @MessageBody() data: { requestId: string }
   ) {
     const game = socket.game;
     const userId = socket.data.jwtPayload.sub;
     const { game: updatedGame, secretInfo } =
-      await this.gameService.payToUserForSecret(game, userId);
+      await this.gameService.payToUserForSecret(game, userId, data.requestId);
     this.server.to(game.id).emit('updatePlayers', {
       game: updatedGame,
       secretInfo,
+      requestId: data.requestId,
     });
   }
 
@@ -218,29 +244,32 @@ export class GameGateway {
   @SubscribeMessage('payToBankForSecret')
   async onPayToBankForSecret(
     @ConnectedSocket()
-    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
+    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> },
+    @MessageBody() data: { requestId: string }
   ) {
     const game = socket.game;
     const userId = socket.data.jwtPayload.sub;
-    await this.gameService.payToBankForSecret(game, userId);
+    await this.gameService.payToBankForSecret(game, userId, data.requestId);
   }
 
   @UseGuards(ValidPlayerGuard, TurnGuard)
   @SubscribeMessage('payForPrivateField')
   async onPayForPrivateField(
     @ConnectedSocket()
-    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
+    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> },
+    @MessageBody() data: { requestId: string }
   ) {
-    await this.gameService.payForPrivateField(socket.game);
+    await this.gameService.payForPrivateField(socket.game, data.requestId);
   }
 
   @UseGuards(ValidPlayerGuard, TurnGuard)
   @SubscribeMessage('putUpForAuction')
   async onPutUpForAuction(
     @ConnectedSocket()
-    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
+    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> },
+    @MessageBody() data: { requestId: string }
   ) {
-    await this.gameService.putUpForAuction(socket.game);
+    await this.gameService.putUpForAuction(socket.game, data.requestId);
   }
 
   @UseGuards(ValidPlayerGuard)
@@ -248,14 +277,17 @@ export class GameGateway {
   async raisePrice(
     @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
     @GetGameId() gameId: string,
-    @MessageBody() data: { raiseBy: number; bidAmount: number }
+    @MessageBody()
+    data: { raiseBy: number; bidAmount: number; requestId: string }
   ) {
+    console.log({ data });
     const userId = socket.data.jwtPayload.sub;
     await this.auctionService.raisePrice(
       gameId,
       userId,
       data.raiseBy,
-      data.bidAmount
+      data.bidAmount,
+      data.requestId
     );
   }
 
@@ -263,28 +295,31 @@ export class GameGateway {
   @SubscribeMessage('refuseAuction')
   async refuseAuction(
     @ConnectedSocket() socket: Socket & { jwtPayload: JwtPayload },
-    @GetGameId() gameId: string
+    @GetGameId() gameId: string,
+    @MessageBody() data: { requestId: string }
   ) {
     const userId = socket.data.jwtPayload.sub;
-    await this.auctionService.refuseAuction(gameId, userId);
+    await this.auctionService.refuseAuction(gameId, userId, data.requestId);
   }
 
   @UseGuards(ValidPlayerGuard, TurnGuard)
   @SubscribeMessage('buyField')
   async onBuyField(
     @ConnectedSocket()
-    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
+    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> },
+    @MessageBody() data: { requestId: string }
   ) {
-    await this.gameService.buyField(socket.game);
+    await this.gameService.buyField(socket.game, data.requestId);
   }
 
   @UseGuards(ValidPlayerGuard, TurnGuard)
   @SubscribeMessage('passTurn')
   async onPassTurn(
     @ConnectedSocket()
-    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> }
+    socket: Socket & { jwtPayload: JwtPayload; game: Partial<GamePayload> },
+    @MessageBody() data: { requestId: string }
   ) {
-    await this.gameService.passTurn(socket.game);
+    await this.gameService.passTurn(socket.game, data.requestId);
   }
 
   @UseGuards(ValidPlayerGuard)
@@ -292,7 +327,7 @@ export class GameGateway {
   async onBuyBranch(
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
-    @MessageBody() data: { index: number }
+    @MessageBody() data: { index: number; requestId: string }
   ) {
     const index = data.index;
     const game = socket.game;
@@ -300,11 +335,14 @@ export class GameGateway {
     const { updatedGame, fields } = await this.gameService.buyBranch(
       game,
       index,
-      userId
+      userId,
+      data.requestId
     );
-    this.server
-      .to(game.id)
-      .emit('updateGameData', { fields, game: updatedGame });
+    this.server.to(game.id).emit('updateGameData', {
+      fields,
+      game: updatedGame,
+      requestId: data.requestId,
+    });
   }
 
   @UseGuards(ValidPlayerGuard)
@@ -312,7 +350,7 @@ export class GameGateway {
   async onSellBranch(
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
-    @MessageBody() data: { index: number }
+    @MessageBody() data: { index: number; requestId: string }
   ) {
     const index = data.index;
     const game = socket.game;
@@ -320,30 +358,37 @@ export class GameGateway {
     const { updatedGame, fields } = await this.gameService.sellBranch(
       game,
       index,
-      userId
+      userId,
+      data.requestId
     );
-    this.server
-      .to(game.id)
-      .emit('updateGameData', { fields, game: updatedGame });
+    this.server.to(game.id).emit('updateGameData', {
+      fields,
+      game: updatedGame,
+      requestId: data.requestId,
+    });
   }
 
   @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('surrender')
   async surrender(
     @ConnectedSocket()
-    socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload }
+    socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
+    @MessageBody() data: { requestId: string }
   ) {
     const userId = socket.data.jwtPayload.sub;
     const gameId = socket.game.id;
 
     const { updatedPlayer, updatedFields } = await this.gameService.loseGame(
       userId,
-      gameId
+      gameId,
+      null,
+      data.requestId
     );
 
     this.server.to(gameId).emit('updateGameData', {
       game: updatedPlayer.game,
       fields: updatedFields,
+      requestId: data.requestId,
     });
   }
 
@@ -352,17 +397,20 @@ export class GameGateway {
   async onMortgageField(
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
-    @MessageBody() data: { index: number }
+    @MessageBody() data: { index: number; requestId: string }
   ) {
     const index = data.index;
     const game = socket.game;
     const { player, fields } = await this.gameService.mortgageField(
       game,
       index,
-      socket.data.jwtPayload.sub
+      socket.data.jwtPayload.sub,
+      data.requestId
     );
-    this.server
-      .to(game.id)
-      .emit('updateGameData', { fields, game: player.game });
+    this.server.to(game.id).emit('updateGameData', {
+      fields,
+      game: player.game,
+      requestId: data.requestId,
+    });
   }
 }

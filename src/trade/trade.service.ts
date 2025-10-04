@@ -30,14 +30,18 @@ export class TradeService {
     return this.trades.get(gameId);
   }
 
-  async validateTradeData(game: Partial<GamePayload>, data: OfferTradeDto) {
+  async validateTradeData(
+    game: Partial<GamePayload>,
+    data: OfferTradeDto,
+    requestId: string
+  ) {
     if (
       data.offerFieldsIndexes.length === 0 &&
       data.wantedFieldsIndexes.length === 0 &&
       data.offeredMoney <= 0 &&
       data.wantedMoney <= 0
     ) {
-      throw new WsException('You must offer something');
+      throw new WsException({ message: 'Invalid trade data', requestId });
     }
     const fields = await this.fieldService.getGameFields(game.id);
     if (data.offerFieldsIndexes.length > 0) {
@@ -49,7 +53,10 @@ export class TradeService {
         userFieldsIndexes.includes(index)
       );
       if (!hasAllOfferFields) {
-        throw new WsException('You dont have all offer fields');
+        throw new WsException({
+          message: 'You dont have all offer fields',
+          requestId,
+        });
       }
     }
     if (data.wantedFieldsIndexes.length > 0) {
@@ -63,22 +70,29 @@ export class TradeService {
         otherUserFieldsIndexes.includes(index)
       );
       if (!hasAllWantedFields) {
-        throw new WsException('Other player doesnt have all wanted fields');
+        throw new WsException({
+          message: 'The other player does not have all wanted fields',
+          requestId,
+        });
       }
     }
   }
 
-  async handleOfferTrade(data: { game: Partial<GamePayload>; trade: Trade }) {
+  async handleOfferTrade(data: {
+    game: Partial<GamePayload>;
+    trade: Trade;
+    requestId: string;
+  }) {
     const { updatedGame } = await this.gameService.passTurnToUser({
       game: data.game,
       toUserId: data.trade.toUserId,
     });
     this.webSocketProvider.server
       .to(data.game.id)
-      .emit('updateGameData', { game: updatedGame });
+      .emit('updateGameData', { game: updatedGame, requestId: data.requestId });
     this.webSocketProvider.server
       .to(data.trade.toUserId)
-      .emit('tradeOffered', { trade: data.trade });
+      .emit('tradeOffered', { trade: data.trade, requestId: data.requestId });
     this.timerService.set(
       updatedGame.id,
       10000,
@@ -87,10 +101,22 @@ export class TradeService {
     );
   }
 
-  async acceptTrade(game: Partial<GamePayload>, trade: Trade, userId: string) {
-    if (!trade) throw new WsException('There is no trade to accept');
+  async acceptTrade(
+    game: Partial<GamePayload>,
+    trade: Trade,
+    userId: string,
+    requestId: string
+  ) {
+    if (!trade)
+      throw new WsException({
+        message: 'There is no trade to accept',
+        requestId,
+      });
     if (trade.toUserId !== userId)
-      throw new WsException('You cant accept this trade');
+      throw new WsException({
+        message: 'You are not allowed to accept this trade',
+        requestId,
+      });
     this.timerService.clear(game.id);
     const fields = await this.fieldService.getGameFields(game.id);
     if (trade.offerFieldsIndexes.length > 0) {
@@ -141,9 +167,13 @@ export class TradeService {
     return { fields, updatedGame };
   }
 
-  async refuseFromTrade(game: Partial<GamePayload>) {
+  async refuseFromTrade(game: Partial<GamePayload>, requestId?: string) {
     const trade = this.getTrade(game.id);
-    if (!trade) throw new WsException('There is no trade to refuse');
+    if (!trade)
+      throw new WsException({
+        message: 'There is no trade to refuse',
+        requestId,
+      });
     this.setTrade(game.id, null);
 
     const { updatedGame } = await this.gameService.passTurnToUser({
@@ -161,6 +191,8 @@ export class TradeService {
       text: `${toPlayer.user.nickname} відхилив угоду!`,
       chatId: game.chat.id,
     });
-    this.webSocketProvider.server.to(game.id).emit('gameChatMessage', message);
+    this.webSocketProvider.server
+      .to(game.id)
+      .emit('gameChatMessage', { requestId, ...message });
   }
 }
