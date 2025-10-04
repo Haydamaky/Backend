@@ -183,15 +183,19 @@ export class PlayerService {
   async checkWhetherPlayerHasAllGroup(
     game: Partial<GamePayload>,
     index: number,
-    userId?: string,
-    buying: boolean = true
+    userId: string,
+    buying: boolean = true,
+    requestId: string
   ) {
     const fields = await this.fieldService.getGameFields(game.id);
     const playerUserId = userId ? userId : game.turnOfUserId;
     const userFields = fields.filter((field) => field.ownedBy === playerUserId);
     const userFieldsIndexes = userFields.map((field) => field.index);
     if (!userFieldsIndexes.includes(index))
-      throw new WsException('You dont have this field');
+      throw new WsException({
+        message: 'You do not own this field',
+        requestId,
+      });
     const fieldToBuyBranch = this.fieldService.findPlayerFieldByIndex(
       fields,
       index
@@ -203,35 +207,56 @@ export class PlayerService {
       (f) => f.group === fieldToBuyBranch.group
     );
     if (groupFields.length !== userGroupFields.length)
-      throw new WsException('You dont have all group fields');
+      throw new WsException({
+        message: 'You must own all fields in group to buy branches',
+        requestId,
+      });
     const isBuyingHotel = buying && fieldToBuyBranch.amountOfBranches === 4;
     const isBuyingHouse = buying && fieldToBuyBranch.amountOfBranches < 4;
     const isSellingHotel = !buying && fieldToBuyBranch.amountOfBranches === 5;
 
     if (isBuyingHotel && game.hotelsQty <= 0) {
-      throw new WsException('You must have at least 1 hotel in the bank');
+      throw new WsException({
+        message: 'You must have at least 1 hotel in the bank',
+        requestId,
+      });
     }
 
     if (isBuyingHouse && game.housesQty <= 0) {
-      throw new WsException('You must have at least 1 house in the bank');
+      throw new WsException({
+        message: 'You must have at least 1 house in the bank',
+        requestId,
+      });
     }
 
     if (isSellingHotel && game.housesQty < 4) {
-      throw new WsException('You must have at least 4 houses in the bank');
+      throw new WsException({
+        message: 'There must be at least 4 houses in the bank to sell a hotel',
+        requestId,
+      });
     }
 
     if (buying && fieldToBuyBranch.isPledged) {
-      throw new WsException('You cannot buy a branch for a pledged field');
+      throw new WsException({
+        message: 'You cant buy branches on a pledged field',
+        requestId,
+      });
     }
 
-    this.checkBuyingOrSellingEvenly(groupFields, fieldToBuyBranch, buying);
+    this.checkBuyingOrSellingEvenly(
+      groupFields,
+      fieldToBuyBranch,
+      buying,
+      requestId
+    );
     return fieldToBuyBranch;
   }
 
   checkBuyingOrSellingEvenly(
     groupOfFields: FieldDocument[],
     field: FieldDocument,
-    buying: boolean
+    buying: boolean,
+    requestId: string
   ) {
     const buyingEvenly = groupOfFields.every((groupField) => {
       const probableDifferenceOfBranches = Math.abs(
@@ -243,26 +268,39 @@ export class PlayerService {
       );
     });
     if (!buyingEvenly)
-      throw new WsException('You must buy/sell branches evenly in group');
+      throw new WsException({
+        message: 'You must buy/sell branches evenly in group',
+        requestId,
+      });
   }
 
-  checkFieldHasMaxBranches(field: FieldDocument) {
+  checkFieldHasMaxBranches(field: FieldDocument, requestId: string) {
     if (field.amountOfBranches >= 5)
-      throw new WsException('This field has max amount of branches');
+      throw new WsException({
+        message: 'This field has max amount of branches',
+        requestId,
+      });
   }
 
-  checkFieldHasBranches(field: FieldDocument) {
+  checkFieldHasBranches(field: FieldDocument, requestId: string) {
     if (field.amountOfBranches >= 6)
-      throw new WsException('This field has max amount of branches');
+      throw new WsException({
+        message: 'This field has no branches to buy',
+        requestId,
+      });
     if (field.amountOfBranches <= 0) {
-      throw new WsException('You do not have any branches to sell');
+      throw new WsException({
+        message: 'This field has no branches to sell',
+        requestId,
+      });
     }
   }
 
   async pledgeField(
     game: Partial<GamePayload>,
     index: number,
-    userId?: string
+    userId: string,
+    requestId: string
   ) {
     const fields = await this.fieldService.getGameFields(game.id);
     const playerUserId = userId ? userId : game.turnOfUserId;
@@ -271,12 +309,13 @@ export class PlayerService {
       index
     );
     if (fieldToPledge.isPledged) {
-      throw new WsException('Field is already pledged');
+      throw new WsException({ message: 'Field is already pledged', requestId });
     }
     if (fieldToPledge.amountOfBranches > 0) {
-      throw new WsException(
-        'You must have some brances so you cant pledge the field'
-      );
+      throw new WsException({
+        message: 'You must sell all branches before pledging',
+        requestId,
+      });
     }
     const player = await this.incrementMoneyWithUserAndGameId(
       playerUserId,
@@ -295,7 +334,8 @@ export class PlayerService {
   async unmortgageField(
     game: Partial<GamePayload>,
     index: number,
-    userId?: string
+    userId: string,
+    requestId: string
   ) {
     const playerUserId = userId ? userId : game.turnOfUserId;
     const fields = await this.fieldService.getGameFields(game.id);
@@ -304,7 +344,7 @@ export class PlayerService {
       index
     );
     if (!fieldToUnmortgage.isPledged) {
-      throw new WsException('Field is not pledged');
+      throw new WsException({ message: 'Field is not pledged', requestId });
     }
     fieldToUnmortgage.isPledged = false;
     fieldToUnmortgage.turnsToUnpledge = null;
@@ -346,9 +386,15 @@ export class PlayerService {
     });
   }
 
-  validatePlayerMoney(player: Partial<PlayerPayload>, moneyNeeded: number) {
-    if (!player) throw new WsException('No such player');
-    if (player.money <= moneyNeeded) throw new WsException('Not enough money');
+  validatePlayerMoney(
+    player: Partial<PlayerPayload>,
+    moneyNeeded: number,
+    requestId: string
+  ) {
+    if (!player)
+      throw new WsException({ message: 'No such player', requestId });
+    if (player.money <= moneyNeeded)
+      throw new WsException({ message: 'Not enough money', requestId });
   }
 
   choseRandomPlayer(players: Partial<PlayerPayload[]>) {

@@ -19,9 +19,11 @@ export class TwoPlayersInvolvedHandler extends BaseHandler<SecretAnalyzer> {
       this.analyzer.userId
     );
     if (this.analyzer.secretInfo.amounts[index] > 0) {
-      throw new WsException(
-        'You cant pay to bank two users and the one wants to pay dont have to'
-      );
+      throw new WsException({
+        message:
+          'You cant pay to bank two users and the one wants to pay dont have to',
+        requestId: this.analyzer.requestId,
+      });
     }
   }
 }

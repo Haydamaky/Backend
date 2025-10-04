@@ -34,7 +34,13 @@ export class WsGuard implements CanActivate {
       client.data.jwtPayload = decoded;
       return decoded;
     } catch (ex) {
-      throw new WsException(ex);
+      throw new WsException({
+        code: 'USER_NOT_AUTHENTICATED',
+        message: ex.message,
+        details: {
+          action: 'WsGuard',
+        },
+      });
     }
   }
 }

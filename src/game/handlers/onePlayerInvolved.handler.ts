@@ -8,9 +8,11 @@ export class OnePlayerInvolvedHandler extends BaseHandler<SecretAnalyzer> {
 
   handle() {
     if (this.analyzer.secretInfo.amounts[0] > 0) {
-      throw new WsException(
-        'You cant pay to bank because one user and he doesnt have to pay'
-      );
+      throw new WsException({
+        message:
+          'You cant pay to bank because one user and he doesnt have to pay',
+        requestId: this.analyzer.requestId,
+      });
     }
   }
 }

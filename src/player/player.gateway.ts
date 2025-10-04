@@ -36,7 +36,7 @@ export class PlayerGateway {
   async onUnmortgageField(
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
-    @MessageBody() data: { index: number }
+    @MessageBody() data: { index: number; requestId: string }
   ) {
     const { index } = data;
     const game = socket.game;
@@ -44,10 +44,12 @@ export class PlayerGateway {
     const { player, fields } = await this.playerService.unmortgageField(
       game,
       index,
-      userId
+      userId,
+      data.requestId
     );
     this.server.to(game.id).emit('updateGameData', {
       fields,
+      requestId: data.requestId,
       game: player.game,
     });
   }

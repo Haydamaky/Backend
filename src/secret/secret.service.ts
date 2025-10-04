@@ -85,13 +85,23 @@ export class SecretService {
     }
   }
 
-  async payToUserForSecret(game: Partial<GamePayload>, userId: string) {
+  async payToUserForSecret(
+    game: Partial<GamePayload>,
+    userId: string,
+    requestId?: string
+  ) {
     let secretInfo = this.secrets.get(game.id);
     if (!secretInfo.users.includes(userId))
-      throw new WsException('You cant pay for that secret');
+      throw new WsException({
+        message: 'You cant pay for that secret',
+        requestId,
+      });
     const amount = secretInfo.amounts[1];
     if (amount > 0)
-      throw new WsException('You dont have to pay for this secret field');
+      throw new WsException({
+        message: 'You dont have to pay for this secret field',
+        requestId,
+      });
     const userToGetId = secretInfo.users[0];
     const indexOfUser = secretInfo.users.indexOf(userId);
     const player = game.players.find((player) => player.userId === userId);
@@ -235,15 +245,21 @@ export class SecretService {
     };
   }
 
-  async payToBankForSecret(game: Partial<GamePayload>, userId: string) {
+  async payToBankForSecret(
+    game: Partial<GamePayload>,
+    userId: string,
+    requestId?: string
+  ) {
     const secretInfo = this.secrets.get(game.id);
-    if (!secretInfo) throw new WsException('No secret found');
+    if (!secretInfo)
+      throw new WsException({ message: 'No secret found', requestId });
     if (!secretInfo.users.includes(userId)) {
-      throw new WsException(
-        'You cant pay to bank because no user in secretInfo'
-      );
+      throw new WsException({
+        message: 'You cant pay to bank because no user in secretInfo',
+        requestId,
+      });
     }
-    const secretAnalyzer = new SecretAnalyzer(secretInfo, userId);
+    const secretAnalyzer = new SecretAnalyzer(secretInfo, userId, requestId);
     const chain = new HandlerChain();
     chain.addHandlers(
       new OnePlayerInvolvedHandler(secretAnalyzer),
