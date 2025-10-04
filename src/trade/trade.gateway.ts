@@ -44,14 +44,21 @@ export class TradeGateway {
     @ConnectedSocket()
     socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
     @MessageBody()
-    data: OfferTradeDto
+    data: { tradeOffer: OfferTradeDto; requestId: string }
   ) {
     const game = socket.game;
     const userId = socket.data.jwtPayload.sub;
     if (this.auctionService.getAuction(game.id))
-      throw new WsException('Cannot offer trade while auction');
-    await this.tradeService.validateTradeData(game, data);
-    const trade = { ...data, fromUserId: userId } as Trade;
+      throw new WsException({
+        message: 'Cannot offer trade while auction',
+        requestId: data.requestId,
+      });
+    await this.tradeService.validateTradeData(
+      game,
+      data.tradeOffer,
+      data.requestId
+    );
+    const trade = { ...data.tradeOffer, fromUserId: userId } as Trade;
     this.tradeService.setTrade(game.id, trade);
     const fromPlayer = game.players.find(
       (player) => player.userId === trade.fromUserId
@@ -64,35 +71,43 @@ export class TradeGateway {
       chatId: game.chat.id,
     });
     this.webSocketProvider.server.to(game.id).emit('gameChatMessage', message);
-    this.tradeService.handleOfferTrade({ game, trade });
+    this.tradeService.handleOfferTrade({
+      game,
+      trade,
+      requestId: data.requestId,
+    });
   }
 
   @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('refuseFromTrade')
   async refuseFromTrade(
     @ConnectedSocket()
-    socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload }
+    socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
+    @MessageBody() data: { requestId: string }
   ) {
     const game = socket.game;
-    this.tradeService.refuseFromTrade(game);
+    this.tradeService.refuseFromTrade(game, data.requestId);
   }
 
   @UseGuards(ValidPlayerGuard)
   @SubscribeMessage('acceptTrade')
   async acceptTrade(
     @ConnectedSocket()
-    socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload }
+    socket: Socket & { game: Partial<GamePayload>; jwtPayload: JwtPayload },
+    @MessageBody() data: { requestId: string }
   ) {
     const game = socket.game;
     const trade = this.tradeService.getTrade(game.id);
     const { updatedGame, fields } = await this.tradeService.acceptTrade(
       game,
       trade,
-      socket.data.jwtPayload.sub
+      socket.data.jwtPayload.sub,
+      data.requestId
     );
-    const data = { fields };
+    const gameData = { fields };
+    gameData['requestId'] = data.requestId;
     if (updatedGame) {
-      data['game'] = updatedGame;
+      gameData['game'] = updatedGame;
     }
     const fromPlayer = game.players.find(
       (player) => player.userId === trade.fromUserId
@@ -105,6 +120,6 @@ export class TradeGateway {
       chatId: game.chat.id,
     });
     this.webSocketProvider.server.to(game.id).emit('gameChatMessage', message);
-    this.webSocketProvider.server.to(game.id).emit('updateGameData', data);
+    this.webSocketProvider.server.to(game.id).emit('updateGameData', gameData);
   }
 }

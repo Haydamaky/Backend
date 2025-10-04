@@ -42,30 +42,30 @@ export class ChatGateway implements OnModuleInit {
   @SubscribeMessage('newMessage')
   async onNewMessage(
     socket: Socket & { jwtPayload: JwtPayload },
-    dataArray: [NewMessagePayloadDto, null]
+    data: { newMessage: NewMessagePayloadDto; requestId: string }
   ) {
-    const data = dataArray[0];
     const message = await this.chatService.onNewMessage(
       socket.data.jwtPayload.sub,
-      data
+      data.newMessage
     );
 
-    this.server.emit('onMessage', message);
+    this.server.emit('onMessage', { ...message, requestId: data.requestId });
   }
 
   @UseGuards(WsGuard)
   @SubscribeMessage('newGameMessage')
   async onNewGameMessage(
     socket: Socket & { jwtPayload: JwtPayload },
-    dataArray: [NewGameMessageDto, null]
+    data: { newMessage: NewGameMessageDto; requestId: string }
   ) {
-    const data = dataArray[0];
     const message = await this.chatService.onNewMessage(
       socket.data.jwtPayload.sub,
-      data
+      data.newMessage
     );
-    if (Array.from(socket.rooms).includes(data.gameId))
-      this.server.to(data.gameId).emit('gameChatMessage', message);
+    if (Array.from(socket.rooms).includes(data.newMessage.gameId))
+      this.server
+        .to(data.newMessage.gameId)
+        .emit('gameChatMessage', { ...message, requestId: data.requestId });
   }
 
   @SubscribeMessage('chatData')

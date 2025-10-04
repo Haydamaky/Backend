@@ -27,8 +27,8 @@ export class AuctionService {
   BID_TIME: number = 10000;
   MIN_RAISE: number = 100;
   auctions: Map<string, Auction> = new Map();
-  async putUpForAuction(game: Partial<GamePayload>) {
-    const player = await this.getCurrentPlayerOrThrow(game);
+  async putUpForAuction(game: Partial<GamePayload>, requestId: string) {
+    const player = await this.getCurrentPlayerOrThrow(game, requestId);
     const field = await this.getAuctionableFieldOrThrow(
       game.id,
       player.currentFieldIndex
@@ -44,21 +44,31 @@ export class AuctionService {
     });
     return this.getAuction(game.id);
   }
-  private async getCurrentPlayerOrThrow(game: Partial<GamePayload>) {
+  private async getCurrentPlayerOrThrow(
+    game: Partial<GamePayload>,
+    requestId?: string
+  ) {
     const player = await this.playerService.findByUserAndGameId(
       game.turnOfUserId,
       game.id
     );
     if (!player) {
-      throw new WsException('No such player');
+      throw new WsException({ message: 'No such player', requestId });
     }
     return player;
   }
-  private async getAuctionableFieldOrThrow(gameId: string, fieldIndex: number) {
+  private async getAuctionableFieldOrThrow(
+    gameId: string,
+    fieldIndex: number,
+    requestId?: string
+  ) {
     const fields = await this.fieldService.getGameFields(gameId);
     const field = this.fieldService.findPlayerFieldByIndex(fields, fieldIndex);
     if (!field.price) {
-      throw new WsException('You cant put this field to auction');
+      throw new WsException({
+        message: 'This field is not auctionable',
+        requestId,
+      });
     }
     return field;
   }
@@ -83,19 +93,31 @@ export class AuctionService {
     userId: string,
     raiseBy: number,
     bidAmount: number,
-    lastBid: number
+    lastBid: number,
+    requestId: string
   ) {
     const lastAcceptedBidderOrFirstBid =
       this.findLastAcceptedBidder(auction) || auction.bidders[0];
+    console.log({ bidAmount, lastAcceptedBidderOrFirstBid });
     if (bidAmount !== lastAcceptedBidderOrFirstBid.bid)
-      throw new WsException('Bid amount is not correct');
+      throw new WsException({
+        message: 'Bid amount is not correct',
+        requestId,
+      });
     if (lastAcceptedBidderOrFirstBid.bid + raiseBy <= lastBid)
-      throw new WsException('Bid is not high enough');
-    if (!auction) throw new WsException('Auction wasn’t started');
+      throw new WsException({
+        message: 'Your raise is not big enough',
+        requestId,
+      });
+    if (!auction)
+      throw new WsException({ message: 'Auction wasn’t started', requestId });
     if (raiseBy < this.MIN_RAISE)
-      throw new WsException('Raise is not big enough');
+      throw new WsException({ message: 'Raise is too low', requestId });
     if (auction.usersRefused.includes(userId))
-      throw new WsException('You refused to auction');
+      throw new WsException({
+        message: 'You already refused to auction',
+        requestId,
+      });
   }
 
   findLastAcceptedBidder(auction: Auction) {
@@ -112,24 +134,26 @@ export class AuctionService {
     gameId: string,
     userId: string,
     raiseBy: number,
-    bidAmount: number
+    bidAmount: number,
+    requestId: string
   ) {
     const player = await this.playerService.findByUserAndGameId(userId, gameId);
     const auction = this.getAuction(gameId);
     const lastBidder = this.getLastBidder(auction);
-    this.playerService.validatePlayerMoney(player, lastBidder.bid);
+    this.playerService.validatePlayerMoney(player, lastBidder.bid, requestId);
     this.validateRaisePrice(
       auction,
       userId,
       raiseBy,
       bidAmount,
-      lastBidder.bid
+      lastBidder.bid,
+      requestId
     );
     this.timerService.clear(gameId);
     this.setBidderOnAuction(gameId, userId, raiseBy, false);
     const auctionWithAcceptedBid = await this.timerService.set(
       gameId,
-      2000,
+      200,
       { gameId, userId, raiseBy },
       this.hightestInQueue
     );
@@ -137,15 +161,16 @@ export class AuctionService {
     if (auctionWithAcceptedBid) {
       this.webSocketProvider.server
         .to(gameId)
-        .emit('raisedPrice', { auction: auctionWithAcceptedBid });
+        .emit('raisedPrice', { auction: auctionWithAcceptedBid, requestId });
       this.timerService.set(
         gameId,
-        15000,
+        10000,
         { ...auctionWithAcceptedBid, gameId },
         this.winAuction
       );
     } else {
       this.webSocketProvider.server.to(userId).emit('error', {
+        requestId,
         message: 'Хтось одночасно поставив з вами і перебив вашу ставку',
       });
     }
@@ -171,15 +196,24 @@ export class AuctionService {
     return auction;
   }
 
-  validateRefuseAuction(auction: Auction, player: Partial<PlayerPayload>) {
-    if (!player) throw new WsException('No such player');
-    if (!auction) throw new WsException('Auction wasn’t started');
+  validateRefuseAuction(
+    auction: Auction,
+    player: Partial<PlayerPayload>,
+    requestId: string
+  ) {
+    if (!player)
+      throw new WsException({ message: 'No such player', requestId });
+    if (!auction)
+      throw new WsException({ message: 'No such auction', requestId });
     const lastBidder = this.getLastBidder(auction);
     if (player.userId === lastBidder.userId) {
-      throw new WsException('You are the last bidder');
+      throw new WsException({ message: 'You are the last bidder', requestId });
     }
     if (auction.usersRefused.includes(player.userId))
-      throw new WsException('You already refused to auction');
+      throw new WsException({
+        message: 'You already refused to auction',
+        requestId,
+      });
   }
 
   private addPlayerRefusal(auction: Auction, userId: string): void {
@@ -191,11 +225,11 @@ export class AuctionService {
     return game.players.filter((player) => !player.lost);
   }
 
-  async refuseAuction(gameId: string, userId: string) {
+  async refuseAuction(gameId: string, userId: string, requestId: string) {
     const player = await this.playerService.findByUserAndGameId(userId, gameId);
     const auction = this.getAuction(gameId);
     const game = player.game;
-    this.validateRefuseAuction(auction, player);
+    this.validateRefuseAuction(auction, player, requestId);
     this.addPlayerRefusal(auction, userId);
     const activePlayers = this.getActivePlayers(game);
     const isAuctionComplete =
@@ -211,7 +245,7 @@ export class AuctionService {
     }
     this.webSocketProvider.server
       .to(gameId)
-      .emit('refusedFromAuction', { auction });
+      .emit('refusedFromAuction', { auction, requestId });
   }
 
   hightestInQueue(args: { gameId: string; userId: string; raiseBy: number }) {

@@ -65,15 +65,19 @@ export class GameService {
     });
   }
 
-  async getAllGameData(gameId: string) {
-    const game = await this.getGame(gameId);
-    const auction = this.auctionService.auctions.get(game.id);
-    const secretInfo = this.secretService.secrets.get(game.id);
-    const fields = await this.fieldService.getGameFields(game.id);
-    return { game, auction, secretInfo, fields };
+  async getAllGameData(gameId: string, requestId: string) {
+    try {
+      const game = await this.getGame(gameId);
+      const auction = this.auctionService.auctions.get(game.id);
+      const secretInfo = this.secretService.secrets.get(game.id);
+      const fields = await this.fieldService.getGameFields(game.id);
+      return { game, auction, secretInfo, fields };
+    } catch (error) {
+      throw new WsException({ message: 'Coundlt get game data', requestId });
+    }
   }
 
-  async createGame(userId: string) {
+  async createGame(userId: string, requestId?: string) {
     const activePlayer = await this.gameRepository.findFirst({
       where: {
         OR: [{ status: 'LOBBY' }, { status: 'ACTIVE' }],
@@ -85,7 +89,11 @@ export class GameService {
       },
     });
 
-    if (activePlayer) throw new WsException('You already have active game');
+    if (activePlayer)
+      throw new WsException({
+        message: 'You already have active game',
+        requestId,
+      });
     const newGame = await this.gameRepository.create({
       data: {
         playersCapacity: 4, // TODO change players capacity to dynamic number
@@ -145,7 +153,7 @@ export class GameService {
     });
   }
 
-  async joinGame(gameId: string, userId: string) {
+  async joinGame(gameId: string, userId: string, requestId: string) {
     const playerWithUserId = await this.playerService.findFirst({
       where: {
         userId,
@@ -157,7 +165,10 @@ export class GameService {
       },
     });
     if (playerWithUserId)
-      throw new WsException('You already in game, leave it first');
+      throw new WsException({
+        message: 'You already in game, leave it first',
+        requestId,
+      });
     const game = await this.gameRepository.findFirst({
       where: { id: gameId },
       include: {
@@ -177,7 +188,10 @@ export class GameService {
       (player) => player.userId === userId
     );
     if (alreadyJoined || game.status !== 'LOBBY')
-      throw new WsException('You cannot join this game');
+      throw new WsException({
+        message: 'You cannot join this game',
+        requestId,
+      });
     const color = this.playerService.COLORS[game.players.length];
     const player = await this.playerService.create({
       color,
@@ -244,11 +258,12 @@ export class GameService {
     this.timerService.set(game.id, game.timeOfTurn, game, this.rollDice);
   }
 
-  async leaveGame(gameId: string, userId: string) {
+  async leaveGame(gameId: string, userId: string, requestId: string) {
     const player = await this.playerService.findFirst({
       where: { userId, gameId },
     });
-    if (!player) throw new WsException('You are not in this game');
+    if (!player)
+      throw new WsException({ message: 'You are not in this game', requestId });
 
     await this.playerService.deleteById(player.id);
 
@@ -292,11 +307,20 @@ export class GameService {
     return `${firstDice}:${secondDice}`;
   }
 
-  async rollDice(game: Partial<GamePayload>) {
-    if (game.dices) throw new WsException('You have already rolled dices');
+  async rollDice(game: Partial<GamePayload>, requestId?: string) {
+    if (game.dices)
+      throw new WsException({
+        message: 'You have already rolled dices',
+        requestId,
+      });
     this.timerService.clear(game.id);
     const { playerNextField, fields, updatedGame } = await this.makeTurn(game);
-    await this.processRolledDices(updatedGame, playerNextField, fields);
+    await this.processRolledDices(
+      updatedGame,
+      playerNextField,
+      fields,
+      requestId
+    );
   }
 
   private async handlePaymentField(
@@ -337,7 +361,8 @@ export class GameService {
   async processRolledDices(
     game: Partial<GamePayload>,
     playerNextField?: FieldDocument,
-    fields?: FieldDocument[]
+    fields?: FieldDocument[],
+    requestId?: string
   ) {
     if (!playerNextField) {
       playerNextField = await this.findCurrentFieldFromGame(game);
@@ -349,6 +374,7 @@ export class GameService {
     );
     this.webSocketProvider.server.to(game.id).emit('rolledDice', {
       ...(fields !== undefined && { fields }),
+      requestId,
       game,
     });
     const chain = new HandlerChain();
@@ -441,6 +467,7 @@ export class GameService {
     game: Partial<GamePayload>;
     amount: number;
     userId: string;
+    requestId?: string;
   }) {
     const { updatedGame } = await this.paymentService.transferWithBank(
       argsObj.game,
@@ -449,25 +476,32 @@ export class GameService {
     );
     const secretInfo = this.secretService.secrets.get(updatedGame.id);
     if (!secretInfo) {
-      await this.passTurn(updatedGame);
+      await this.passTurn(updatedGame, argsObj.requestId);
     } else {
       this.webSocketProvider.server.to(updatedGame.id).emit('updatePlayers', {
         game: updatedGame,
         secretInfo,
+        requestId: argsObj.requestId,
       });
     }
   }
 
-  async payToBankForSpecialField(userId: string, game: Partial<GamePayload>) {
+  async payToBankForSpecialField(
+    userId: string,
+    game: Partial<GamePayload>,
+    requestId?: string
+  ) {
     const currentField = await this.findCurrentFieldWithUserId(game);
     if (!game.dices && !currentField.toPay)
-      throw new WsException(
-        'You cant pay for that field because its not special field'
-      );
+      throw new WsException({
+        message: 'You cant pay for that field because its not special field',
+        requestId,
+      });
     return this.transferWithBank({
       game: game,
       userId,
       amount: currentField.toPay,
+      requestId,
     });
   }
 
@@ -493,12 +527,12 @@ export class GameService {
     await this.passTurn(updatedPlayer.game);
   }
 
-  async putUpForAuction(game: Partial<GamePayload>) {
-    const auction = await this.auctionService.putUpForAuction(game);
+  async putUpForAuction(game: Partial<GamePayload>, requestId?: string) {
+    const auction = await this.auctionService.putUpForAuction(game, requestId);
     const updatedGame = await this.updateGameWithNewTurn(game, 15000);
     this.webSocketProvider.server
       .to(game.id)
-      .emit('hasPutUpForAuction', { game: updatedGame, auction });
+      .emit('hasPutUpForAuction', { game: updatedGame, auction, requestId });
     this.timerService.set(game.id, 15000, updatedGame, this.passTurn);
   }
 
@@ -647,12 +681,12 @@ export class GameService {
     );
   }
 
-  async buyField(game: Partial<GamePayload>) {
-    await this.processBuyField(game);
-    this.passTurn(game);
+  async buyField(game: Partial<GamePayload>, requestId: string) {
+    await this.processBuyField(game, requestId);
+    this.passTurn(game, requestId);
   }
 
-  async processBuyField(game: Partial<GamePayload>) {
+  async processBuyField(game: Partial<GamePayload>, requestId: string) {
     const player = this.playerService.findPlayerWithTurn(game);
     const fields = await this.fieldService.getGameFields(game.id);
     const field = this.fieldService.findPlayerFieldByIndex(
@@ -660,7 +694,10 @@ export class GameService {
       player.currentFieldIndex
     );
     if (field.ownedBy) {
-      throw new WsException('Field is already owned');
+      throw new WsException({
+        message: 'This field is already owned',
+        requestId,
+      });
     }
     if (
       !field.price ||
@@ -668,7 +705,7 @@ export class GameService {
       field.ownedBy === player.userId ||
       this.auctionService.getAuction(game.id)
     ) {
-      throw new WsException('You cant buy this field');
+      throw new WsException({ message: 'You cant buy this field', requestId });
     }
     this.timerService.clear(game.id);
     field.ownedBy = game.turnOfUserId;
@@ -686,23 +723,14 @@ export class GameService {
     return game.players.filter((player) => !player.lost);
   }
 
-  async passTurn(game: Partial<GamePayload>, fromEvent: boolean = false) {
+  async passTurn(game: Partial<GamePayload>, requestId?: string) {
     const fields = await this.fieldService.getGameFields(game.id);
-    const currentPlayer = this.playerService.findPlayerWithTurn(game);
-    const currentField = this.fieldService.findPlayerFieldByIndex(
-      fields,
-      currentPlayer.currentFieldIndex
-    );
-    if (
-      fromEvent &&
-      !currentField.large &&
-      currentField.ownedBy !== game.turnOfUserId
-    ) {
-      throw new WsException('You cant pass turn with that field');
-    }
 
     if (!game.dices) {
-      throw new WsException('You have to roll dices first');
+      throw new WsException({
+        message: 'You have to roll dices first',
+        requestId,
+      });
     }
     const dices = '';
     this.auctionService.setAuction(game.id, null);
@@ -727,18 +755,22 @@ export class GameService {
     });
     this.webSocketProvider.server
       .to(game.id)
-      .emit('passTurnToNext', { game: updatedGame, fields });
+      .emit('passTurnToNext', { game: updatedGame, fields, requestId });
     this.timerService.set(game.id, game.timeOfTurn, updatedGame, this.rollDice);
   }
 
-  async payForPrivateField(game: Partial<GamePayload>) {
+  async payForPrivateField(game: Partial<GamePayload>, requestId?: string) {
     const currentField = await this.findCurrentFieldWithUserId(game);
     if (!game.dices || !currentField.ownedBy)
-      throw new WsException('You cant pay for that field');
+      throw new WsException({
+        message: 'You cant pay for that field',
+        requestId,
+      });
     this.timerService.clear(game.id);
     const { updatedGame, fields: updatedFields } =
       await this.processPayingForField(game, currentField);
     this.webSocketProvider.server.to(game.id).emit('payedForField', {
+      requestId,
       game: updatedGame,
       fields: updatedFields,
     });
@@ -886,17 +918,27 @@ export class GameService {
     return { updatedGame };
   }
 
-  async buyBranch(game: Partial<GamePayload>, index: number, userId: string) {
+  async buyBranch(
+    game: Partial<GamePayload>,
+    index: number,
+    userId: string,
+    requestId: string
+  ) {
     const fieldToBuyBranch =
       await this.playerService.checkWhetherPlayerHasAllGroup(
         game,
         index,
-        userId
+        userId,
+        true,
+        requestId
       );
-    this.playerService.checkFieldHasMaxBranches(fieldToBuyBranch);
+    this.playerService.checkFieldHasMaxBranches(fieldToBuyBranch, requestId);
     const playerToPay = game.players.find((player) => player.userId === userId);
     if (playerToPay.money < fieldToBuyBranch.branchPrice) {
-      throw new WsException('You dont have enough money to buy branch');
+      throw new WsException({
+        message: 'You dont have enough money to buy branch',
+        requestId,
+      });
     }
     const player = await this.playerService.decrementMoneyWithUserAndGameId(
       userId,
@@ -918,15 +960,21 @@ export class GameService {
     return { updatedGame, fields };
   }
 
-  async sellBranch(game: Partial<GamePayload>, index: number, userId: string) {
+  async sellBranch(
+    game: Partial<GamePayload>,
+    index: number,
+    userId: string,
+    requestId: string
+  ) {
     const fieldToSellBranch =
       await this.playerService.checkWhetherPlayerHasAllGroup(
         game,
         index,
         userId,
-        false
+        false,
+        requestId
       );
-    this.playerService.checkFieldHasBranches(fieldToSellBranch);
+    this.playerService.checkFieldHasBranches(fieldToSellBranch, requestId);
     const player = await this.playerService.incrementMoneyWithUserAndGameId(
       userId,
       game.id,
@@ -947,7 +995,12 @@ export class GameService {
     return { updatedGame, fields };
   }
 
-  async loseGame(userId: string, gameId: string, fields?: FieldDocument[]) {
+  async loseGame(
+    userId: string,
+    gameId: string,
+    fields?: FieldDocument[],
+    requestId?: string
+  ) {
     if (!fields) {
       fields = await this.fieldService.getGameFields(gameId);
     }
@@ -981,26 +1034,36 @@ export class GameService {
       this.webSocketProvider.server.to(game.id).emit('playerWon', { game });
       return { updatedPlayer, fields };
     }
-    this.passTurn(updatedGame);
+    this.passTurn(updatedGame, requestId);
     return { updatedPlayer, updatedFields: fields };
   }
 
-  mortgageField(game: Partial<GamePayload>, index: number, userId?: string) {
+  mortgageField(
+    game: Partial<GamePayload>,
+    index: number,
+    userId: string,
+    requestId?: string
+  ) {
     const auction = this.auctionService.auctions.get(game.id);
     const secretInfo = this.secretService.secrets.get(game.id);
     if (auction || secretInfo)
-      throw new WsException(
-        'You cant pledge field while auction or secret is active'
-      );
-    return this.playerService.pledgeField(game, index, userId);
+      throw new WsException({
+        message: 'You cannot pledge field right now',
+        requestId,
+      });
+    return this.playerService.pledgeField(game, index, userId, requestId);
   }
 
-  async payToUserForSecret(game: Partial<GamePayload>, userId: string) {
+  async payToUserForSecret(
+    game: Partial<GamePayload>,
+    userId: string,
+    requestId?: string
+  ) {
     const {
       game: updatedGame,
       secretInfo,
       loseGame,
-    } = await this.secretService.payToUserForSecret(game, userId);
+    } = await this.secretService.payToUserForSecret(game, userId, requestId);
     let gameAfterLoss = null;
     if (loseGame) {
       gameAfterLoss = await this.loseGame(userId, game.id);
@@ -1008,15 +1071,21 @@ export class GameService {
     return { game: loseGame ? gameAfterLoss : updatedGame, secretInfo };
   }
 
-  async payToBankForSecret(game: Partial<GamePayload>, userId: string) {
+  async payToBankForSecret(
+    game: Partial<GamePayload>,
+    userId: string,
+    requestId?: string
+  ) {
     const amountToPay = await this.secretService.payToBankForSecret(
       game,
-      userId
+      userId,
+      requestId
     );
     await this.transferWithBank({
       game: game,
       userId,
       amount: amountToPay,
+      requestId,
     });
   }
 }
