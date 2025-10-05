@@ -37,6 +37,7 @@ export class AuctionService {
     const bidder = this.createInitialBidder(field.price);
     const turnEnds = this.timerService.calculateFutureTime(this.BID_TIME);
     this.setAuction(game.id, {
+      bidTimeSec: this.BID_TIME / 1000,
       fieldIndex: field.index,
       bidders: [bidder],
       turnEnds,
