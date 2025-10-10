@@ -121,6 +121,7 @@ export class GameGateway {
     return games;
   }
 
+  @UseGuards(WsGuard)
   @SubscribeMessage('getAllGameData')
   async onGetAllGameData(
     @GetGameId() gameId: string,
