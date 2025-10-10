@@ -13,6 +13,7 @@ export class WsGuard implements CanActivate {
 
   async canActivate(context: any): Promise<boolean | any> {
     const client = context.switchToWs().getClient();
+    const data = context.switchToWs().getData();
     if (!client.handshake.headers.cookie) {
       throw new WsException({
         code: 'USER_NOT_AUTHENTICATED',
@@ -20,6 +21,7 @@ export class WsGuard implements CanActivate {
         details: {
           action: 'WsGuard',
         },
+        requestId: data.requestId,
       });
     }
     const userId = client.data.jwtPayload?.sub;
@@ -37,6 +39,7 @@ export class WsGuard implements CanActivate {
       throw new WsException({
         code: 'USER_NOT_AUTHENTICATED',
         message: ex.message,
+        requestId: data.requestId,
         details: {
           action: 'WsGuard',
         },
