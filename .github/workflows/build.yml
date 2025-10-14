@@ -20,7 +20,7 @@ jobs:
           docker save myapp:latest > myapp.tar
 
       - name: Upload Docker Image Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: myapp-image
           path: myapp.tar
