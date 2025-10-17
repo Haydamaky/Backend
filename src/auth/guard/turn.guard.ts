@@ -7,13 +7,21 @@ export class TurnGuard implements CanActivate {
 
   async canActivate(context: any): Promise<boolean | any> {
     const client = context.switchToWs().getClient();
+    const data = context.switchToWs().getData();
     const userId = client.data.jwtPayload.sub;
     try {
       if (
         client.game?.turnOfUserId !== userId &&
         client.game.status === 'ACTIVE'
       )
-        throw new WsException('Wrong turn');
+        throw new WsException({
+          code: 'WRONG_TURN',
+          message: 'You can perform this action only on your turn',
+          details: {
+            action: 'TurnGuard',
+          },
+          requestId: data.requestId,
+        });
       return true;
     } catch (ex) {
       throw new WsException(ex.message);

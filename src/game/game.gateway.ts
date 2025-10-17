@@ -66,6 +66,7 @@ export class GameGateway {
       }
       const updatedGame = await this.gameService.updateGameWithNewTurn(game);
       this.rejoinGame(socket, gameId);
+      socket.emit('rejoin');
       const currentField =
         await this.gameService.findCurrentFieldFromGame(game);
       if (game.dices) {
@@ -101,7 +102,6 @@ export class GameGateway {
 
   private rejoinGame(socket: Socket, gameId: string) {
     socket.join(gameId);
-    socket.emit('rejoin');
   }
 
   private leaveAllRoomsExceptInitial(socket: Socket) {

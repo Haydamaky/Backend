@@ -529,11 +529,11 @@ export class GameService {
 
   async putUpForAuction(game: Partial<GamePayload>, requestId?: string) {
     const auction = await this.auctionService.putUpForAuction(game, requestId);
-    const updatedGame = await this.updateGameWithNewTurn(game, 15000);
+    const updatedGame = await this.updateGameWithNewTurn(game, 10000);
     this.webSocketProvider.server
       .to(game.id)
       .emit('hasPutUpForAuction', { game: updatedGame, auction, requestId });
-    this.timerService.set(game.id, 15000, updatedGame, this.passTurn);
+    this.timerService.set(game.id, 10000, updatedGame, this.passTurn);
   }
 
   async findCurrentFieldFromGame(game: Partial<GamePayload>) {
