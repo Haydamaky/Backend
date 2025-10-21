@@ -119,14 +119,14 @@ export class SecretService {
       updatedPlayer = await this.playerService.incrementMoneyWithUserAndGameId(
         userToGetId,
         game.id,
-        amount
-      );
-      await this.playerService.decrementMoneyWithUserAndGameId(
-        userId,
-        game.id,
-        amount
+        -amount
       );
     }
+    await this.playerService.decrementMoneyWithUserAndGameId(
+      userId,
+      game.id,
+      -amount
+    );
     secretInfo.users.splice(indexOfUser, 1, '');
     if (
       secretInfo.users.every((userId, index) => {

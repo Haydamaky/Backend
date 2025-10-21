@@ -99,7 +99,6 @@ export class AuctionService {
   ) {
     const lastAcceptedBidderOrFirstBid =
       this.findLastAcceptedBidder(auction) || auction.bidders[0];
-    console.log({ bidAmount, lastAcceptedBidderOrFirstBid });
     if (bidAmount !== lastAcceptedBidderOrFirstBid.bid)
       throw new WsException({
         message: 'Bid amount is not correct',

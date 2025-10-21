@@ -380,7 +380,7 @@ export class GameService {
     const chain = new HandlerChain();
     chain.addHandlers(
       new PassTurnHandler(fieldAnalyzer, () => {
-        this.timerService.set(game.id, 2500, game, this.passTurn);
+        this.timerService.set(game.id, 3500, game, this.passTurn);
       }),
       new ProcessSpecialHandler(fieldAnalyzer, () => {
         this.processSpecialField(game, playerNextField);
