@@ -58,6 +58,7 @@ export class GameGateway {
       if (!gameId) return;
       socket.join(userId);
       const game = await this.gameService.getGame(gameId);
+      if (!game) return;
       if (game.status !== 'ACTIVE') return;
       const timers = this.timerService.timers;
       if (timers.has(gameId)) {
@@ -161,7 +162,6 @@ export class GameGateway {
     @ConnectedSocket() socket: Socket,
     @MessageBody() data: { id: string; requestId: string }
   ) {
-    console.log({ data });
     const game = await this.gameService.joinGame(
       data.id,
       socket.data.jwtPayload.sub,
@@ -281,7 +281,6 @@ export class GameGateway {
     @MessageBody()
     data: { raiseBy: number; bidAmount: number; requestId: string }
   ) {
-    console.log({ data });
     const userId = socket.data.jwtPayload.sub;
     await this.auctionService.raisePrice(
       gameId,
