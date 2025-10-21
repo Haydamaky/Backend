@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
-import { ChatType, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { AuctionService } from 'src/auction/auction.service';
 import { HandlerChain } from 'src/common/handlerChain';
 import { FieldService } from 'src/field/field.service';
@@ -14,10 +14,12 @@ import { TimerService } from 'src/timer/timers.service';
 import { DEFAULT_FIELDS } from 'src/utils/fields';
 import { WebSocketProvider } from 'src/webSocketProvider/webSocketProvider.service';
 import { GamePayload, GameRepository } from './game.repository';
-import { PassTurnHandler } from './handlers/PassTurn.handler';
-import { ProcessSpecialHandler } from './handlers/ProcessSpecial.handler';
-import { PutUpForAuctionHandler } from './handlers/PutUpForAuction.handler';
-import { SteppedOnPrivateHandler } from './handlers/SteppedOnPrivate.handler';
+import { GameRepositoryV2 } from 'src/game/game.repository.v2';
+import { PutUpForAuctionHandler } from 'src/game/handlers/putUpForAuction.handler';
+import { PassTurnHandler } from 'src/game/handlers/passTurn.handler';
+import { ProcessSpecialHandler } from 'src/game/handlers/processSpecial.handler';
+import { SteppedOnPrivateHandler } from 'src/game/handlers/steppedOnPrivate.handler';
+
 @Injectable()
 export class GameService {
   constructor(
@@ -31,7 +33,8 @@ export class GameService {
     private fieldService: FieldService,
     @Inject(forwardRef(() => SecretService))
     private secretService: SecretService,
-    private paymentService: PaymentService
+    private paymentService: PaymentService,
+    private gameRepositoryV2: GameRepositoryV2
   ) {
     this.passTurnToUser = this.passTurnToUser.bind(this);
     this.rollDice = this.rollDice.bind(this);
@@ -47,22 +50,7 @@ export class GameService {
   readonly PLAYING_FIELDS_QUANTITY = 40;
 
   async getVisibleGames() {
-    return this.gameRepository.findMany({
-      where: { status: 'LOBBY' },
-      include: {
-        players: {
-          include: { user: { select: { nickname: true } } },
-          orderBy: {
-            createdAt: 'asc',
-          },
-        },
-        chat: {
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
+    return this.gameRepositoryV2.getVisibleGames();
   }
 
   async getAllGameData(gameId: string, requestId: string) {
@@ -94,37 +82,8 @@ export class GameService {
         message: 'You already have active game',
         requestId,
       });
-    const newGame = await this.gameRepository.create({
-      data: {
-        playersCapacity: 4, // TODO change players capacity to dynamic number
-        players: {
-          create: {
-            userId,
-            color: this.playerService.COLORS[0],
-          },
-        },
-        turnEnds: '10000',
-      },
-      include: {
-        players: {
-          include: {
-            user: {
-              select: {
-                nickname: true,
-              },
-            },
-          },
-          orderBy: {
-            createdAt: 'asc',
-          },
-        },
-        chat: {
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
+    const newGame = await this.gameRepositoryV2.createGameWithPlayer(userId);
+
     const gameFields = DEFAULT_FIELDS.map((field) => ({
       ...field,
       gameId: newGame.id,
@@ -135,22 +94,7 @@ export class GameService {
   }
 
   async getGame(gameId: string) {
-    return this.gameRepository.findUnique({
-      where: { id: gameId },
-      include: {
-        players: {
-          include: { user: { select: { nickname: true, id: true } } },
-          orderBy: {
-            createdAt: 'asc',
-          },
-        },
-        chat: {
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
+    return this.gameRepositoryV2.getGameById(gameId);
   }
 
   async joinGame(gameId: string, userId: string, requestId: string) {
@@ -204,44 +148,7 @@ export class GameService {
       gameWithCreatedPlayer.players.length
     ) {
       const turnEnds = this.timerService.calculateFutureTime(game.timeOfTurn);
-      const startedGame = await this.gameRepository.updateById(gameId, {
-        data: {
-          status: 'ACTIVE',
-          turnOfUserId:
-            gameWithCreatedPlayer.players[
-              gameWithCreatedPlayer.players.length - 1
-            ].userId,
-          turnEnds,
-          chat: {
-            create: {
-              type: ChatType.GAME,
-              participants: {
-                createMany: {
-                  data: [
-                    ...gameWithCreatedPlayer.players.map((player) => ({
-                      userId: player.userId,
-                    })),
-                  ],
-                },
-              },
-            },
-          },
-        },
-        include: {
-          players: {
-            include: { user: { select: { nickname: true, id: true } } },
-            orderBy: {
-              createdAt: 'asc',
-            },
-          },
-          chat: {
-            select: {
-              id: true,
-            },
-          },
-        },
-      });
-      return startedGame;
+      return this.gameRepositoryV2.startGame(gameId, turnEnds);
     }
     return gameWithCreatedPlayer;
   }
@@ -267,38 +174,14 @@ export class GameService {
 
     await this.playerService.deleteById(player.id);
 
-    let game = await this.getGame(gameId);
+    const game = await this.getGame(gameId);
     if (!game.players.length) {
-      game = await this.gameRepository.delete({
+      await this.gameRepository.delete({
         where: { id: gameId },
         include: { players: true },
       });
     }
     return game;
-  }
-
-  async findGameWithPlayers(gameId: string) {
-    const game = await this.gameRepository.findUnique({
-      where: { id: gameId },
-      include: {
-        players: {
-          include: { user: { select: { nickname: true } } },
-          orderBy: {
-            createdAt: 'asc',
-          },
-        },
-        chat: {
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
-    return game;
-  }
-
-  findById(gameId: string) {
-    return this.gameRepository.findById(gameId);
   }
 
   getRandomDicesString() {
@@ -575,23 +458,8 @@ export class GameService {
   async updateById(
     gameId: string,
     fieldsToUpdate: Partial<Prisma.$GamePayload['scalars']>
-  ) {
-    return this.gameRepository.updateById(gameId, {
-      data: fieldsToUpdate,
-      include: {
-        players: {
-          include: { user: { select: { nickname: true } } },
-          orderBy: {
-            createdAt: 'asc',
-          },
-        },
-        chat: {
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
+  ): Promise<any> {
+    return this.gameRepositoryV2.updateGame(gameId, fieldsToUpdate);
   }
 
   parseDicesToArr(dices: string) {
@@ -811,80 +679,20 @@ export class GameService {
     return { updatedGame: received.game };
   }
 
-  decreaseHouses(gameId: string, quantity: number) {
-    return this.gameRepository.updateById(gameId, {
-      data: { housesQty: { decrement: quantity } },
-      include: {
-        players: {
-          include: { user: { select: { nickname: true } } },
-          orderBy: {
-            createdAt: 'asc',
-          },
-        },
-        chat: {
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
+  async decreaseHouses(gameId: string, quantity: number) {
+    return this.gameRepositoryV2.decreaseHouses(gameId, quantity);
   }
 
-  increaseHouses(gameId: string, quantity: number) {
-    return this.gameRepository.updateById(gameId, {
-      data: { housesQty: { increment: quantity } },
-      include: {
-        players: {
-          include: { user: { select: { nickname: true } } },
-          orderBy: {
-            createdAt: 'asc',
-          },
-        },
-        chat: {
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
+  async increaseHouses(gameId: string, quantity: number) {
+    return this.gameRepositoryV2.increaseHouses(gameId, quantity);
   }
 
-  decreaseHotels(gameId: string, quantity: number) {
-    return this.gameRepository.updateById(gameId, {
-      data: { hotelsQty: { decrement: quantity } },
-      include: {
-        players: {
-          include: { user: { select: { nickname: true } } },
-          orderBy: {
-            createdAt: 'asc',
-          },
-        },
-        chat: {
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
+  async decreaseHotels(gameId: string, quantity: number) {
+    return this.gameRepositoryV2.decreaseHotels(gameId, quantity);
   }
 
-  increaseHotels(gameId: string, quantity: number) {
-    return this.gameRepository.updateById(gameId, {
-      data: { hotelsQty: { increment: quantity } },
-      include: {
-        players: {
-          include: { user: { select: { nickname: true } } },
-          orderBy: {
-            createdAt: 'asc',
-          },
-        },
-        chat: {
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
+  async increaseHotels(gameId: string, quantity: number) {
+    return this.gameRepositoryV2.increaseHotels(gameId, quantity);
   }
 
   hasWinner(game: Partial<GamePayload>) {
