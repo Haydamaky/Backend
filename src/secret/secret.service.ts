@@ -2,18 +2,17 @@ import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { Player } from '@prisma/client';
 import { ChatService } from 'src/chat/chat.service';
+import { HandlerChain } from 'src/common/handlerChain';
 import { FieldService } from 'src/field/field.service';
 import { GamePayload } from 'src/game/game.repository';
-import { GameService } from 'src/game/game.service';
+import { AllPlayersInvolvedHandler } from 'src/game/handlers/allPlayersInvolved.handler';
+import { OnePlayerInvolvedHandler } from 'src/game/handlers/onePlayerInvolved.handler';
 import { TwoPlayersInvolvedHandler } from 'src/game/handlers/twoPlayersInvolved.handler';
 import { SecretInfo } from 'src/game/types/secretInfo.type';
 import { PaymentService } from 'src/payment/payment.service';
 import { PlayerService } from 'src/player/player.service';
 import secretFields, { SecretType } from 'src/utils/fields/secretFields';
 import { SecretAnalyzer } from './secretAnalyzer';
-import { HandlerChain } from 'src/common/handlerChain';
-import { OnePlayerInvolvedHandler } from 'src/game/handlers/onePlayerInvolved.handler';
-import { AllPlayersInvolvedHandler } from 'src/game/handlers/allPlayersInvolved.handler';
 
 @Injectable()
 export class SecretService {
@@ -168,7 +167,10 @@ export class SecretService {
     const secret = this.choseRandomSecret();
     const secretInfo = await this.parseAndSaveSecret(secret, game);
     if (secretInfo.text.includes('$RANDOM_PLAYER$')) {
-      const randomPlayer = this.playerService.choseRandomPlayer(game.players);
+      const randomPlayer = this.playerService.choseRandomPlayerExept(
+        game.players,
+        game.turnOfUserId
+      );
       secretInfo.text = secretInfo.text.replace(
         '$RANDOM_PLAYER$',
         randomPlayer?.user.nickname

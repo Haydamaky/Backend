@@ -1,34 +1,34 @@
 const secretFields = [
-  {
-    text: 'The SBU unexpectedly visited all players. Everyone loses 700mm, except for him/her – he/she managed to hack the phone in time.',
-    amounts: [-700],
-    numOfPlayersInvolved: 'all',
-  },
+  // {
+  //   text: 'The SBU unexpectedly visited all players. Everyone loses 700mm, except for him/her – he/she managed to hack the phone in time.',
+  //   amounts: [-700],
+  //   numOfPlayersInvolved: 'all',
+  // },
   {
     text: '$RANDOM_PLAYER$ reported him/her to NABU for undeclared property that he/she did not list in financial documents. Pays a fine of 1500mm. The reporter receives a reward of 3500mm.',
     amounts: [3500, -1500],
     numOfPlayersInvolved: 'two',
   },
-  {
-    text: 'He/She initiated road repairs, and all residents are grateful. Receives 300mm from each player as a "road tax".',
-    amounts: [null, -300],
-    numOfPlayersInvolved: 'all',
-  },
-  {
-    text: 'Parliament passed a law on an air tax. He/She must pay 500mm.',
-    amounts: [-500],
-    numOfPlayersInvolved: 'one',
-  },
+  // {
+  //   text: 'He/She initiated road repairs, and all residents are grateful. Receives 300mm from each player as a "road tax".',
+  //   amounts: [null, -300],
+  //   numOfPlayersInvolved: 'all',
+  // },
+  // {
+  //   text: 'Parliament passed a law on an air tax. He/She must pay 500mm.',
+  //   amounts: [-500],
+  //   numOfPlayersInvolved: 'one',
+  // },
   // {
   //   text: 'Yanukovych decided to return, and he/she must contribute 1000mm to his "golden loaf".',
   //   amounts: [-1000],
   //   numOfPlayersInvolved: 'one',
   // },
-  {
-    text: 'The EU decided to provide financial support to Ukraine. He/She receives 2000mm because his/her documents were the first to reach Brussels.',
-    amounts: [2000],
-    numOfPlayersInvolved: 'one',
-  },
+  // {
+  //   text: 'The EU decided to provide financial support to Ukraine. He/She receives 2000mm because his/her documents were the first to reach Brussels.',
+  //   amounts: [2000],
+  //   numOfPlayersInvolved: 'one',
+  // },
   // {
   //   text: 'The hryvnia unexpectedly strengthened, and he/she profited from currency exchange. Receives 1500mm.',
   //   amounts: [1500],
