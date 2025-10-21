@@ -397,8 +397,17 @@ export class PlayerService {
       throw new WsException({ message: 'Not enough money', requestId });
   }
 
-  choseRandomPlayer(players: Partial<PlayerPayload[]>) {
-    const randomIndex = Math.floor(Math.random() * players.length);
-    return players[randomIndex];
+  choseRandomPlayerExept(
+    players: Partial<PlayerPayload[]>,
+    exeptPlayerId: string
+  ) {
+    const copyOfPlayersExeptPlayer = players.filter(
+      (player) => player.userId !== exeptPlayerId
+    );
+    const randomIndex = Math.floor(
+      Math.random() * copyOfPlayersExeptPlayer.length
+    );
+    const chosenPlayer = copyOfPlayersExeptPlayer[randomIndex];
+    return chosenPlayer;
   }
 }
