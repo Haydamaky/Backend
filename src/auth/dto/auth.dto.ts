@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, IsTimeZone } from 'class-validator';
 
 export class SignUpDto {
   @IsEmail()
@@ -12,6 +12,10 @@ export class SignUpDto {
   @IsString()
   @IsNotEmpty()
   nickname: string;
+
+  @IsString()
+  @IsTimeZone()
+  timezone: string;
 }
 
 export class SignInDto {
@@ -22,6 +26,10 @@ export class SignInDto {
   @IsString()
   @IsNotEmpty()
   password: string;
+
+  @IsString()
+  @IsTimeZone()
+  timezone: string;
 }
 
 export class ChangePasswordDto {
