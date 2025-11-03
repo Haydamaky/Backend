@@ -21,6 +21,8 @@ model User {
     isEmailConfirmed       Boolean @default(false)
     emailConfirmationToken String  @default("")
 
+    timezone String @default("UTC")
+
     requestedBy  Follow[]   @relation("requestedBy")
     requested    Follow[]   @relation("requested")
     sentMessages Message[]  @relation("sentMessages")
