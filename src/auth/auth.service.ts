@@ -47,6 +47,7 @@ export class AuthService {
           email: dto.email,
           hash,
           emailConfirmationToken,
+          timezone: dto.timezone,
         },
       });
       this.emailService.sendVerificationEmail(
@@ -58,6 +59,7 @@ export class AuthService {
         id: user.id,
         nickname: user.nickname,
         isEmailConfirmed: user.isEmailConfirmed,
+        timezone: user.timezone,
       };
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
@@ -87,10 +89,15 @@ export class AuthService {
       throw new ForbiddenException('Password is incorrect');
     }
     const tokens = await this.signTokens(user.id, user.email);
-    await this.updateRtHash(user.id, tokens.refreshToken);
+
+    if (dto.timezone && dto.timezone !== user.timezone) {
+      await this.updateLoginData(user.id, tokens.refreshToken, dto.timezone);
+    } else {
+      await this.updateLoginData(user.id, tokens.refreshToken);
+    }
     return {
       tokens,
-      user: { email: user.email, id: user.id },
+      user: { email: user.email, id: user.id, timezone: user.timezone },
     };
   }
 
@@ -101,6 +108,7 @@ export class AuthService {
       email: userFromDB.email,
       id: userFromDB.id,
       isEmailConfirmed: userFromDB.isEmailConfirmed,
+      timezone: userFromDB.timezone,
     };
   }
 
@@ -127,7 +135,7 @@ export class AuthService {
     if (!rtMatches) throw new ForbiddenException('Rt token does not match');
 
     const tokens = await this.signTokens(user.id, user.email);
-    await this.updateRtHash(user.id, tokens.refreshToken);
+    await this.updateLoginData(user.id, tokens.refreshToken);
     return tokens;
   }
 
@@ -173,9 +181,9 @@ export class AuthService {
     });
 
     const tokens = await this.signTokens(user.id, user.email);
-    await this.updateRtHash(user.id, tokens.refreshToken);
+    await this.updateLoginData(user.id, tokens.refreshToken);
     this.sseService.sendToUser(user.id, { type: 'email_verified' });
-    return { tokens, user: { email: user.email } };
+    return { tokens, user: { email: user.email, timezone: user.timezone } };
   }
 
   async changePassword(
@@ -262,15 +270,20 @@ export class AuthService {
     }
   }
 
-  async updateRtHash(id: string, rt: string) {
+  async updateLoginData(id: string, rt: string, timezone?: string) {
     const hash = await argon2.hash(rt);
+    const updateData = { hashedRt: hash } as {
+      hashedRt: string;
+      timezone?: string;
+    };
+    if (timezone) {
+      updateData.timezone = timezone;
+    }
     await this.userRepository.update({
       where: {
         id,
       },
-      data: {
-        hashedRt: hash,
-      },
+      data: updateData,
     });
   }
 
