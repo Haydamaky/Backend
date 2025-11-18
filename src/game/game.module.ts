@@ -1,36 +1,18 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { GameService } from './game.service';
 import { GameGateway } from './game.gateway';
-import { GameRepository } from './game.repository';
-import { UserModule } from 'src/user/user.module';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule } from '@nestjs/config';
-import { PlayerModule } from 'src/player/player.module';
-import { ChatModule } from 'src/chat/chat.module';
-import { WebSocketProviderModule } from 'src/webSocketProvider/webSocketProvider.module';
 import { GameController } from './game.controller';
-import { AuctionModule } from 'src/auction/auction.module';
-import { TimerModule } from 'src/timer/timers.module';
-import { SecretModule } from 'src/secret/secret.module';
-import { PaymentModule } from 'src/payment/payment.module';
-import { FieldModule } from 'src/field/field.module';
+import { GameRepository } from './game.repository';
+import { GameRepositoryV2 } from './game.repository.v2';
 
 @Module({
-  controllers: [GameController],
-  imports: [
-    UserModule,
-    JwtModule,
-    ConfigModule,
-    ChatModule,
-    forwardRef(() => PlayerModule),
-    forwardRef(() => AuctionModule),
-    TimerModule,
-    forwardRef(() => SecretModule),
-    PaymentModule,
-    FieldModule,
-    WebSocketProviderModule,
+  providers: [
+    GameService, 
+    GameGateway, 
+    GameRepository,
+    GameRepositoryV2, 
   ],
-  providers: [GameGateway, GameService, GameRepository],
-  exports: [GameService],
+  controllers: [GameController],
+  exports: [GameService, GameRepository, GameRepositoryV2],
 })
 export class GameModule {}
