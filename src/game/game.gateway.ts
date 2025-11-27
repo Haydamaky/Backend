@@ -20,6 +20,7 @@ import { WebSocketProvider } from 'src/webSocketProvider/webSocketProvider.servi
 import { GetGameId } from './decorators/getGameCookieWs';
 import { GamePayload } from './game.repository';
 import { GameService } from './game.service';
+import { CreateConfig } from './types/createConfig';
 
 @WebSocketGateway({
   cors: {
@@ -143,11 +144,11 @@ export class GameGateway {
   @SubscribeMessage('createGame')
   async createGame(
     @ConnectedSocket() socket: Socket,
-    @MessageBody() data: { requestId: string }
+    @MessageBody() data: { requestId: string; createConfig: CreateConfig }
   ) {
     const createdGameWithPlayer = await this.gameService.createGame(
       socket.data.jwtPayload.sub,
-      data.requestId
+      data
     );
     socket.join(createdGameWithPlayer.id);
     return this.server.emit('newGameCreated', {

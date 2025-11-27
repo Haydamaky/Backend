@@ -18,6 +18,7 @@ import { PassTurnHandler } from './handlers/PassTurn.handler';
 import { ProcessSpecialHandler } from './handlers/ProcessSpecial.handler';
 import { PutUpForAuctionHandler } from './handlers/PutUpForAuction.handler';
 import { SteppedOnPrivateHandler } from './handlers/SteppedOnPrivate.handler';
+import { CreateConfig } from './types/createConfig';
 @Injectable()
 export class GameService {
   constructor(
@@ -77,7 +78,10 @@ export class GameService {
     }
   }
 
-  async createGame(userId: string, requestId?: string) {
+  async createGame(
+    userId: string,
+    data: { requestId: string; createConfig: CreateConfig }
+  ) {
     const activePlayer = await this.gameRepository.findFirst({
       where: {
         OR: [{ status: 'LOBBY' }, { status: 'ACTIVE' }],
@@ -92,11 +96,11 @@ export class GameService {
     if (activePlayer)
       throw new WsException({
         message: 'You already have active game',
-        requestId,
+        requestId: data.requestId,
       });
     const newGame = await this.gameRepository.create({
       data: {
-        playersCapacity: 4, // TODO change players capacity to dynamic number
+        playersCapacity: data.createConfig.playersAmount,
         players: {
           create: {
             userId,
